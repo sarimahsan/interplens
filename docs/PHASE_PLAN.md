@@ -39,20 +39,20 @@ Across every phase, all backend tensor operations MUST adhere to these PyTorch &
 
 ## 📋 Detailed Phase Breakdowns
 
-### 🟢 Phase 1: High-Performance Engine & Base Adapter Layer (CURRENT STEP)
+### 🟢 Phase 1: High-Performance Engine & Base Adapter Layer [COMPLETED - 100% Passed]
 **Goal:** Establish the foundational Python package structure, PyTorch/CUDA optimization settings, abstract adapter interfaces, zero-copy in-memory model attachment, and LRU session caching.
 
-- [ ] **1.1 Package Skeleton:** Build `pyproject.toml`, `interplens/__init__.py`, `interplens/config.py`, `interplens/schema.py`.
-- [ ] **1.2 CUDA / PyTorch Config:** Implement memory utilities (`device_info()`, `autocast_context()`, VRAM monitoring).
-- [ ] **1.3 BaseModelAdapter Abstract Interface:** Define standard methods for tokenization, forward pass, and standard hook point resolution.
-- [ ] **1.4 InPlaceModelAdapter:** Implement zero-copy wrapper for existing `HookedTransformer` or `nn.Module` objects already in VRAM.
-- [ ] **1.4b CustomModelAdapter & PyTorchAutoHooker:** Support novel/custom PyTorch `nn.Module` architectures via native `register_forward_hook()` interception.
-- [ ] **1.5 LRU Session Store:** Implement `SessionStore` with VRAM tracking and automatic eviction of old activation caches.
-- [ ] **1.6 Phase 1 Verification:** Automated unit tests (`pytest tests/test_phase1.py`) testing adapter instantiation, device detection, and cache shapes.
+- [x] **1.1 Package Skeleton:** Built `pyproject.toml`, `interplens/__init__.py`, `interplens/config.py`, `interplens/schema.py`.
+- [x] **1.2 CUDA / PyTorch Config:** Implemented memory utilities (`get_optimal_device()`, VRAM monitoring, `free_gpu_memory()`).
+- [x] **1.3 BaseModelAdapter Abstract Interface:** Defined standard methods for tokenization, `@torch.inference_mode()` forward passes, and layer hook resolution.
+- [x] **1.4 InPlaceModelAdapter:** Implemented zero-copy wrapper for existing `HookedTransformer` or `nn.Module` objects already in VRAM.
+- [x] **1.4b CustomModelAdapter & PyTorchAutoHooker:** Supported novel/custom PyTorch `nn.Module` architectures via native `register_forward_hook()` interception.
+- [x] **1.5 LRU Session Store:** Implemented thread-safe `SessionStore` with VRAM tracking and automatic eviction of old activation caches.
+- [x] **1.6 Phase 1 Verification:** Ran automated unit tests (`pytest tests/test_phase1.py`) -> 5/5 tests passed (100%).
 
 ---
 
-### 🔵 Phase 2: Logit Lens & Micro-FastAPI Engine (First Vertical Slice)
+### 🔵 Phase 2: Logit Lens & Micro-FastAPI Engine (NEXT STEP)
 **Goal:** Prove the full stack end-to-end (Engine -> Adapter -> FastAPI -> Web UI) using the Logit Lens feature.
 
 - [ ] **2.1 Logit Lens Engine:** Write vectorized unembedding algorithm (`interplens/analysis/logit_lens.py`).
