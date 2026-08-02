@@ -296,6 +296,7 @@ async function executePromptAnalysis() {
         }
 
         fetchSystemHealth();
+        fetchGpuProfilerData();
 
     } catch (err) {
         alert(`Analysis Error: ${err.message}`);

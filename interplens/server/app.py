@@ -53,6 +53,22 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
     if device is None:
         device = get_optimal_device()
 
+    # 0. Check if model is ALREADY loaded in GPU VRAM
+    if _active_adapter is not None:
+        curr_name = getattr(_active_adapter, "model_name", "")
+        if curr_name.lower() == model_name.lower():
+            print(f"ℹ️ Model '{model_name}' is already loaded in GPU VRAM. Skipping reload.")
+            _model_loading_status["status"] = "online"
+            _model_loading_status["model_name"] = model_name
+            return _active_adapter
+        else:
+            # Free previous model from GPU VRAM before loading new model
+            print(f"🧹 Clearing previous model '{curr_name}' from VRAM...")
+            del _active_adapter
+            _active_adapter = None
+            from interplens.utils.device import free_gpu_memory
+            free_gpu_memory()
+
     _model_loading_status["status"] = "loading"
     _model_loading_status["model_name"] = model_name
     _model_loading_status["error"] = None

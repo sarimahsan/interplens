@@ -117,7 +117,12 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
         
         # PyTorch allocator stats
         stats = torch.cuda.memory_stats(dev_idx) if hasattr(torch.cuda, "memory_stats") else {}
-        active_tensors = stats.get("active_bytes.all.current", 0) / (1024 ** 2)
+        active_bytes = stats.get("active_bytes.all.current", 0)
+        if active_bytes == 0:
+            active_tensors = allocated_mb
+        else:
+            active_tensors = active_bytes / (1024 ** 2)
+            
         alloc_retries = stats.get("num_alloc_retries", 0)
 
         # 64-Block Memory Topology Grid
@@ -125,7 +130,7 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
         weights_mb = allocated_mb
         cache_mb = max(0, reserved_mb - allocated_mb)
         
-        w_blocks = min(total_blocks, int(round((weights_mb / total_mb) * total_blocks)))
+        w_blocks = min(total_blocks, max(1 if weights_mb > 0 else 0, int(round((weights_mb / total_mb) * total_blocks))))
         c_blocks = min(total_blocks - w_blocks, max(0, int(round((cache_mb / total_mb) * total_blocks))))
         f_blocks = max(0, total_blocks - w_blocks - c_blocks)
 
@@ -144,17 +149,31 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
             for k, v in cache.items():
                 if isinstance(v, torch.Tensor):
                     size_mb = (v.element_size() * v.nelement()) / (1024 ** 2)
-                    # Extract layer index if present
                     parts = k.split('.')
-                    l_name = k
+                    l_idx = None
                     for p in parts:
                         if p.isdigit():
-                            l_name = f"Layer {p}"
+                            l_idx = int(p)
                             break
+                    l_name = f"Layer {l_idx}" if l_idx is not None else k
                     layer_sizes[l_name] = layer_sizes.get(l_name, 0.0) + size_mb
             
-            for l_name, sz in sorted(layer_sizes.items()):
+            def sort_key(item):
+                try:
+                    return int(item[0].replace("Layer ", ""))
+                except Exception:
+                    return 999
+
+            for l_name, sz in sorted(layer_sizes.items(), key=sort_key):
                 layer_memory.append({"layer": l_name, "size_mb": round(sz, 3)})
+        elif adapter is not None:
+            # Fallback estimation based on model architecture layers
+            info = adapter.get_model_info() if hasattr(adapter, "get_model_info") else {}
+            num_l = info.get("num_layers", 12)
+            h_dim = info.get("hidden_dim", 768)
+            est_per_layer = round((h_dim * 16 * 2) / (1024 ** 2), 3) # 16 tokens fp16
+            for l in range(num_l):
+                layer_memory.append({"layer": f"Layer {l}", "size_mb": max(0.01, est_per_layer)})
 
         return {
             "has_gpu": True,
