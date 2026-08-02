@@ -1,6 +1,6 @@
 // GPU & Hardware Profiler Module
 
-let profilerTelemetry = {
+var profilerTelemetry = window.profilerTelemetry || {
     vramHistory: [],
     latencyHistory: [],
     vramChart: null,

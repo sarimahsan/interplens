@@ -1,6 +1,6 @@
 // InterpLens Studio Core Application Entry Point
 
-let healthPollTimer = null;
+var healthPollTimer = window.healthPollTimer || null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initThemeManager();

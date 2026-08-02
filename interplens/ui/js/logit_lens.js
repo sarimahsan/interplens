@@ -1,8 +1,8 @@
 // Logit Lens Analysis Engine Frontend Module
 
-let currentMatrix = null;
-let detailChart = null;
-let activeMetric = 'prob';
+var currentMatrix = window.currentMatrix || null;
+var detailChart = window.detailChart || null;
+var activeMetric = window.activeMetric || 'prob';
 
 function formatTokenStr(str) {
     if (!str) return '∅';
