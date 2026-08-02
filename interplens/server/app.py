@@ -36,18 +36,44 @@ app.add_middleware(
 
 # Global active model adapter instance
 def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
-    """Loads target pretrained model into adapter at CLI launch time."""
+    """Loads target model (via TransformerLens or HuggingFace AutoModel fallback) onto GPU."""
     global _active_adapter
+    if device is None:
+        device = get_optimal_device()
+
+    print(f"⚡ Loading model '{model_name}' onto {device}...")
+
+    # 1. Try TransformerLens HookedTransformer
     try:
         from transformer_lens import HookedTransformer
-        if device is None:
-            device = get_optimal_device()
-        print(f"Loading model '{model_name}' onto {device}...")
         model = HookedTransformer.from_pretrained(model_name, device=device)
         _active_adapter = InPlaceModelAdapter(model, model_name=model_name)
+        print(f"✅ Loaded '{model_name}' via TransformerLens on {device}")
         return _active_adapter
-    except Exception as e:
-        print(f"Warning: Could not load model '{model_name}': {e}")
+    except Exception as e1:
+        print(f"Notice: TransformerLens could not load '{model_name}' directly ({e1}). Attempting HuggingFace AutoModel...")
+
+    # 2. Fallback to HuggingFace AutoModelForCausalLM + CustomModelAdapter
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from interplens.adapters.custom import CustomModelAdapter
+        
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
+            device_map="auto" if str(device).startswith("cuda") else None,
+            trust_remote_code=True
+        )
+        if not str(device).startswith("cuda") and hasattr(model, "to"):
+            model = model.to(device)
+
+        _active_adapter = CustomModelAdapter(model=model, tokenizer=tokenizer, model_name=model_name)
+        print(f"✅ Loaded '{model_name}' via HuggingFace AutoModel on {device}")
+        return _active_adapter
+    except Exception as e2:
+        print(f"❌ Error: Failed to load model '{model_name}' via HuggingFace ({e2})")
         return None
 
 

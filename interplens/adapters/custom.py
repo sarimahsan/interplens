@@ -62,14 +62,21 @@ class CustomModelAdapter(BaseModelAdapter):
 
     def _extract_custom_metadata(self):
         """Introspects module structure to determine layer counts and dimensions."""
-        layers = []
-        for name, module in self._model_instance.named_modules():
-            if "layer" in name.lower() or "block" in name.lower():
-                layers.append(name)
-        self.num_layers = max(len(layers), 1)
-        self.num_heads = 12
-        self.hidden_dim = 768
-        self.vocab_size = 50257
+        cfg = getattr(self._model_instance, "config", None)
+        if cfg is not None:
+            self.num_layers = getattr(cfg, "num_hidden_layers", getattr(cfg, "n_layers", 36))
+            self.num_heads = getattr(cfg, "num_attention_heads", getattr(cfg, "n_heads", 16))
+            self.hidden_dim = getattr(cfg, "hidden_size", getattr(cfg, "d_model", 2048))
+            self.vocab_size = getattr(cfg, "vocab_size", getattr(cfg, "d_vocab", 151936))
+        else:
+            layers = []
+            for name, module in self._model_instance.named_modules():
+                if "layer" in name.lower() or "block" in name.lower():
+                    layers.append(name)
+            self.num_layers = max(len(layers), 1)
+            self.num_heads = 12
+            self.hidden_dim = 768
+            self.vocab_size = 50257
 
     def load(self) -> None:
         """No-op for in-memory custom models."""
