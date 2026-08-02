@@ -48,7 +48,7 @@ _model_loading_status = {"status": "idle", "model_name": "none", "error": None}
 
 # Global active model adapter instance
 def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
-    """Loads target model (via TransformerLens or HuggingFace AutoModel fallback) onto GPU."""
+    """Loads target model into GPU VRAM."""
     global _active_adapter, _model_loading_status
     if device is None:
         device = get_optimal_device()
@@ -59,23 +59,28 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
 
     print(f"⚡ Loading model '{model_name}' onto {device}...")
 
-    # 1. Try TransformerLens HookedTransformer
-    try:
-        from transformer_lens import HookedTransformer
-        model = HookedTransformer.from_pretrained(model_name, device=device)
-        _active_adapter = InPlaceModelAdapter(model, model_name=model_name)
-        _model_loading_status["status"] = "online"
-        print(f"✅ Loaded '{model_name}' via TransformerLens on {device}")
-        return _active_adapter
-    except Exception as e1:
-        print(f"Notice: TransformerLens could not load '{model_name}' directly ({e1}). Attempting HuggingFace AutoModel...")
+    # Known native TransformerLens models
+    tl_models = ["gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl", "stanford-gpt2-small-a"]
+    is_tl_native = any(m == model_name.lower() or model_name.lower().startswith("pythia") for m in tl_models)
 
-    # 2. Fallback to HuggingFace AutoModelForCausalLM + CustomModelAdapter
+    if is_tl_native:
+        try:
+            from transformer_lens import HookedTransformer
+            model = HookedTransformer.from_pretrained(model_name, device=device)
+            _active_adapter = InPlaceModelAdapter(model, model_name=model_name)
+            _model_loading_status["status"] = "online"
+            print(f"✅ Loaded '{model_name}' via TransformerLens on {device}")
+            return _active_adapter
+        except Exception as e1:
+            print(f"Notice: TransformerLens could not load '{model_name}' ({e1}). Falling back to HuggingFace...")
+
+    # Direct HuggingFace AutoModelForCausalLM loader for Qwen, Llama, Mistral, Gemma, etc.
     try:
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
         from interplens.adapters.custom import CustomModelAdapter
         
+        print(f"📥 Loading HuggingFace AutoModel '{model_name}' directly onto GPU (fp16)...")
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -84,12 +89,10 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
             low_cpu_mem_usage=True,
             trust_remote_code=True
         )
-        if not str(device).startswith("cuda") and hasattr(model, "to"):
-            model = model.to(device)
 
         _active_adapter = CustomModelAdapter(model=model, tokenizer=tokenizer, model_name=model_name)
         _model_loading_status["status"] = "online"
-        print(f"✅ Loaded '{model_name}' via HuggingFace AutoModel on {device}")
+        print(f"✅ Loaded '{model_name}' directly into CUDA GPU VRAM!")
         return _active_adapter
     except Exception as e2:
         err_msg = f"Failed to load model '{model_name}': {e2}"
