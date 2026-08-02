@@ -67,6 +67,12 @@ var API = window.API || {
             throw new Error(err.detail || 'Steering execution failed');
         }
         return await res.json();
+    },
+
+    async getModelTopology() {
+        const res = await fetch('/api/model/topology');
+        if (!res.ok) throw new Error(`Model topology fetch failed: ${res.statusText}`);
+        return await res.json();
     }
 };
 

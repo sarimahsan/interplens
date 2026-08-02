@@ -313,6 +313,14 @@ def steer_residual_stream(req: SteeringRequest):
     )
 
 
+@app.get("/api/model/topology")
+def get_model_topology():
+    """Inspects active model parameters and builds a node diagram specification for the UI."""
+    adapter = get_active_adapter()
+    from interplens.analysis.topology import inspect_model_topology
+    return inspect_model_topology(adapter)
+
+
 # Mount UI static files if directory exists
 ui_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui")
 if os.path.exists(ui_dir):

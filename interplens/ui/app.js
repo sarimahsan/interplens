@@ -882,6 +882,13 @@ function registerEventListeners() {
                     requestAnimationFrame(() => view.classList.add('active'));
                 }
                 if (window.fetchGpuProfilerData) window.fetchGpuProfilerData();
+            } else if (targetEngine === 'architecture') {
+                const view = document.getElementById('view-architecture');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
+                }
+                if (window.fetchModelTopologyData) window.fetchModelTopologyData();
             } else if (targetEngine === 'residual-stream') {
                 const view = document.getElementById('view-residual-stream');
                 if (view) {
