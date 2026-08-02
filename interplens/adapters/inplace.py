@@ -48,15 +48,47 @@ class InPlaceModelAdapter(BaseModelAdapter):
         return [c for c in text]
 
     def decode(self, token_ids: List[int]) -> str:
-        """Decodes token IDs back to string token label."""
+        """Decodes token IDs back to human-readable string token labels (e.g. ' Paris')."""
         if not token_ids:
             return ""
+        
+        # 1. Try TransformerLens single token string decoder
+        if hasattr(self._model_instance, "to_single_str_token"):
+            try:
+                res = self._model_instance.to_single_str_token(token_ids[0])
+                if res:
+                    return res
+            except Exception:
+                pass
+
+        # 2. Try HuggingFace / TransformerLens tokenizer decode
+        tokenizer = getattr(self, "tokenizer", None) or getattr(self._model_instance, "tokenizer", None)
+        if tokenizer is not None and hasattr(tokenizer, "decode"):
+            try:
+                res = tokenizer.decode(token_ids if isinstance(token_ids, list) else [token_ids])
+                if res:
+                    return res
+            except Exception:
+                pass
+
+        # 3. Try to_string with tensor conversion
         if hasattr(self._model_instance, "to_string"):
-            return self._model_instance.to_string(token_ids)
-        elif hasattr(self._model_instance, "to_single_token"):
-            return self._model_instance.to_single_token(token_ids[0])
-        elif hasattr(self._model_instance, "tokenizer"):
-            return self._model_instance.tokenizer.decode(token_ids)
+            try:
+                res = self._model_instance.to_string(torch.tensor(token_ids, device=self.device))
+                if res and isinstance(res, str):
+                    return res
+            except Exception:
+                pass
+
+        # 4. Fallback to lazy GPT-2 tokenizer if available
+        try:
+            from transformers import AutoTokenizer
+            if not hasattr(self, "_fallback_tokenizer"):
+                self._fallback_tokenizer = AutoTokenizer.from_pretrained("gpt2")
+            return self._fallback_tokenizer.decode(token_ids)
+        except Exception:
+            pass
+
         return str(token_ids[0])
 
     @torch.inference_mode()

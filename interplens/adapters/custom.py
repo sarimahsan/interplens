@@ -85,11 +85,23 @@ class CustomModelAdapter(BaseModelAdapter):
             ids = self.tokenizer.encode(text)
             return [str(i) for i in ids]
     def decode(self, token_ids: List[int]) -> str:
-        """Decodes token IDs back to string token label."""
+        """Decodes token IDs back to human-readable string token labels."""
         if not token_ids:
             return ""
         if hasattr(self.tokenizer, "decode"):
-            return self.tokenizer.decode(token_ids)
+            try:
+                res = self.tokenizer.decode(token_ids)
+                if res:
+                    return res
+            except Exception:
+                pass
+        try:
+            from transformers import AutoTokenizer
+            if not hasattr(self, "_fallback_tokenizer"):
+                self._fallback_tokenizer = AutoTokenizer.from_pretrained("gpt2")
+            return self._fallback_tokenizer.decode(token_ids)
+        except Exception:
+            pass
         return str(token_ids[0])
 
     @torch.inference_mode()
