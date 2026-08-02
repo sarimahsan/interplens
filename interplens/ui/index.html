@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterpLens — Interactive Mechanistic Interpretability Debugger</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js for Probability Distribution Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Header -->
+        <header class="navbar">
+            <div class="brand">
+                <div class="logo-icon">🔍</div>
+                <div class="brand-text">
+                    <span class="brand-title">InterpLens</span>
+                    <span class="brand-subtitle">Mechanistic Interpretability Debugger</span>
+                </div>
+            </div>
+
+            <div class="nav-right">
+                <div class="status-badge" id="vram-badge">
+                    <span class="status-dot"></span>
+                    <span id="vram-text">GPU: -- / -- MB</span>
+                </div>
+
+                <!-- Dark / Light Theme Toggle Switch -->
+                <button class="theme-toggle" id="theme-toggle-btn" title="Toggle Dark/Light Theme" aria-label="Toggle theme">
+                    <span class="theme-icon moon-icon">🌙</span>
+                    <span class="theme-icon sun-icon">☀️</span>
+                    <span class="theme-label">Dark</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="main-layout">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <div class="sidebar-section-title">ANALYSIS ENGINES</div>
+                <nav class="sidebar-nav">
+                    <button class="nav-item active" data-engine="logit-lens">
+                        <span class="nav-icon">🎯</span>
+                        <span class="nav-text">Logit Lens</span>
+                        <span class="badge badge-active">Phase 2</span>
+                    </button>
+
+                    <button class="nav-item disabled" data-engine="residual-stream" title="Coming in Phase 3">
+                        <span class="nav-icon">🌊</span>
+                        <span class="nav-text">Residual Stream</span>
+                        <span class="badge badge-soon">Phase 3</span>
+                    </button>
+
+                    <button class="nav-item disabled" data-engine="attention-heads" title="Coming in Phase 3">
+                        <span class="nav-icon">🕸️</span>
+                        <span class="nav-text">Attention Heads</span>
+                        <span class="badge badge-soon">Phase 3</span>
+                    </button>
+
+                    <button class="nav-item disabled" data-engine="neurons" title="Coming in Phase 4">
+                        <span class="nav-icon">⚡</span>
+                        <span class="nav-text">Neuron Activations</span>
+                        <span class="badge badge-soon">Phase 4</span>
+                    </button>
+
+                    <button class="nav-item disabled" data-engine="causal-patching" title="Coming in Phase 5">
+                        <span class="nav-icon">🧩</span>
+                        <span class="nav-text">Causal Patching</span>
+                        <span class="badge badge-soon">Phase 5</span>
+                    </button>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="model-info-box">
+                        <div class="info-label">Active Model</div>
+                        <div class="info-val" id="model-name-display">gpt2</div>
+                        <div class="info-sub" id="model-specs-display">12 Layers • 12 Heads • 768d</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Workspace Panel -->
+            <main class="workspace">
+                <!-- Prompt & Control Bar -->
+                <section class="card control-card">
+                    <div class="card-header">
+                        <h2>Prompt Execution</h2>
+                        <div class="quick-prompts">
+                            <span class="quick-label">Sample Prompts:</span>
+                            <button class="btn-sample" data-prompt="The Eiffel Tower is located in the city of">Eiffel Tower</button>
+                            <button class="btn-sample" data-prompt="When Mary and John went to the store, John gave a book to">IOI Task</button>
+                            <button class="btn-sample" data-prompt="The capital of France is">Capital Task</button>
+                        </div>
+                    </div>
+
+                    <div class="prompt-form">
+                        <div class="input-group">
+                            <textarea id="prompt-input" rows="2" placeholder="Enter prompt to analyze (e.g. 'The Eiffel Tower is located in')...">The Eiffel Tower is located in the city of</textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <div class="option-group">
+                                <label for="model-select">Model:</label>
+                                <select id="model-select" class="select-control">
+                                    <option value="gpt2" selected>GPT-2 Small (124M)</option>
+                                    <option value="gpt2-medium">GPT-2 Medium (355M)</option>
+                                </select>
+                            </div>
+
+                            <div class="option-group">
+                                <label for="topk-select">Top-K Tokens:</label>
+                                <select id="topk-select" class="select-control">
+                                    <option value="3">Top 3</option>
+                                    <option value="5" selected>Top 5</option>
+                                    <option value="10">Top 10</option>
+                                </select>
+                            </div>
+
+                            <div class="option-group checkbox-group">
+                                <label><input type="checkbox" id="ln-toggle" checked> Apply Final LayerNorm</label>
+                            </div>
+
+                            <button id="run-btn" class="btn btn-primary">
+                                <span class="btn-spinner hidden" id="run-spinner"></span>
+                                <span id="run-btn-text">🚀 Run Analysis</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Analysis Results Section -->
+                <section class="analysis-section" id="logit-lens-panel">
+                    <div class="section-title-bar">
+                        <div class="title-meta">
+                            <h2>🎯 Logit Lens Analysis</h2>
+                            <p class="section-desc">Unembedding intermediate residual stream activations layer-by-layer to observe early token formation.</p>
+                        </div>
+                        <div class="view-controls">
+                            <span class="session-tag" id="session-tag-display">Session: None</span>
+                        </div>
+                    </div>
+
+                    <!-- Tokens Strip -->
+                    <div class="card tokens-card">
+                        <div class="tokens-header">Prompt Tokens:</div>
+                        <div class="tokens-container" id="tokens-strip">
+                            <div class="placeholder-text">Run prompt to view token breakdown...</div>
+                        </div>
+                    </div>
+
+                    <!-- Heatmap Grid View -->
+                    <div class="card heatmap-card">
+                        <div class="card-header">
+                            <h3>Layer × Token Prediction Matrix</h3>
+                            <div class="matrix-legend">
+                                <span>Probability:</span>
+                                <span class="legend-box low">0%</span>
+                                <span class="legend-box mid">50%</span>
+                                <span class="legend-box high">100%</span>
+                            </div>
+                        </div>
+
+                        <div class="matrix-scroll-wrapper" id="matrix-container">
+                            <div class="empty-state">
+                                <div class="empty-icon">📊</div>
+                                <div>Click <strong>Run Analysis</strong> to generate the Logit Lens matrix.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Layer Detail Drilldown -->
+                    <div class="card detail-card" id="detail-card" style="display: none;">
+                        <div class="card-header">
+                            <h3 id="detail-title">Token Position Drill-down</h3>
+                            <div class="detail-subtitle" id="detail-subtitle">Position 0</div>
+                        </div>
+                        <div class="detail-content-grid">
+                            <div class="chart-box">
+                                <canvas id="prob-chart"></canvas>
+                            </div>
+                            <div class="table-box">
+                                <h4>Top-K Predictions Across Layers</h4>
+                                <div class="table-wrapper">
+                                    <table class="data-table" id="drilldown-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Layer</th>
+                                                <th>Top #1 Token</th>
+                                                <th>Prob</th>
+                                                <th>Top #2 Token</th>
+                                                <th>Prob</th>
+                                                <th>Top #3 Token</th>
+                                                <th>Prob</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Dynamic rows -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- App JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>

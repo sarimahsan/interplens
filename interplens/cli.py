@@ -33,7 +33,8 @@ def main():
         if vram["total_mb"] > 0:
             print(f"💾 VRAM Allocated: {vram['allocated_mb']}MB / {vram['total_mb']}MB")
             
-    else:
+        import uvicorn
+        uvicorn.run("interplens.server.app:app", host=host, port=port, reload=False)
         parser.print_help()
 
 

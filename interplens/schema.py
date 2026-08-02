@@ -37,6 +37,7 @@ class LogitLensToken(BaseModel):
     token_id: int
     probability: float
     rank: int
+    logit: Optional[float] = None
 
 
 class LogitLensLayerResult(BaseModel):
@@ -46,8 +47,25 @@ class LogitLensLayerResult(BaseModel):
 
 
 class LogitLensResponse(BaseModel):
-    """Full Logit Lens analysis payload across positions and layers."""
+    """Full Logit Lens analysis payload for a specific position across layers."""
     session_id: str
     position: int
     selected_token: str
     layers: List[LogitLensLayerResult]
+
+
+class PositionLogitLensData(BaseModel):
+    """Logit lens predictions for one token position across all layers."""
+    position: int
+    token: str
+    layers: List[LogitLensLayerResult]
+
+
+class LogitLensMatrixResponse(BaseModel):
+    """Full 2D grid matrix of Logit Lens predictions across all positions and layers."""
+    session_id: str
+    prompt: str
+    tokens: List[str]
+    num_layers: int
+    positions: List[PositionLogitLensData]
+
