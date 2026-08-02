@@ -102,6 +102,61 @@ def get_gpu_grid_status(device: torch.device = None) -> Dict[str, Any]:
     }
 
 
+def get_nvml_metrics(dev_idx: int = 0) -> Dict[str, Any]:
+    """Fetches live GPU hardware temperature (°C), fan speed (%), fan count, power draw (W), and clock speeds (MHz)."""
+    metrics = {
+        "temperature_c": None,
+        "fan_speed_pct": None,
+        "num_fans": 1,
+        "power_draw_w": None,
+        "power_limit_w": None,
+        "gpu_clock_mhz": None,
+        "mem_clock_mhz": None,
+    }
+    try:
+        import pynvml
+        pynvml.nvmlInit()
+        handle = pynvml.nvmlDeviceGetHandleByIndex(dev_idx)
+        
+        try:
+            metrics["temperature_c"] = int(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU))
+        except Exception:
+            pass
+
+        try:
+            metrics["num_fans"] = int(pynvml.nvmlDeviceGetNumFans(handle))
+        except Exception:
+            metrics["num_fans"] = 1
+
+        try:
+            metrics["fan_speed_pct"] = int(pynvml.nvmlDeviceGetFanSpeed(handle))
+        except Exception:
+            try:
+                num_fans = metrics["num_fans"]
+                fan_speeds = [pynvml.nvmlDeviceGetFanSpeed_v2(handle, i) for i in range(num_fans)]
+                if fan_speeds:
+                    metrics["fan_speed_pct"] = int(sum(fan_speeds) / len(fan_speeds))
+            except Exception:
+                pass
+
+        try:
+            metrics["power_draw_w"] = round(pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0, 1)
+            metrics["power_limit_w"] = round(pynvml.nvmlDeviceGetEnforcedPowerLimit(handle) / 1000.0, 1)
+        except Exception:
+            pass
+
+        try:
+            metrics["gpu_clock_mhz"] = int(pynvml.nvmlDeviceGetClockInfo(handle, pynvml.NVML_CLOCK_GRAPHICS))
+            metrics["mem_clock_mhz"] = int(pynvml.nvmlDeviceGetClockInfo(handle, pynvml.NVML_CLOCK_MEM))
+        except Exception:
+            pass
+
+    except Exception:
+        pass
+
+    return metrics
+
+
 def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[str, Any]:
     """Returns in-depth GPU hardware architecture, SM stream specs, 64-block VRAM topology, and per-layer activation memory footprint."""
     device = get_optimal_device()
@@ -243,6 +298,8 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
             if model_inst is not None and hasattr(model_inst, "dtype"):
                 dtype_str = str(model_inst.dtype).replace("torch.", "")
 
+        nvml_data = get_nvml_metrics(dev_idx)
+
         return {
             "has_gpu": True,
             "device_name": props.name,
@@ -251,6 +308,13 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
             "precision_dtype": dtype_str,
             "compute_capability": f"{props.major}.{props.minor}",
             "multi_processor_count": getattr(props, "multi_processor_count", 40),
+            "gpu_temperature_c": nvml_data.get("temperature_c"),
+            "fan_speed_pct": nvml_data.get("fan_speed_pct"),
+            "num_fans": nvml_data.get("num_fans", 1),
+            "power_draw_w": nvml_data.get("power_draw_w"),
+            "power_limit_w": nvml_data.get("power_limit_w"),
+            "gpu_clock_mhz": nvml_data.get("gpu_clock_mhz"),
+            "mem_clock_mhz": nvml_data.get("mem_clock_mhz"),
             "total_memory_mb": round(total_mb, 1),
             "allocated_mb": round(allocated_mb, 1),
             "reserved_mb": round(reserved_mb, 1),

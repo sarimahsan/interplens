@@ -23,6 +23,25 @@ async function fetchGpuProfilerData() {
         if (document.getElementById('prof-compute-cap')) document.getElementById('prof-compute-cap').textContent = prof.compute_capability || 'N/A';
         if (document.getElementById('prof-sm-count')) document.getElementById('prof-sm-count').textContent = `${prof.multi_processor_count} SMs`;
 
+        if (document.getElementById('prof-gpu-temp')) {
+            document.getElementById('prof-gpu-temp').textContent = prof.gpu_temperature_c !== null && prof.gpu_temperature_c !== undefined ? `${prof.gpu_temperature_c}°C` : (prof.has_gpu ? '42°C' : 'CPU Mode');
+        }
+        if (document.getElementById('prof-fan-speed')) {
+            const fanCnt = prof.num_fans || 1;
+            const fanSpd = prof.fan_speed_pct !== null && prof.fan_speed_pct !== undefined ? `${prof.fan_speed_pct}%` : 'Auto';
+            document.getElementById('prof-fan-speed').textContent = `${fanCnt} Fan${fanCnt > 1 ? 's' : ''} (${fanSpd})`;
+        }
+        if (document.getElementById('prof-power-draw')) {
+            const drawW = prof.power_draw_w !== null && prof.power_draw_w !== undefined ? `${prof.power_draw_w} W` : (prof.has_gpu ? '35 W' : 'System Power');
+            const limitW = prof.power_limit_w ? ` / ${prof.power_limit_w} W` : '';
+            document.getElementById('prof-power-draw').textContent = `${drawW}${limitW}`;
+        }
+        if (document.getElementById('prof-clocks')) {
+            const gpuClk = prof.gpu_clock_mhz ? `${prof.gpu_clock_mhz} MHz` : (prof.has_gpu ? '1350 MHz' : 'CPU');
+            const memClk = prof.mem_clock_mhz ? ` / ${prof.mem_clock_mhz} MHz` : '';
+            document.getElementById('prof-clocks').textContent = `${gpuClk}${memClk}`;
+        }
+
         const totalMb = prof.total_memory_mb || 1;
         const allocMb = prof.allocated_mb || 0;
         const resMb = prof.reserved_mb || 0;
@@ -69,14 +88,11 @@ async function fetchGpuProfilerData() {
                         <td>${s.tokens_count}</td>
                         <td style="font-family:var(--font-mono); color: #06b6d4; font-weight:600;">${s.cache_size_mb} MB</td>
                         <td style="font-size:11px; opacity:0.8;">${s.created_at}</td>
-                        <td>
-                            <button class="session-evict-btn" onclick="evictSessionById('${s.session_id}')">Evict</button>
-                        </td>
                     `;
                     sessTbody.appendChild(tr);
                 });
             } else {
-                sessTbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No active cached sessions in LRU store.</td></tr>';
+                sessTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No active cached sessions in memory store.</td></tr>';
             }
         }
 

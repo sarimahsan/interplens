@@ -1,0 +1,174 @@
+<!-- GPU & Hardware Profiler Partial View -->
+<div class="tab-view" id="view-gpu-profiler">
+    <!-- Top Row: Architecture & Live VRAM Gauge -->
+    <div class="profiler-top-row">
+        <!-- Device Architecture Spec Card -->
+        <section class="panel arch-panel">
+            <div class="panel-header">
+                <div class="header-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                        <rect x="9" y="9" width="6" height="6"></rect>
+                        <line x1="9" y1="1" x2="9" y2="4"></line>
+                        <line x1="15" y1="1" x2="15" y2="4"></line>
+                        <line x1="9" y1="20" x2="9" y2="23"></line>
+                        <line x1="15" y1="20" x2="15" y2="23"></line>
+                    </svg>
+                    <h2>Device & Precision Hardware Profile</h2>
+                    <span class="badge-token" id="prof-device-name">NVIDIA GPU</span>
+                </div>
+            </div>
+
+            <div class="gpu-arch-grid">
+                <div class="arch-card">
+                    <span class="arch-label">CUDA Version</span>
+                    <span class="arch-val" id="prof-cuda-ver">--</span>
+                </div>
+                <div class="arch-card">
+                    <span class="arch-label">PyTorch Version</span>
+                    <span class="arch-val" id="prof-torch-ver">--</span>
+                </div>
+                <div class="arch-card">
+                    <span class="arch-label">Precision Mode</span>
+                    <span class="arch-val" id="prof-precision">fp16</span>
+                </div>
+                <div class="arch-card">
+                    <span class="arch-label">Compute Capability</span>
+                    <span class="arch-val" id="prof-compute-cap">--</span>
+                </div>
+                <div class="arch-card">
+                    <span class="arch-label">Multiprocessors</span>
+                    <span class="arch-val" id="prof-sm-count">-- SMs</span>
+                </div>
+                <div class="arch-card">
+                    <span class="arch-label">GPU Temperature</span>
+                    <span class="arch-val" id="prof-gpu-temp" style="color: #ef4444;">--°C</span>
+                </div>
+                <div class="arch-card">
+                    <span class="arch-label">Cooling Fan Speed</span>
+                    <span class="arch-val" id="prof-fan-speed" style="color: #06b6d4;">--</span>
+                </div>
+                <div class="arch-card">
+                    <span class="arch-label">Power Draw</span>
+                    <span class="arch-val" id="prof-power-draw" style="color: #f59e0b;">-- W</span>
+                </div>
+                <div class="arch-card">
+                    <span class="arch-label">Core / Mem Clock</span>
+                    <span class="arch-val" id="prof-clocks">-- MHz</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live VRAM Gauge & Peak Marker Card -->
+        <section class="panel vram-gauge-panel">
+            <div class="panel-header">
+                <div class="header-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12A10 10 0 1 1 12 2v10z"></path>
+                    </svg>
+                    <h2>Live VRAM Gauge & Peak Marker</h2>
+                </div>
+            </div>
+
+            <div class="vram-gauge-body">
+                <div class="vram-gauge-track">
+                    <div class="vram-gauge-fill" id="vram-gauge-alloc-fill" style="width: 0%;"></div>
+                    <div class="vram-gauge-res-fill" id="vram-gauge-res-fill" style="width: 0%;"></div>
+                    <div class="vram-peak-marker" id="vram-peak-marker" title="Peak VRAM Marker"></div>
+                </div>
+
+                <div class="vram-gauge-stats">
+                    <div class="vram-stat-col"><span class="lbl">Allocated:</span> <strong id="prof-alloc-mb">-- MB</strong></div>
+                    <div class="vram-stat-col"><span class="lbl">Reserved:</span> <strong id="prof-res-mb">-- MB</strong></div>
+                    <div class="vram-stat-col"><span class="lbl">Peak:</span> <strong id="prof-peak-mb" style="color: #f59e0b;">-- MB</strong></div>
+                    <div class="vram-stat-col"><span class="lbl">Capacity:</span> <strong id="prof-total-vram">-- MB</strong></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Active Session Store History Table (Without Evict Column) -->
+    <section class="panel session-cache-panel">
+        <div class="panel-header">
+            <div class="header-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                <h2>Active Session Cache Debugger (Persistent Store)</h2>
+                <span class="badge-token" id="prof-session-count">0 Active Sessions</span>
+            </div>
+        </div>
+
+        <div class="table-scroll">
+            <table class="studio-table" id="session-cache-table">
+                <thead>
+                    <tr>
+                        <th>Session ID</th>
+                        <th>Prompt Snippet</th>
+                        <th>Model</th>
+                        <th>Tokens</th>
+                        <th>Activation Size</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody id="session-cache-tbody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No cached sessions in memory store.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Adaptive VRAM Pool Topology Block Map -->
+    <section class="panel block-topology-panel">
+        <div class="panel-header">
+            <div class="header-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <h2>Adaptive VRAM Memory Topology Grid</h2>
+            </div>
+            <div class="gpu-grid-legend">
+                <span class="legend-chip vram-chip-weights">🟦 Model Weights</span>
+                <span class="legend-chip vram-chip-cache">🩵 Activation/KV Cache</span>
+                <span class="legend-chip vram-chip-free">⬛ Free Buffer</span>
+            </div>
+        </div>
+        <div class="vram-blocks-container" id="prof-64-blocks-container">
+            <!-- Adaptive VRAM Block Tiles rendered via JS -->
+        </div>
+    </section>
+
+    <!-- Layer-by-Layer Activation Footprint -->
+    <section class="panel layer-memory-panel">
+        <div class="panel-header">
+            <div class="header-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                <h2>Layer-by-Layer Activation & Parameter VRAM Footprint</h2>
+            </div>
+        </div>
+
+        <div class="table-scroll">
+            <table class="studio-table" id="prof-layer-table">
+                <thead>
+                    <tr>
+                        <th>Layer Name</th>
+                        <th>Footprint Size (MB)</th>
+                        <th>VRAM Share Bar</th>
+                    </tr>
+                </thead>
+                <tbody id="prof-layer-tbody">
+                    <tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Run prompt analysis to observe per-layer memory footprint.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>

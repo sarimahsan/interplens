@@ -399,11 +399,11 @@
                                 <div class="gpu-arch-grid">
                                     <div class="arch-card">
                                         <span class="arch-label">CUDA Version</span>
-                                        <span class="arch-val" id="prof-cuda-ver">12.1</span>
+                                        <span class="arch-val" id="prof-cuda-ver">--</span>
                                     </div>
                                     <div class="arch-card">
                                         <span class="arch-label">PyTorch Version</span>
-                                        <span class="arch-val" id="prof-torch-ver">2.2.0</span>
+                                        <span class="arch-val" id="prof-torch-ver">--</span>
                                     </div>
                                     <div class="arch-card">
                                         <span class="arch-label">Precision Mode</span>
@@ -411,11 +411,27 @@
                                     </div>
                                     <div class="arch-card">
                                         <span class="arch-label">Compute Capability</span>
-                                        <span class="arch-val" id="prof-compute-cap">7.5</span>
+                                        <span class="arch-val" id="prof-compute-cap">--</span>
                                     </div>
                                     <div class="arch-card">
                                         <span class="arch-label">Multiprocessors</span>
-                                        <span class="arch-val" id="prof-sm-count">40 SMs</span>
+                                        <span class="arch-val" id="prof-sm-count">-- SMs</span>
+                                    </div>
+                                    <div class="arch-card">
+                                        <span class="arch-label">GPU Temperature</span>
+                                        <span class="arch-val" id="prof-gpu-temp" style="color: #ef4444;">--°C</span>
+                                    </div>
+                                    <div class="arch-card">
+                                        <span class="arch-label">Cooling Fan Speed</span>
+                                        <span class="arch-val" id="prof-fan-speed" style="color: #06b6d4;">--</span>
+                                    </div>
+                                    <div class="arch-card">
+                                        <span class="arch-label">Power Draw</span>
+                                        <span class="arch-val" id="prof-power-draw" style="color: #f59e0b;">-- W</span>
+                                    </div>
+                                    <div class="arch-card">
+                                        <span class="arch-label">Core / Mem Clock</span>
+                                        <span class="arch-val" id="prof-clocks">-- MHz</span>
                                     </div>
                                 </div>
                             </section>
@@ -457,8 +473,8 @@
                                         <line x1="8" y1="21" x2="16" y2="21"></line>
                                         <line x1="12" y1="17" x2="12" y2="21"></line>
                                     </svg>
-                                    <h2>Active Session Cache Debugger (LRU Store)</h2>
-                                    <span class="badge-token" id="prof-session-count">0 / 3 Sessions</span>
+                                    <h2>Active Session Cache Debugger (Persistent Store)</h2>
+                                    <span class="badge-token" id="prof-session-count">0 Active Sessions</span>
                                 </div>
                             </div>
 
@@ -472,11 +488,10 @@
                                             <th>Tokens</th>
                                             <th>Activation Size</th>
                                             <th>Created At</th>
-                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="session-cache-tbody">
-                                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No cached sessions in LRU memory store.</td></tr>
+                                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No cached sessions in memory store.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
