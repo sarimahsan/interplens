@@ -90,6 +90,8 @@ class CustomModelAdapter(BaseModelAdapter):
             return self.tokenizer.tokenize(text)
         elif hasattr(self.tokenizer, "encode"):
             ids = self.tokenizer.encode(text)
+            if hasattr(self.tokenizer, "decode"):
+                return [self.tokenizer.decode([i]) for i in ids]
             return [str(i) for i in ids]
     def decode(self, token_ids: List[int]) -> str:
         """Decodes token IDs back to human-readable string token labels."""
@@ -118,13 +120,21 @@ class CustomModelAdapter(BaseModelAdapter):
         try:
             # Tokenize input to tensor if tokenizer supported
             if hasattr(self.tokenizer, "encode"):
-                input_ids = torch.tensor([self.tokenizer.encode(prompt)], device=self.device)
-                logits = self._model_instance(input_ids)
+                input_ids = self.tokenizer.encode(prompt)
+                if not isinstance(input_ids, torch.Tensor):
+                    input_ids = torch.tensor([input_ids], device=self.device)
+                elif input_ids.ndim == 1:
+                    input_ids = input_ids.unsqueeze(0).to(self.device)
+                out = self._model_instance(input_ids)
             else:
-                logits = self._model_instance(prompt)
+                out = self._model_instance(prompt)
                 
-            if isinstance(logits, tuple):
-                logits = logits[0]
+            if hasattr(out, "logits"):
+                logits = out.logits
+            elif isinstance(out, tuple):
+                logits = out[0]
+            else:
+                logits = out
                 
             cache = dict(self.auto_hooker.captured_activations)
             return logits, cache
