@@ -164,8 +164,9 @@ async function executePromptAnalysis() {
 
         currentMatrix = await lensRes.json();
 
-        // Render Grid Matrix
+        // Render Grid Matrix & Model Response Card
         renderMatrixGrid(currentMatrix);
+        renderModelResponseCard(currentMatrix);
 
         // Select position 0 by default
         if (currentMatrix.positions && currentMatrix.positions.length > 0) {
@@ -205,6 +206,42 @@ function renderTokensFlow(tokens) {
             renderInspectionDetail(idx);
         });
         container.appendChild(pill);
+    });
+}
+
+// --- Render Model Output Response Card ---
+function renderModelResponseCard(matrix) {
+    const card = document.getElementById('response-card');
+    if (!card || !matrix.positions || matrix.positions.length === 0) return;
+
+    card.style.display = 'block';
+
+    // Target the last position in prompt (which generates the model's next token output)
+    const lastPos = matrix.positions[matrix.positions.length - 1];
+    const finalLayer = lastPos.layers[lastPos.layers.length - 1];
+    const top1 = finalLayer.top_tokens[0];
+
+    document.getElementById('response-winner-badge').textContent = `Predicted Next Token: "${formatTokenStr(top1.token)}"`;
+    document.getElementById('response-tok-val').textContent = `"${formatTokenStr(top1.token)}"`;
+    document.getElementById('response-prob-val').textContent = `${(top1.probability * 100).toFixed(1)}% Probability`;
+    document.getElementById('response-logit-val').textContent = `Logit: ${top1.logit !== null ? top1.logit.toFixed(2) : '-'}`;
+
+    // Render candidate competition progress bars
+    const barsContainer = document.getElementById('candidate-bars-container');
+    barsContainer.innerHTML = '';
+
+    finalLayer.top_tokens.forEach((cand, idx) => {
+        const pct = (cand.probability * 100).toFixed(1);
+        const row = document.createElement('div');
+        row.className = 'cand-bar-row';
+        row.innerHTML = `
+            <span class="cand-tok-name" title="${escapeHtml(cand.token)}">#${idx+1} ${escapeHtml(formatTokenStr(cand.token))}</span>
+            <div class="cand-bar-outer">
+                <div class="cand-bar-inner ${idx === 0 ? 'winner' : ''}" style="width: ${pct}%;"></div>
+            </div>
+            <span class="cand-pct-val">${pct}%</span>
+        `;
+        barsContainer.appendChild(row);
     });
 }
 
@@ -437,6 +474,7 @@ function renderRibbonChart(labels, top5Trajectories) {
                 y: {
                     min: 0,
                     max: 100,
+                    title: { display: true, text: 'Probability (%)', color: textColor, font: { family: 'Inter', size: 10 } },
                     grid: { color: gridColor },
                     ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
                 },
@@ -462,15 +500,29 @@ function renderLineChart(labels, dataPts) {
     const textColor = isDark ? '#94a3b8' : '#475569';
 
     let yLabel = 'Top-1 Probability (%)';
-    let reverseY = false;
+    let yScaleOpts = {
+        grid: { color: gridColor },
+        ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
+    };
 
-    if (activeMetric === 'rank') {
+    if (activeMetric === 'prob') {
+        yLabel = 'Top-1 Probability (%)';
+        yScaleOpts.min = 0;
+        yScaleOpts.max = 100;
+    } else if (activeMetric === 'rank') {
         yLabel = 'Target Token Rank (1 is top)';
-        reverseY = true;
+        yScaleOpts.reverse = true;
+        const maxRank = Math.max(...dataPts, 5);
+        yScaleOpts.suggestedMin = 1;
+        yScaleOpts.suggestedMax = maxRank;
     } else if (activeMetric === 'kl') {
         yLabel = 'KL Divergence KL(P_L || P_L-1) (bits)';
+        yScaleOpts.beginAtZero = true;
+        yScaleOpts.suggestedMax = Math.max(...dataPts, 1.0);
     } else if (activeMetric === 'entropy') {
         yLabel = 'Prediction Entropy (bits)';
+        yScaleOpts.beginAtZero = true;
+        yScaleOpts.suggestedMax = Math.max(...dataPts, 2.0);
     }
 
     detailChart = new Chart(ctx, {
@@ -492,11 +544,7 @@ function renderLineChart(labels, dataPts) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: {
-                    reverse: reverseY,
-                    grid: { color: gridColor },
-                    ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
-                },
+                y: yScaleOpts,
                 x: {
                     grid: { color: gridColor },
                     ticks: { color: textColor, font: { family: 'Inter', size: 11 } }

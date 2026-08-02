@@ -521,11 +521,113 @@ textarea#prompt-input:focus {
 .cell-tok-name { font-weight: 600; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
 .cell-tok-pct { font-size: 10px; opacity: 0.85; margin-top: 2px; }
 
-.header-actions {
+/* Model Output Response Visualization Card */
+.response-panel {
+    border-color: rgba(59, 130, 246, 0.3);
+    background: linear-gradient(180deg, var(--bg-panel) 0%, rgba(59, 130, 246, 0.04) 100%);
+}
+
+.response-body {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.response-winner-box {
+    background-color: var(--bg-app);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.winner-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.winner-token-str {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 6px 0;
+}
+
+.winner-meta {
+    font-size: 12px;
+    color: var(--text-sub);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 6px;
 }
+
+.winner-prob { font-weight: 600; color: #10b981; }
+
+.response-competition-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.candidate-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cand-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.cand-tok-name {
+    width: 90px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cand-bar-outer {
+    flex: 1;
+    height: 18px;
+    background-color: var(--bg-app);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.cand-bar-inner {
+    height: 100%;
+    background-color: var(--primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.cand-bar-inner.winner {
+    background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
+}
+
+.cand-pct-val {
+    width: 55px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-sub);
+}
+
 
 .export-actions {
     display: flex;

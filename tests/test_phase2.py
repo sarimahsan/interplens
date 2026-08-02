@@ -77,11 +77,23 @@ def test_logit_lens_computation():
     assert pos0.token == "Hello"
     assert len(pos0.layers) == 5
 
-    # Check top tokens in layer 0
-    layer0_tokens = pos0.layers[0].top_tokens
+    # Check top tokens and metrics in layer 0
+    layer0 = pos0.layers[0]
+    assert hasattr(layer0, "entropy")
+    assert hasattr(layer0, "kl_divergence")
+    assert isinstance(layer0.entropy, float)
+    assert isinstance(layer0.kl_divergence, float)
+
+    layer0_tokens = layer0.top_tokens
     assert len(layer0_tokens) == 5
     assert layer0_tokens[0].rank == 1
     assert 0.0 <= layer0_tokens[0].probability <= 1.0
+
+    # Check rank trajectory and top5 competition trajectory
+    assert pos0.target_token_ranks is not None
+    assert len(pos0.target_token_ranks) == 5
+    assert pos0.top5_trajectories is not None
+    assert len(pos0.top5_trajectories) > 0
 
 
 def test_fastapi_endpoints():
