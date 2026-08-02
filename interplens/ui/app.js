@@ -207,7 +207,7 @@ async function fetchGpuProfilerData() {
         renderVramTimelineChart();
         renderLatencyChart();
         renderCacheBreakdownChart(prof.cache_breakdown);
-        renderKvGrowthChart(prof.kv_growth);
+        renderKvGrowthChart(prof.request_history, prof.kv_growth);
 
         // 5. Render 64-Block VRAM Memory Topology Map
         const container = document.getElementById('prof-64-blocks-container');
@@ -365,31 +365,46 @@ function renderCacheBreakdownChart(breakdown) {
     }
 }
 
-function renderKvGrowthChart(kvGrowth) {
+function renderKvGrowthChart(requestHistory, kvGrowth) {
     const canvas = document.getElementById('kv-growth-chart');
-    if (!canvas || !kvGrowth) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const labels = kvGrowth.map(g => `Pos ${g.pos}`);
-    const data = kvGrowth.map(g => g.kv_mb);
+    let labels = [];
+    let singleKvData = [];
+    let cumulativeKvData = [];
+
+    if (requestHistory && requestHistory.length > 0) {
+        labels = requestHistory.map(r => r.label);
+        singleKvData = requestHistory.map(r => r.kv_mb);
+        cumulativeKvData = requestHistory.map(r => r.total_store_kv_mb);
+    } else if (kvGrowth && kvGrowth.length > 0) {
+        labels = kvGrowth.map(g => `Pos ${g.pos}`);
+        singleKvData = kvGrowth.map(g => g.kv_mb);
+        cumulativeKvData = kvGrowth.map(g => g.kv_mb);
+    }
 
     if (profilerTelemetry.kvChart) {
         profilerTelemetry.kvChart.data.labels = labels;
-        profilerTelemetry.kvChart.data.datasets[0].data = data;
+        profilerTelemetry.kvChart.data.datasets[0].data = singleKvData;
+        profilerTelemetry.kvChart.data.datasets[1].data = cumulativeKvData;
         profilerTelemetry.kvChart.update();
     } else {
         profilerTelemetry.kvChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels,
-                datasets: [{ label: 'KV Cache (MB)', data, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)', fill: true, tension: 0.3 }]
+                datasets: [
+                    { label: 'Question KV Cache (MB)', data: singleKvData, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)', fill: true, tension: 0.3 },
+                    { label: 'Cumulative LRU Store (MB)', data: cumulativeKvData, borderColor: '#8b5cf6', backgroundColor: 'transparent', borderDash: [4, 4], tension: 0.3 }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                    y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Memory (MB)', color: '#94a3b8', font: { size: 10 } } }
+                    x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'KV Storage (MB)', color: '#94a3b8', font: { size: 10 } } }
                 },
                 plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } }
             }
@@ -724,10 +739,19 @@ function showMatrixTooltip(e, posData, layerIdx, layerData) {
 function positionMatrixTooltip(e) {
     const tooltip = document.getElementById('matrix-tooltip');
     if (!tooltip) return;
-    const x = e.clientX + 15;
-    const y = e.clientY + 15;
-    tooltip.style.left = `${x}px`;
-    tooltip.style.top = `${y}px`;
+    const rect = tooltip.getBoundingClientRect();
+    let x = e.clientX + 8;
+    let y = e.clientY + 8;
+
+    if (x + rect.width > window.innerWidth - 10) {
+        x = e.clientX - rect.width - 8;
+    }
+    if (y + rect.height > window.innerHeight - 10) {
+        y = e.clientY - rect.height - 8;
+    }
+
+    tooltip.style.left = `${Math.max(5, x)}px`;
+    tooltip.style.top = `${Math.max(5, y)}px`;
 }
 
 function hideMatrixTooltip() {

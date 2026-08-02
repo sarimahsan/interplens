@@ -193,6 +193,7 @@ def get_gpu_profiler(session_id: Optional[str] = Query(None)) -> Dict[str, Any]:
     prof = get_detailed_gpu_profiler(adapter, cache)
     prof["sessions"] = global_session_store.get_sessions_metadata()
     prof["max_sessions"] = global_session_store.max_sessions
+    prof["request_history"] = global_session_store.request_history
     return prof
 
 
