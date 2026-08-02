@@ -5,12 +5,30 @@ var detailChart = window.detailChart || null;
 var activeMetric = window.activeMetric || 'prob';
 
 function formatTokenStr(str) {
-    if (!str) return '∅';
-    return str.replace(/\n/g, '↵').replace(/\t/g, '⇥');
+    if (str === null || str === undefined || str === '') return '∅';
+    let s = String(str);
+    s = s.replace(/\n/g, '↵').replace(/\t/g, '⇥');
+    if (s.startsWith('Ġ')) {
+        s = '␣' + s.substring(1);
+    } else if (s.startsWith(' ')) {
+        s = '␣' + s.substring(1);
+    }
+    return s;
+}
+
+function formatProbPct(prob) {
+    if (prob === null || prob === undefined) return '0.00%';
+    const pct = prob * 100;
+    if (pct >= 99.9999) return '100.00%';
+    if (pct > 99.90) return pct.toFixed(3) + '%';
+    if (pct > 0 && pct < 0.0001) return '<0.0001%';
+    if (pct < 0.01 && pct > 0) return pct.toFixed(4) + '%';
+    if (pct < 1.0) return pct.toFixed(3) + '%';
+    return pct.toFixed(2) + '%';
 }
 
 function escapeHtml(str) {
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function getProbHeatmapColor(prob) {
@@ -85,7 +103,7 @@ function renderMatrixGrid(matrixData) {
             cell.style.backgroundColor = getProbHeatmapColor(topTok.probability);
             cell.innerHTML = `
                 <span class="cell-tok">${escapeHtml(formatTokenStr(topTok.token))}</span>
-                <span class="cell-prob">${(topTok.probability * 100).toFixed(1)}%</span>
+                <span class="cell-prob">${formatProbPct(topTok.probability)}</span>
             `;
 
             cell.addEventListener('mouseenter', (e) => showMatrixTooltip(e, cell, p, l, layerData));
@@ -108,7 +126,7 @@ function renderModelResponseCard(matrixData) {
     const topPredictions = lastPos.layers[lastPos.layers.length - 1].top_tokens;
 
     document.getElementById('resp-top-token').textContent = formatTokenStr(topPredictions[0].token);
-    document.getElementById('resp-top-prob').textContent = `${(topPredictions[0].probability * 100).toFixed(1)}%`;
+    document.getElementById('resp-top-prob').textContent = formatProbPct(topPredictions[0].probability);
     document.getElementById('resp-top-logit').textContent = topPredictions[0].logit !== null ? topPredictions[0].logit.toFixed(2) : 'N/A';
 
     const tbody = document.getElementById('resp-top-tbody');
@@ -119,7 +137,7 @@ function renderModelResponseCard(matrixData) {
             tr.innerHTML = `
                 <td>#${i + 1}</td>
                 <td style="font-weight:700; color:var(--primary);">${escapeHtml(formatTokenStr(t.token))}</td>
-                <td>${(t.probability * 100).toFixed(2)}%</td>
+                <td>${formatProbPct(t.probability)}</td>
                 <td style="font-family:var(--font-mono);">${t.logit !== null ? t.logit.toFixed(2) : '-'}</td>
             `;
             tbody.appendChild(tr);
@@ -142,9 +160,9 @@ function renderTopPredictionsTable(matrixData) {
         tr.innerHTML = `
             <td style="font-weight:600;">${lName}</td>
             <td style="font-family:var(--font-mono); font-weight:700; color:var(--primary);">${escapeHtml(formatTokenStr(top1.token))}</td>
-            <td>${(top1.probability * 100).toFixed(1)}%</td>
+            <td>${formatProbPct(top1.probability)}</td>
             <td style="font-family:var(--font-mono); color:var(--text-sub);">${escapeHtml(formatTokenStr(top2.token))}</td>
-            <td>${(top2.probability * 100).toFixed(1)}%</td>
+            <td>${formatProbPct(top2.probability)}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -158,10 +176,12 @@ function showMatrixTooltip(e, targetCell, posData, layerIdx, layerData) {
     let html = `<div class="tooltip-title">Pos ${posData.position} ("${escapeHtml(formatTokenStr(posData.token))}") • ${layerLabel}</div>`;
 
     layerData.top_tokens.forEach((t, i) => {
+        const probStr = formatProbPct(t.probability);
+        const logitStr = t.logit !== null && t.logit !== undefined ? t.logit.toFixed(2) : '-';
         html += `
             <div class="tooltip-row">
                 <span class="tooltip-tok">#${i+1} ${escapeHtml(formatTokenStr(t.token))}</span>
-                <span class="tooltip-prob">${(t.probability * 100).toFixed(1)}% (logit: ${t.logit !== null ? t.logit.toFixed(2) : '-'})</span>
+                <span class="tooltip-prob">${probStr} <span style="opacity:0.75; font-size:10px;">(logit: ${logitStr})</span></span>
             </div>
         `;
     });
@@ -181,31 +201,43 @@ function positionMatrixTooltip(e, targetCell) {
     const tooltip = document.getElementById('matrix-tooltip');
     if (!tooltip) return;
 
-    const tooltipWidth = tooltip.offsetWidth || 230;
-    const tooltipHeight = tooltip.offsetHeight || 140;
+    const tooltipWidth = tooltip.offsetWidth || 240;
+    const tooltipHeight = tooltip.offsetHeight || 150;
 
-    let mouseX = e ? e.clientX : 0;
-    let mouseY = e ? e.clientY : 0;
+    let left = 0;
+    let top = 0;
 
-    if (targetCell && (!e || !e.clientX)) {
+    if (targetCell) {
         const rect = targetCell.getBoundingClientRect();
-        mouseX = rect.left + rect.width / 2;
-        mouseY = rect.top;
-    }
+        left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
 
-    let left = mouseX - (tooltipWidth / 2);
-    let top = mouseY - tooltipHeight - 12;
-
-    if (top < 10) {
-        top = mouseY + 14;
-        tooltip.classList.add('tooltip-below');
-    } else {
-        tooltip.classList.remove('tooltip-below');
+        // Place tooltip BELOW the target cell if it is in the upper 55% of the viewport
+        if (rect.top < (window.innerHeight * 0.55)) {
+            top = rect.bottom + 8;
+            tooltip.classList.add('tooltip-below');
+        } else {
+            top = rect.top - tooltipHeight - 8;
+            tooltip.classList.remove('tooltip-below');
+        }
+    } else if (e) {
+        left = e.clientX - (tooltipWidth / 2);
+        if (e.clientY < (window.innerHeight * 0.55)) {
+            top = e.clientY + 18;
+            tooltip.classList.add('tooltip-below');
+        } else {
+            top = e.clientY - tooltipHeight - 14;
+            tooltip.classList.remove('tooltip-below');
+        }
     }
 
     if (left < 10) left = 10;
     if (left + tooltipWidth > window.innerWidth - 10) {
         left = window.innerWidth - tooltipWidth - 10;
+    }
+
+    if (top < 10) top = 10;
+    if (top + tooltipHeight > window.innerHeight - 10) {
+        top = window.innerHeight - tooltipHeight - 10;
     }
 
     tooltip.style.left = `${Math.max(5, left)}px`;

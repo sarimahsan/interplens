@@ -363,20 +363,7 @@ body {
 .grid-cell .cell-prob { font-size: 9px; opacity: 0.85; }
 
 /* Matrix Hover Tooltip Right Above Cell */
-.matrix-tooltip {
-    position: fixed;
-    z-index: 9999;
-    pointer-events: none;
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-highlight);
-    border-radius: 8px;
-    padding: 10px 14px;
-    box-shadow: var(--shadow-lg);
-    min-width: 230px;
-    font-size: 11px;
-    color: var(--text-main);
-    backdrop-filter: blur(12px);
-}
+.matrix-tooltip { position: fixed; z-index: 9999; pointer-events: none; background-color: var(--bg-panel); border: 1px solid var(--border-highlight); border-radius: 8px; padding: 10px 14px; box-shadow: var(--shadow-lg); min-width: 290px; font-size: 11px; color: var(--text-main); backdrop-filter: blur(12px); }
 .matrix-tooltip::after {
     content: '';
     position: absolute;

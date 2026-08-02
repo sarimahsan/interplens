@@ -209,7 +209,7 @@
     border-radius: 8px;
     padding: 10px 14px;
     box-shadow: var(--shadow-lg);
-    min-width: 230px;
+    min-width: 290px;
     font-size: 11px;
     color: var(--text-main);
     backdrop-filter: blur(12px);
