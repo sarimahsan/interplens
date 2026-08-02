@@ -108,7 +108,9 @@ class InPlaceModelAdapter(BaseModelAdapter):
             return self._model_instance.W_U
         elif hasattr(self._model_instance, "unembed") and hasattr(self._model_instance.unembed, "W_U"):
             return self._model_instance.unembed.W_U
-        raise AttributeError("Unembedding weight W_U not found on model instance.")
+        elif hasattr(self._model_instance, "lm_head") and hasattr(self._model_instance.lm_head, "weight"):
+            return self._model_instance.lm_head.weight.T
+        raise AttributeError("Unembedding weight W_U or lm_head not found on model instance.")
 
     def get_resid_post_hook_name(self, layer: int) -> str:
         return f"blocks.{layer}.hook_resid_post"
