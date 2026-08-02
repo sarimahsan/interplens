@@ -20,14 +20,13 @@ try:
     from interplens.adapters.inplace import InPlaceModelAdapter
     from interplens.analysis.logit_lens import compute_logit_lens
 except ImportError:
-    import sys
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    from interplens.config import settings
-    from interplens.schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo
-    from interplens.utils.device import get_vram_usage, get_optimal_device
-    from interplens.server.session import global_session_store
-    from interplens.adapters.inplace import InPlaceModelAdapter
-    from interplens.analysis.logit_lens import compute_logit_lens
+    # Fallback if imported from within the interplens package directory directly
+    from config import settings
+    from schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo
+    from utils.device import get_vram_usage, get_optimal_device
+    from server.session import global_session_store
+    from adapters.inplace import InPlaceModelAdapter
+    from analysis.logit_lens import compute_logit_lens
 
 app = FastAPI(
     title="InterpLens Debugger API",

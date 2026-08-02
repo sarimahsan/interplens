@@ -8,14 +8,24 @@ from typing import List, Optional, Dict, Any
 import torch
 import torch.nn.functional as F
 
-from interplens.adapters.base import BaseModelAdapter
-from interplens.schema import (
-    LogitLensToken,
-    LogitLensLayerResult,
-    LogitLensResponse,
-    PositionLogitLensData,
-    LogitLensMatrixResponse,
-)
+try:
+    from interplens.adapters.base import BaseModelAdapter
+    from interplens.schema import (
+        LogitLensToken,
+        LogitLensLayerResult,
+        LogitLensResponse,
+        PositionLogitLensData,
+        LogitLensMatrixResponse,
+    )
+except ImportError:
+    from adapters.base import BaseModelAdapter
+    from schema import (
+        LogitLensToken,
+        LogitLensLayerResult,
+        LogitLensResponse,
+        PositionLogitLensData,
+        LogitLensMatrixResponse,
+    )
 
 
 def compute_logit_lens(
