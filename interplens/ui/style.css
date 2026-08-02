@@ -608,13 +608,110 @@ textarea#prompt-input:focus {
     letter-spacing: 0.05em;
 }
 
-/* GPU Profiler Dedicated Tab Styles */
-.gpu-arch-grid {
+/* Smooth Tab Switching Animation */
+.tab-view {
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: none;
+}
+
+.tab-view.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* GPU Profiler Dedicated Research Tab Styles */
+.profiler-top-row,
+.profiler-middle-row,
+.profiler-bottom-row {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.vram-gauge-body {
+    display: flex;
+    flex-direction: column;
     gap: 12px;
     margin-top: 10px;
 }
+
+.vram-gauge-track {
+    position: relative;
+    width: 100%;
+    height: 22px;
+    background-color: var(--bg-app);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    display: flex;
+}
+
+.vram-gauge-fill {
+    height: 100%;
+    background-color: rgba(59, 130, 246, 0.85);
+    transition: width 0.3s ease;
+}
+
+.vram-gauge-res-fill {
+    height: 100%;
+    background-color: rgba(6, 182, 212, 0.45);
+    transition: width 0.3s ease;
+}
+
+.vram-peak-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: #f59e0b;
+    box-shadow: 0 0 8px #f59e0b;
+    z-index: 10;
+    transition: left 0.3s ease;
+}
+
+.vram-gauge-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+}
+
+.vram-stat-col .lbl {
+    color: var(--text-muted);
+}
+
+.vram-stat-col strong {
+    font-family: var(--font-mono);
+    color: var(--text-main);
+}
+
+.prof-chart-box {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    margin-top: 10px;
+}
+
+.session-evict-btn {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.session-evict-btn:hover {
+    background-color: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+}
+
 
 .arch-card {
     background-color: var(--bg-app);

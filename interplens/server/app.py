@@ -190,7 +190,25 @@ def get_gpu_profiler(session_id: Optional[str] = Query(None)) -> Dict[str, Any]:
         sess = global_session_store.get_session(session_id)
         if sess:
             cache = sess.cache
-    return get_detailed_gpu_profiler(adapter, cache)
+    prof = get_detailed_gpu_profiler(adapter, cache)
+    prof["sessions"] = global_session_store.get_sessions_metadata()
+    prof["max_sessions"] = global_session_store.max_sessions
+    return prof
+
+
+@app.get("/api/sessions")
+def get_active_sessions():
+    """Returns metadata for all cached activation sessions in LRU memory."""
+    return {"sessions": global_session_store.get_sessions_metadata(), "max_sessions": global_session_store.max_sessions}
+
+
+@app.delete("/api/sessions/{session_id}")
+def evict_session(session_id: str):
+    """Manually evicts a session from LRU memory cache and clears GPU VRAM."""
+    success = global_session_store.evict_session(session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found or already evicted.")
+    return {"status": "evicted", "session_id": session_id}
 
 
 @app.post("/api/run", response_model=RunResponse)

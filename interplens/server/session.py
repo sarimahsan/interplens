@@ -90,6 +90,34 @@ class SessionStore:
         self._sessions.clear()
         free_gpu_memory()
 
+    def evict_session(self, session_id: str) -> bool:
+        """Manually evicts specific session by ID and frees GPU memory."""
+        if session_id in self._sessions:
+            sess = self._sessions.pop(session_id)
+            sess.clear()
+            free_gpu_memory()
+            return True
+        return False
+
+    def get_sessions_metadata(self) -> list:
+        """Returns list of active cached sessions metadata with memory size in MB."""
+        res = []
+        for sess_id, sess in self._sessions.items():
+            cache_mb = 0.0
+            if sess.cache:
+                for v in sess.cache.values():
+                    if isinstance(v, torch.Tensor):
+                        cache_mb += (v.element_size() * v.nelement()) / (1024 ** 2)
+            res.append({
+                "session_id": sess_id,
+                "prompt": sess.prompt[:35] + "..." if len(sess.prompt) > 35 else sess.prompt,
+                "model_name": getattr(sess.adapter, "model_name", "custom"),
+                "tokens_count": len(sess.tokens),
+                "cache_size_mb": round(cache_mb, 2),
+                "created_at": time.strftime("%H:%M:%S", time.localtime(sess.created_at)),
+            })
+        return res
+
 
 # Global default session store
 global_session_store = SessionStore(max_sessions=3)
