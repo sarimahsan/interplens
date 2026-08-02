@@ -43,6 +43,8 @@ class LogitLensToken(BaseModel):
 class LogitLensLayerResult(BaseModel):
     """Logit lens predictions for one layer at one token position."""
     layer: int
+    entropy: float = 0.0
+    kl_divergence: float = 0.0
     top_tokens: List[LogitLensToken]
 
 
@@ -59,6 +61,8 @@ class PositionLogitLensData(BaseModel):
     position: int
     token: str
     layers: List[LogitLensLayerResult]
+    target_token_ranks: Optional[List[int]] = None
+    top5_trajectories: Optional[Dict[str, List[float]]] = None
 
 
 class LogitLensMatrixResponse(BaseModel):

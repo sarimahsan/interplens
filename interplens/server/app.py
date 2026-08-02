@@ -35,28 +35,32 @@ app.add_middleware(
 )
 
 # Global active model adapter instance
-_active_adapter: Optional[InPlaceModelAdapter] = None
+def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
+    """Loads target pretrained model into adapter at CLI launch time."""
+    global _active_adapter
+    try:
+        from transformer_lens import HookedTransformer
+        if device is None:
+            device = get_optimal_device()
+        print(f"Loading model '{model_name}' onto {device}...")
+        model = HookedTransformer.from_pretrained(model_name, device=device)
+        _active_adapter = InPlaceModelAdapter(model, model_name=model_name)
+        return _active_adapter
+    except Exception as e:
+        print(f"Warning: Could not load model '{model_name}': {e}")
+        return None
 
 
 def get_active_adapter():
-    """Returns or lazily initializes the default active model adapter (e.g. gpt2)."""
+    """Returns the loaded model adapter for the server session."""
     global _active_adapter
     if _active_adapter is None:
-        try:
-            from transformer_lens import HookedTransformer
-            device = get_optimal_device()
-            model = HookedTransformer.from_pretrained("gpt2", device=device)
-            _active_adapter = InPlaceModelAdapter(model)
-        except ImportError:
-            raise HTTPException(
-                status_code=500,
-                detail="transformer-lens package is not installed. Please run 'pip install transformer-lens' in your terminal."
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to load default model adapter: {str(e)}"
-            )
+        init_model("gpt2")
+    if _active_adapter is None:
+        raise HTTPException(
+            status_code=500,
+            detail="No model is currently loaded. Launch CLI with '--model <name>' (e.g. gpt2, gpt2-medium)."
+        )
     return _active_adapter
 
 

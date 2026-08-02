@@ -47,6 +47,18 @@ class InPlaceModelAdapter(BaseModelAdapter):
             return [self._model_instance.tokenizer.decode([t]) for t in tokens]
         return [c for c in text]
 
+    def decode(self, token_ids: List[int]) -> str:
+        """Decodes token IDs back to string token label."""
+        if not token_ids:
+            return ""
+        if hasattr(self._model_instance, "to_string"):
+            return self._model_instance.to_string(token_ids)
+        elif hasattr(self._model_instance, "to_single_token"):
+            return self._model_instance.to_single_token(token_ids[0])
+        elif hasattr(self._model_instance, "tokenizer"):
+            return self._model_instance.tokenizer.decode(token_ids)
+        return str(token_ids[0])
+
     @torch.inference_mode()
     def run_with_cache(self, prompt: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Runs forward pass on existing model instance and returns (logits, activation_cache)."""

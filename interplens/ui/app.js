@@ -1,256 +1,289 @@
-// InterpLens Client Application JS
+// InterpLens Studio Frontend Engine
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Theme Switcher Setup
-    initTheme();
-
-    // Fetch initial health & hardware stats
-    fetchHealthStatus();
-
-    // Event Listeners
-    setupEventListeners();
+    initThemeManager();
+    fetchSystemHealth();
+    registerEventListeners();
 });
 
-let currentSessionData = null;
-let currentMatrixData = null;
-let probChart = null;
+let currentSession = null;
+let currentMatrix = null;
+let detailChart = null;
+let activeMetric = 'prob'; // 'prob', 'rank', 'entropy'
 
 // --- Theme Management ---
-function initTheme() {
-    const themeBtn = document.getElementById('theme-toggle-btn');
-    const storedTheme = localStorage.getItem('interplens_theme');
+function initThemeManager() {
+    const themeBtn = document.getElementById('theme-switch-btn');
+    const storedTheme = localStorage.getItem('interplens_studio_theme');
     
     let activeTheme = storedTheme;
     if (!activeTheme) {
         activeTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     }
 
-    setTheme(activeTheme);
+    applyTheme(activeTheme);
 
     themeBtn.addEventListener('click', () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
     });
 
-    // Listen for OS theme changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-        if (!localStorage.getItem('interplens_theme')) {
-            setTheme(e.matches ? 'dark' : 'light');
+        if (!localStorage.getItem('interplens_studio_theme')) {
+            applyTheme(e.matches ? 'dark' : 'light');
         }
     });
 }
 
-function setTheme(theme) {
+function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('interplens_theme', theme);
-    const label = document.querySelector('.theme-label');
-    if (label) label.textContent = theme === 'dark' ? 'Dark' : 'Light';
+    localStorage.setItem('interplens_studio_theme', theme);
+    const textEl = document.getElementById('theme-mode-text');
+    if (textEl) textEl.textContent = theme === 'dark' ? 'Dark' : 'Light';
     
-    if (probChart) {
-        updateChartTheme(theme);
+    if (detailChart) {
+        updateChartStyles(theme);
     }
 }
 
-// --- API Calls & Health Check ---
-async function fetchHealthStatus() {
+// --- Health Check ---
+async function fetchSystemHealth() {
     try {
         const res = await fetch('/api/health');
         if (!res.ok) return;
         const data = await res.json();
         
-        // Update VRAM / Device badge
-        const vramText = document.getElementById('vram-text');
+        const vramText = document.getElementById('vram-display');
         if (vramText && data.vram_usage) {
-            const allocated = data.vram_usage.allocated_mb || 0;
+            const alloc = data.vram_usage.allocated_mb || 0;
             const total = data.vram_usage.total_mb || 0;
-            vramText.textContent = `${data.device.toUpperCase()}: ${allocated.toFixed(0)} / ${total.toFixed(0)} MB`;
+            vramText.textContent = total > 0 ? `VRAM: ${alloc.toFixed(0)} / ${total.toFixed(0)} MB` : `Device: ${data.device.toUpperCase()}`;
         }
 
-        const modelDisplay = document.getElementById('model-name-display');
-        if (modelDisplay && data.active_model) {
-            modelDisplay.textContent = data.active_model;
+        const modelEl = document.getElementById('header-model-name');
+        const badgeEl = document.getElementById('loaded-model-badge');
+        if (data.active_model) {
+            if (modelEl) modelEl.textContent = data.active_model;
+            if (badgeEl) badgeEl.textContent = data.active_model;
+        }
+
+        const deviceEl = document.getElementById('header-device-info');
+        if (deviceEl && data.device) {
+            deviceEl.textContent = data.device.toUpperCase();
         }
     } catch (err) {
-        console.warn('Health check warning:', err);
+        console.warn('System status update error:', err);
     }
 }
 
-function setupEventListeners() {
-    // Run button click
+function registerEventListeners() {
     const runBtn = document.getElementById('run-btn');
-    runBtn.addEventListener('click', handleRunAnalysis);
+    runBtn.addEventListener('click', executePromptAnalysis);
 
-    // Sample prompts buttons
-    document.querySelectorAll('.btn-sample').forEach(btn => {
+    document.querySelectorAll('.btn-preset').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const promptText = e.target.getAttribute('data-prompt');
             document.getElementById('prompt-input').value = promptText;
-            handleRunAnalysis();
+            executePromptAnalysis();
+        });
+    });
+
+    // Export Buttons
+    const exportBtn = document.getElementById('btn-export-json');
+    if (exportBtn) exportBtn.addEventListener('click', exportMatrixJSON);
+
+    const copyCsvBtn = document.getElementById('btn-copy-csv');
+    if (copyCsvBtn) copyCsvBtn.addEventListener('click', copyMatrixCSV);
+
+    // Metric Toggles
+    document.querySelectorAll('.btn-metric').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.btn-metric').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeMetric = btn.getAttribute('data-metric');
+            
+            const activePill = document.querySelector('.token-pill.active');
+            const posIdx = activePill ? parseInt(activePill.querySelector('.token-idx').textContent) : 0;
+            renderInspectionDetail(isNaN(posIdx) ? 0 : posIdx);
         });
     });
 }
 
-// --- Main Execution Handler ---
-async function handleRunAnalysis() {
+// --- Execution Handler ---
+async function executePromptAnalysis() {
     const promptInput = document.getElementById('prompt-input').value.trim();
     if (!promptInput) {
-        alert('Please enter a prompt to analyze.');
+        alert('Please enter a prompt string.');
         return;
     }
 
     const runBtn = document.getElementById('run-btn');
-    const runBtnText = document.getElementById('run-btn-text');
+    const runText = document.getElementById('run-btn-text');
     const spinner = document.getElementById('run-spinner');
 
     runBtn.disabled = true;
     spinner.classList.remove('hidden');
-    runBtnText.textContent = 'Processing...';
+    runText.textContent = 'Running Model...';
 
     try {
         // Step 1: POST /api/run
-        const modelName = document.getElementById('model-select').value;
         const runRes = await fetch('/api/run', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: promptInput, model_name: modelName })
+            body: JSON.stringify({ prompt: promptInput })
         });
 
         if (!runRes.ok) {
-            const errJson = await runRes.json();
-            throw new Error(errJson.detail || 'Forward pass failed');
+            const err = await runRes.json();
+            throw new Error(err.detail || 'Forward pass failed');
         }
 
-        currentSessionData = await runRes.json();
-        document.getElementById('session-tag-display').textContent = `Session: ${currentSessionData.session_id}`;
+        currentSession = await runRes.json();
+        document.getElementById('session-tag-display').textContent = `Session: ${currentSession.session_id.substring(0, 8)}`;
 
-        // Render prompt tokens strip
-        renderTokensStrip(currentSessionData.tokens);
+        // Update Spec Cards
+        if (currentSession.model_info) {
+            document.getElementById('spec-layers').textContent = `${currentSession.model_info.num_layers} Blocks`;
+            document.getElementById('spec-dim').textContent = `${currentSession.model_info.hidden_dim}d`;
+        }
+
+        // Render Tokens Flow
+        renderTokensFlow(currentSession.tokens);
 
         // Step 2: GET /api/analysis/logit-lens
         const topK = document.getElementById('topk-select').value;
         const applyLn = document.getElementById('ln-toggle').checked;
         
-        const lensUrl = `/api/analysis/logit-lens?session_id=${currentSessionData.session_id}&top_k=${topK}&apply_ln=${applyLn}`;
+        const lensUrl = `/api/analysis/logit-lens?session_id=${currentSession.session_id}&top_k=${topK}&apply_ln=${applyLn}`;
         const lensRes = await fetch(lensUrl);
         if (!lensRes.ok) {
-            const errJson = await lensRes.json();
-            throw new Error(errJson.detail || 'Logit Lens extraction failed');
+            const err = await lensRes.json();
+            throw new Error(err.detail || 'Logit Lens extraction failed');
         }
 
-        currentMatrixData = await lensRes.json();
+        currentMatrix = await lensRes.json();
 
-        // Render Heatmap Matrix
-        renderHeatmapMatrix(currentMatrixData);
+        // Render Grid Matrix
+        renderMatrixGrid(currentMatrix);
 
-        // Select first position by default for detail view
-        if (currentMatrixData.positions && currentMatrixData.positions.length > 0) {
-            renderPositionDetail(0);
+        // Select position 0 by default
+        if (currentMatrix.positions && currentMatrix.positions.length > 0) {
+            renderInspectionDetail(0);
         }
 
-        fetchHealthStatus();
+        fetchSystemHealth();
 
     } catch (err) {
-        alert(`Error: ${err.message}`);
+        alert(`Analysis Error: ${err.message}`);
     } finally {
         runBtn.disabled = false;
         spinner.classList.add('hidden');
-        runBtnText.textContent = '🚀 Run Analysis';
+        runText.textContent = 'Execute Forward Pass';
     }
 }
 
-// --- Render Tokens Strip ---
-function renderTokensStrip(tokens) {
+// --- Format Token Display ---
+function formatTokenStr(tokenStr) {
+    if (!tokenStr) return '""';
+    let clean = tokenStr.replace(/Ġ/g, ' ').replace(/Ċ/g, '\\n');
+    return clean;
+}
+
+// --- Render Tokens Flow ---
+function renderTokensFlow(tokens) {
     const container = document.getElementById('tokens-strip');
     container.innerHTML = '';
 
-    tokens.forEach((tokenStr, idx) => {
-        const chip = document.createElement('div');
-        chip.className = `token-chip ${idx === 0 ? 'selected' : ''}`;
-        chip.innerHTML = `<strong>${idx}:</strong> ${escapeHtml(tokenStr)}`;
-        chip.addEventListener('click', () => {
-            document.querySelectorAll('.token-chip').forEach(c => c.classList.remove('selected'));
-            chip.classList.add('selected');
-            renderPositionDetail(idx);
+    tokens.forEach((t, idx) => {
+        const pill = document.createElement('div');
+        pill.className = `token-pill ${idx === 0 ? 'active' : ''}`;
+        pill.innerHTML = `<span class="token-idx">${idx}</span> <span class="token-str">${escapeHtml(formatTokenStr(t))}</span>`;
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('.token-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            renderInspectionDetail(idx);
         });
-        container.appendChild(chip);
+        container.appendChild(pill);
     });
 }
 
-// --- Render Logit Lens Heatmap Grid ---
-function renderHeatmapMatrix(matrixData) {
+// --- Render Logit Lens Matrix Grid ---
+function renderMatrixGrid(matrix) {
     const container = document.getElementById('matrix-container');
     container.innerHTML = '';
 
-    if (!matrixData.positions || matrixData.positions.length === 0) {
-        container.innerHTML = '<div class="empty-state">No prediction data available.</div>';
+    if (!matrix.positions || matrix.positions.length === 0) {
+        container.innerHTML = '<div class="empty-state">No matrix data available.</div>';
         return;
     }
 
     const table = document.createElement('table');
-    table.className = 'matrix-table';
+    table.className = 'studio-grid';
 
-    // Table Header (Positions / Tokens)
+    // Header Row
     const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
+    const headTr = document.createElement('tr');
     
     const cornerTh = document.createElement('th');
     cornerTh.textContent = 'Layer';
-    headerRow.appendChild(cornerTh);
+    headTr.appendChild(cornerTh);
 
-    matrixData.positions.forEach(posData => {
+    matrix.positions.forEach(pos => {
         const th = document.createElement('th');
-        th.innerHTML = `Pos ${posData.position}<br><span style="color: var(--accent-primary); font-family: var(--font-mono);">${escapeHtml(posData.token)}</span>`;
-        headerRow.appendChild(th);
+        th.innerHTML = `Pos ${pos.position}<br><span style="color: var(--primary); font-family: var(--font-mono);">${escapeHtml(formatTokenStr(pos.token))}</span>`;
+        headTr.appendChild(th);
     });
-    thead.appendChild(headerRow);
+    thead.appendChild(headTr);
     table.appendChild(thead);
 
-    // Table Body (Layers 0..L)
+    // Body Rows
     const tbody = document.createElement('tbody');
-    const numLayers = matrixData.num_layers;
+    const totalLayers = matrix.num_layers;
 
-    for (let l = 0; l < numLayers; l++) {
+    for (let l = 0; l < totalLayers; l++) {
         const tr = document.createElement('tr');
         
-        // Layer label
-        const layerTd = document.createElement('td');
-        layerTd.style.fontWeight = 'bold';
-        layerTd.style.fontSize = '11px';
-        layerTd.style.color = 'var(--text-muted)';
-        layerTd.textContent = l === 0 ? 'Embed' : `L${l-1}`;
-        tr.appendChild(layerTd);
+        const labelTd = document.createElement('td');
+        labelTd.style.fontWeight = '600';
+        labelTd.style.fontSize = '10px';
+        labelTd.style.color = 'var(--text-muted)';
+        labelTd.textContent = l === 0 ? 'Embed' : `L${l-1}`;
+        tr.appendChild(labelTd);
 
-        // Position cells
-        matrixData.positions.forEach(posData => {
+        matrix.positions.forEach(pos => {
             const td = document.createElement('td');
-            td.className = 'matrix-cell';
-            
-            const layerRes = posData.layers[l];
-            const top1 = layerRes && layerRes.top_tokens ? layerRes.top_tokens[0] : null;
+            td.className = 'grid-cell';
+
+            const layerData = pos.layers[l];
+            const top1 = layerData && layerData.top_tokens ? layerData.top_tokens[0] : null;
 
             if (top1) {
                 const prob = top1.probability;
                 const pct = (prob * 100).toFixed(1);
 
-                // Heatmap Color Calculation
-                let bgStyle = '';
+                // Cell Intensity Styling
                 if (prob > 0.6) {
-                    bgStyle = `background-color: var(--cell-bg-high); color: #ffffff;`;
+                    td.style = `background-color: var(--cell-high); color: var(--cell-text-high);`;
                 } else if (prob > 0.2) {
-                    bgStyle = `background-color: var(--cell-bg-mid); color: var(--text-primary);`;
+                    td.style = `background-color: var(--cell-mid); color: var(--text-main);`;
                 } else {
-                    bgStyle = `background-color: var(--cell-bg-low); color: var(--text-secondary);`;
+                    td.style = `background-color: var(--cell-low); color: var(--text-sub);`;
                 }
 
-                td.style = bgStyle;
                 td.innerHTML = `
-                    <div class="cell-token">${escapeHtml(top1.token)}</div>
-                    <div class="cell-prob">${pct}%</div>
+                    <div class="cell-tok-name">${escapeHtml(formatTokenStr(top1.token))}</div>
+                    <div class="cell-tok-pct">${pct}%</div>
                 `;
 
+                // Hover Tooltip Listener (Feature 3: Top-5 Floating Distribution)
+                td.addEventListener('mouseenter', (e) => showMatrixTooltip(e, pos, l, layerData));
+                td.addEventListener('mousemove', (e) => positionMatrixTooltip(e));
+                td.addEventListener('mouseleave', hideMatrixTooltip);
+
+                // Click Inspection Listener
                 td.addEventListener('click', () => {
-                    renderPositionDetail(posData.position);
+                    renderInspectionDetail(pos.position);
                 });
             }
             tr.appendChild(td);
@@ -263,81 +296,194 @@ function renderHeatmapMatrix(matrixData) {
     container.appendChild(table);
 }
 
-// --- Render Position Detail Drilldown ---
-function renderPositionDetail(posIdx) {
-    if (!currentMatrixData || !currentMatrixData.positions[posIdx]) return;
+// --- Floating Matrix Hover Tooltip ---
+function showMatrixTooltip(e, posData, layerIdx, layerData) {
+    const tooltip = document.getElementById('matrix-tooltip');
+    if (!tooltip || !layerData || !layerData.top_tokens) return;
 
-    const posData = currentMatrixData.positions[posIdx];
+    const layerLabel = layerIdx === 0 ? 'Embedding Layer' : `Layer ${layerIdx - 1}`;
+    let html = `<div class="tooltip-title">Pos ${posData.position} ("${escapeHtml(formatTokenStr(posData.token))}") • ${layerLabel}</div>`;
+
+    layerData.top_tokens.forEach((t, i) => {
+        html += `
+            <div class="tooltip-row">
+                <span class="tooltip-tok">#${i+1} ${escapeHtml(formatTokenStr(t.token))}</span>
+                <span class="tooltip-prob">${(t.probability * 100).toFixed(1)}% (logit: ${t.logit !== null ? t.logit.toFixed(2) : '-'})</span>
+            </div>
+        `;
+    });
+
+    if (layerData.entropy !== undefined) {
+        html += `<div class="tooltip-entropy">Entropy: ${layerData.entropy} bits</div>`;
+    }
+
+    tooltip.innerHTML = html;
+    tooltip.classList.remove('hidden');
+    positionMatrixTooltip(e);
+}
+
+function positionMatrixTooltip(e) {
+    const tooltip = document.getElementById('matrix-tooltip');
+    if (!tooltip) return;
+    const x = e.clientX + 15;
+    const y = e.clientY + 15;
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
+}
+
+function hideMatrixTooltip() {
+    const tooltip = document.getElementById('matrix-tooltip');
+    if (tooltip) tooltip.classList.add('hidden');
+}
+
+// --- Render Inspection Detail Panel ---
+function renderInspectionDetail(posIdx) {
+    if (!currentMatrix || !currentMatrix.positions[posIdx]) return;
+
+    const pos = currentMatrix.positions[posIdx];
 
     const detailCard = document.getElementById('detail-card');
     detailCard.style.display = 'block';
 
-    document.getElementById('detail-title').textContent = `Token Position ${posIdx}: "${posData.token}"`;
-    document.getElementById('detail-subtitle').textContent = `Layer-by-layer top prediction trajectory`;
+    document.getElementById('detail-title').textContent = `Inspection: Position ${posIdx}`;
+    document.getElementById('detail-subtitle').textContent = `Target: "${formatTokenStr(pos.token)}"`;
 
     // Populate Table
     const tbody = document.querySelector('#drilldown-table tbody');
     tbody.innerHTML = '';
 
     const layerLabels = [];
-    const top1Probs = [];
+    const metricData = [];
 
-    posData.layers.forEach((layerRes, lIdx) => {
-        const lLabel = lIdx === 0 ? 'Embed' : `Layer ${lIdx-1}`;
-        layerLabels.push(lLabel);
+    pos.layers.forEach((lData, lIdx) => {
+        const lName = lIdx === 0 ? 'Embed' : `Layer ${lIdx-1}`;
+        layerLabels.push(lName);
 
         const tr = document.createElement('tr');
+        let html = `<td><strong>${lName}</strong></td>`;
         
-        let rowHtml = `<td><strong>${lLabel}</strong></td>`;
-        
-        const top1 = layerRes.top_tokens[0];
-        top1Probs.push(top1 ? top1.probability : 0);
+        const top1 = lData.top_tokens[0];
+        const top2 = lData.top_tokens[1];
 
-        for (let i = 0; i < 3; i++) {
-            const tok = layerRes.top_tokens[i];
-            if (tok) {
-                rowHtml += `
-                    <td><code style="color: var(--accent-primary);">${escapeHtml(tok.token)}</code></td>
-                    <td>${(tok.probability * 100).toFixed(1)}%</td>
-                `;
-            } else {
-                rowHtml += `<td>-</td><td>-</td>`;
-            }
+        if (activeMetric === 'prob') {
+            metricData.push(top1 ? top1.probability * 100 : 0);
+        } else if (activeMetric === 'rank') {
+            const rank = pos.target_token_ranks ? pos.target_token_ranks[lIdx] : (top1 ? top1.rank : 1);
+            metricData.push(rank);
+        } else if (activeMetric === 'kl') {
+            metricData.push(lData.kl_divergence || 0);
+        } else if (activeMetric === 'entropy') {
+            metricData.push(lData.entropy || 0);
         }
 
-        tr.innerHTML = rowHtml;
+        if (top1) {
+            html += `<td><span class="badge-token">${escapeHtml(formatTokenStr(top1.token))}</span></td>
+                     <td>${(top1.probability * 100).toFixed(1)}%</td>`;
+        } else {
+            html += `<td>-</td><td>-</td>`;
+        }
+
+        if (top2) {
+            html += `<td><span class="badge-token" style="background-color: var(--bg-subtle); color: var(--text-sub);">${escapeHtml(formatTokenStr(top2.token))}</span></td>
+                     <td>${(top2.probability * 100).toFixed(1)}%</td>`;
+        } else {
+            html += `<td>-</td><td>-</td>`;
+        }
+
+        tr.innerHTML = html;
         tbody.appendChild(tr);
     });
 
-    // Render Chart.js Line Chart
-    renderChart(layerLabels, top1Probs, posData.token);
+    if (activeMetric === 'ribbon') {
+        renderRibbonChart(layerLabels, pos.top5_trajectories || {});
+    } else {
+        renderLineChart(layerLabels, metricData);
+    }
 }
 
-function renderChart(labels, probs, tokenName) {
+function renderRibbonChart(labels, top5Trajectories) {
     const ctx = document.getElementById('prob-chart').getContext('2d');
-    
-    if (probChart) {
-        probChart.destroy();
+    if (detailChart) detailChart.destroy();
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    const textColor = isDark ? '#94a3b8' : '#475569';
+    const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+
+    const datasets = [];
+    let colorIdx = 0;
+
+    for (const [tokStr, probSeries] of Object.entries(top5Trajectories)) {
+        const color = colorPalette[colorIdx % colorPalette.length];
+        datasets.push({
+            label: `Candidate "${formatTokenStr(tokStr)}"`,
+            data: probSeries,
+            borderColor: color,
+            backgroundColor: color + '15',
+            fill: false,
+            tension: 0.2,
+            pointRadius: 3
+        });
+        colorIdx++;
     }
 
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const isDark = currentTheme === 'dark';
+    detailChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    min: 0,
+                    max: 100,
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
+                },
+                x: {
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: textColor, font: { family: 'Inter', size: 11, weight: '500' } } }
+            }
+        }
+    });
+}
 
-    const lineColor = isDark ? '#3b82f6' : '#2563eb';
-    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-    const textColor = isDark ? '#9ca3af' : '#475569';
+function renderLineChart(labels, dataPts) {
+    const ctx = document.getElementById('prob-chart').getContext('2d');
+    if (detailChart) detailChart.destroy();
 
-    probChart = new Chart(ctx, {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const primaryColor = activeMetric === 'rank' ? '#eab308' : (activeMetric === 'kl' ? '#ef4444' : (activeMetric === 'entropy' ? '#06b6d4' : (isDark ? '#3b82f6' : '#2563eb')));
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    const textColor = isDark ? '#94a3b8' : '#475569';
+
+    let yLabel = 'Top-1 Probability (%)';
+    let reverseY = false;
+
+    if (activeMetric === 'rank') {
+        yLabel = 'Target Token Rank (1 is top)';
+        reverseY = true;
+    } else if (activeMetric === 'kl') {
+        yLabel = 'KL Divergence KL(P_L || P_L-1) (bits)';
+    } else if (activeMetric === 'entropy') {
+        yLabel = 'Prediction Entropy (bits)';
+    }
+
+    detailChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: `Top #1 Prediction Probability`,
-                data: probs.map(p => (p * 100).toFixed(1)),
-                borderColor: lineColor,
-                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.15)',
+                label: yLabel,
+                data: dataPts,
+                borderColor: primaryColor,
+                backgroundColor: primaryColor + '22',
                 fill: true,
-                tension: 0.3,
+                tension: 0.25,
                 pointRadius: 4,
                 pointHoverRadius: 6
             }]
@@ -347,29 +493,71 @@ function renderChart(labels, probs, tokenName) {
             maintainAspectRatio: false,
             scales: {
                 y: {
-                    min: 0,
-                    max: 100,
-                    title: { display: true, text: 'Probability (%)', color: textColor },
+                    reverse: reverseY,
                     grid: { color: gridColor },
-                    ticks: { color: textColor }
+                    ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
                 },
                 x: {
                     grid: { color: gridColor },
-                    ticks: { color: textColor }
+                    ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
                 }
             },
             plugins: {
-                legend: { labels: { color: textColor } }
+                legend: { labels: { color: textColor, font: { family: 'Inter', size: 12, weight: '500' } } }
             }
         }
     });
 }
 
-function updateChartTheme(theme) {
-    if (currentMatrixData && currentMatrixData.positions) {
-        const selectedChip = document.querySelector('.token-chip.selected');
-        const posIdx = selectedChip ? parseInt(selectedChip.textContent) : 0;
-        renderPositionDetail(isNaN(posIdx) ? 0 : posIdx);
+// --- Data Export & Copy ---
+function exportMatrixJSON() {
+    if (!currentMatrix) {
+        alert('No analysis matrix data available to export.');
+        return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentMatrix, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", dataStr);
+    dlAnchor.setAttribute("download", `interplens_logit_lens_${currentMatrix.session_id}.json`);
+    document.body.appendChild(dlAnchor);
+    dlAnchor.click();
+    dlAnchor.remove();
+}
+
+function copyMatrixCSV() {
+    if (!currentMatrix || !currentMatrix.positions) {
+        alert('No analysis matrix data available to copy.');
+        return;
+    }
+
+    let csv = "Layer," + currentMatrix.positions.map(p => `Pos_${p.position} ("${formatTokenStr(p.token)}")`).join(",") + "\n";
+
+    for (let l = 0; l < currentMatrix.num_layers; l++) {
+        const layerName = l === 0 ? "Embed" : `L${l-1}`;
+        const row = [layerName];
+        currentMatrix.positions.forEach(pos => {
+            const top1 = pos.layers[l] && pos.layers[l].top_tokens ? pos.layers[l].top_tokens[0] : null;
+            if (top1) {
+                row.push(`"${formatTokenStr(top1.token)}" (${(top1.probability*100).toFixed(1)}%)`);
+            } else {
+                row.push("-");
+            }
+        });
+        csv += row.join(",") + "\n";
+    }
+
+    navigator.clipboard.writeText(csv).then(() => {
+        alert('✅ Logit Lens CSV matrix copied to clipboard!');
+    }).catch(err => {
+        alert('Copy failed: ' + err);
+    });
+}
+
+function updateChartStyles(theme) {
+    if (currentMatrix && currentMatrix.positions) {
+        const activePill = document.querySelector('.token-pill.active');
+        const posIdx = activePill ? parseInt(activePill.querySelector('.token-idx').textContent) : 0;
+        renderInspectionDetail(isNaN(posIdx) ? 0 : posIdx);
     }
 }
 

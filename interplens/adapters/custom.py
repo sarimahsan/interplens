@@ -84,7 +84,13 @@ class CustomModelAdapter(BaseModelAdapter):
         elif hasattr(self.tokenizer, "encode"):
             ids = self.tokenizer.encode(text)
             return [str(i) for i in ids]
-        return list(text)
+    def decode(self, token_ids: List[int]) -> str:
+        """Decodes token IDs back to string token label."""
+        if not token_ids:
+            return ""
+        if hasattr(self.tokenizer, "decode"):
+            return self.tokenizer.decode(token_ids)
+        return str(token_ids[0])
 
     @torch.inference_mode()
     def run_with_cache(self, prompt: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:

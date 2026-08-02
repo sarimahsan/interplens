@@ -27,6 +27,10 @@ class BaseModelAdapter(ABC):
         """Tokenizes input prompt string into formatted list of string token labels."""
         pass
 
+    def decode(self, token_ids: List[int]) -> str:
+        """Decodes token IDs back to human-readable token string."""
+        return str(token_ids[0]) if token_ids else ""
+
     @abstractmethod
     def run_with_cache(self, prompt: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Runs forward pass under @torch.inference_mode() and returns (logits, activation_cache_dict)."""

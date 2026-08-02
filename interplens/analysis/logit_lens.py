@@ -147,6 +147,18 @@ def compute_logit_lens(
     logits = _project_unembed(stacked_resid)  # (L_count, P, V)
     probs = F.softmax(logits, dim=-1)         # (L_count, P, V)
 
+    # Compute Shannon entropy H(P) = -sum(p * log2(p)) per layer and position
+    entropy_tensor = -torch.sum(probs * torch.log2(probs + 1e-9), dim=-1)  # (L_count, P)
+
+    # Compute KL divergence KL(P_l || P_{l-1}) between consecutive layers
+    # For l=0 (embed layer), KL = 0.0
+    kl_tensor = torch.zeros((probs.shape[0], probs.shape[1]), device=probs.device)
+    if probs.shape[0] > 1:
+        # KL(P_l || P_{l-1}) = sum( P_l * (log2(P_l) - log2(P_{l-1})) )
+        log_p = torch.log2(probs + 1e-9)
+        kl_steps = torch.sum(probs[1:] * (log_p[1:] - log_p[:-1]), dim=-1) # (L_count-1, P)
+        kl_tensor[1:] = torch.clamp(kl_steps, min=0.0)
+
     # Extract top-K per position and layer
     top_probs, top_indices = torch.topk(probs, k=top_k, dim=-1)
     top_logits, _ = torch.topk(logits, k=top_k, dim=-1)
@@ -163,15 +175,35 @@ def compute_logit_lens(
         token_str = tokens[p]
         layer_results: List[LogitLensLayerResult] = []
 
+        # Target token for rank tracking across layers is the top prediction at the final layer
+        target_token_id = int(top_indices[-1, p, 0].item())
+        target_ranks: List[int] = []
+
+        # Collect top-5 candidate token IDs at final layer for competition ribbon tracking
+        final_top5_ids = [int(top_indices[-1, p, k].item()) for k in range(min(5, top_k))]
+        top5_trajectories_dict: Dict[str, List[float]] = {}
+        for candidate_id in final_top5_ids:
+            cand_str = adapter.decode([candidate_id]) if hasattr(adapter, "decode") else str(candidate_id)
+            top5_trajectories_dict[cand_str] = [float(probs[l, p, candidate_id].item() * 100) for l in range(probs.shape[0])]
+
         for idx, l_name in enumerate(layer_names):
             top_tokens_list: List[LogitLensToken] = []
+
+            # Compute rank of target_token_id at layer idx
+            target_logit = logits[idx, p, target_token_id].item()
+            rank_val = int((logits[idx, p] > target_logit).sum().item()) + 1
+            target_ranks.append(rank_val)
+
+            # Shannon entropy & KL divergence at layer idx
+            layer_entropy = round(float(entropy_tensor[idx, p].item()), 3)
+            layer_kl = round(float(kl_tensor[idx, p].item()), 3)
 
             for k_idx in range(top_k):
                 t_id = int(top_indices[idx, p, k_idx].item())
                 prob_val = float(top_probs[idx, p, k_idx].item())
                 logit_val = float(top_logits[idx, p, k_idx].item())
                 
-                # Decode token id to string string
+                # Decode token id to string token
                 t_str = adapter.decode([t_id]) if hasattr(adapter, "decode") else str(t_id)
 
                 top_tokens_list.append(
@@ -187,6 +219,8 @@ def compute_logit_lens(
             layer_results.append(
                 LogitLensLayerResult(
                     layer=idx,
+                    entropy=layer_entropy,
+                    kl_divergence=layer_kl,
                     top_tokens=top_tokens_list,
                 )
             )
@@ -196,6 +230,8 @@ def compute_logit_lens(
                 position=p,
                 token=token_str,
                 layers=layer_results,
+                target_token_ranks=target_ranks,
+                top5_trajectories=top5_trajectories_dict,
             )
         )
 
