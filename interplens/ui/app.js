@@ -119,9 +119,89 @@ async function fetchGpuHardwareStatus() {
     }
 }
 
+async function fetchGpuProfilerData() {
+    try {
+        const sessId = currentAnalysisData ? currentAnalysisData.session_id : '';
+        const res = await fetch(`/api/hardware/gpu-profiler${sessId ? '?session_id=' + sessId : ''}`);
+        if (!res.ok) return;
+        const prof = await res.json();
+
+        const badge = document.getElementById('prof-device-name');
+        if (badge) badge.textContent = `${prof.has_gpu ? 'CUDA' : 'CPU'}: ${prof.device_name}`;
+
+        document.getElementById('prof-compute-cap').textContent = prof.compute_capability || 'N/A';
+        document.getElementById('prof-sm-count').textContent = `${prof.multi_processor_count} SMs`;
+        document.getElementById('prof-total-vram').textContent = `${prof.total_memory_mb} MB`;
+        document.getElementById('prof-active-tensors').textContent = `${prof.active_tensors_mb} MB`;
+        document.getElementById('prof-retries').textContent = `${prof.alloc_retries}`;
+
+        // Render 64-Block VRAM Memory Topology Map
+        const container = document.getElementById('prof-64-blocks-container');
+        if (container && prof.blocks) {
+            container.innerHTML = '';
+            prof.blocks.forEach((blk, i) => {
+                const tile = document.createElement('div');
+                tile.className = `vram-tile type-${blk.type}`;
+                tile.title = `VRAM Topology Block #${i + 1}: ${blk.label} (${blk.mb} MB)`;
+                container.appendChild(tile);
+            });
+        }
+
+        // Render Layer Memory Footprint Table
+        const tbody = document.getElementById('prof-layer-tbody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            if (prof.layer_memory && prof.layer_memory.length > 0) {
+                const maxSz = Math.max(...prof.layer_memory.map(l => l.size_mb), 1);
+                prof.layer_memory.forEach(l => {
+                    const tr = document.createElement('tr');
+                    const pct = Math.min(100, Math.round((l.size_mb / maxSz) * 100));
+                    tr.innerHTML = `
+                        <td style="font-weight:600;">${l.layer}</td>
+                        <td style="font-family:var(--font-mono);">${l.size_mb} MB</td>
+                        <td>
+                            <div class="mem-bar-bg">
+                                <div class="mem-bar-fill" style="width: ${pct}%;"></div>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Run prompt analysis to calculate layer memory footprints.</td></tr>';
+            }
+        }
+    } catch (err) {
+        console.warn('GPU Profiler data fetch error:', err);
+    }
+}
+
 function registerEventListeners() {
     const runBtn = document.getElementById('run-btn');
     runBtn.addEventListener('click', executePromptAnalysis);
+
+    // Sidebar Tab Switching
+    document.querySelectorAll('.engine-menu .menu-btn:not(.disabled)').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const targetEngine = btn.getAttribute('data-engine');
+            if (!targetEngine) return;
+
+            document.querySelectorAll('.engine-menu .menu-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const viewLogit = document.getElementById('view-logit-lens');
+            const viewGpu = document.getElementById('view-gpu-profiler');
+
+            if (targetEngine === 'gpu-profiler') {
+                if (viewLogit) viewLogit.style.display = 'none';
+                if (viewGpu) viewGpu.style.display = 'block';
+                fetchGpuProfilerData();
+            } else {
+                if (viewGpu) viewGpu.style.display = 'none';
+                if (viewLogit) viewLogit.style.display = 'block';
+            }
+        });
+    });
 
     document.querySelectorAll('.btn-preset').forEach(btn => {
         btn.addEventListener('click', (e) => {

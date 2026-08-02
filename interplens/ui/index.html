@@ -91,7 +91,7 @@
                 <div class="sidebar-group">
                     <div class="sidebar-label">INTERPRETABILITY ENGINES</div>
                     <nav class="engine-menu">
-                        <button class="menu-btn active" data-engine="logit-lens">
+                        <button class="menu-btn active" data-engine="logit-lens" id="tab-btn-logit-lens">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
                                 <circle cx="12" cy="12" r="10"></circle>
@@ -100,6 +100,19 @@
                             </svg>
                             <span>Logit Lens</span>
                             <span class="status-tag tag-live">Phase 2</span>
+                        </button>
+
+                        <button class="menu-btn" data-engine="gpu-profiler" id="tab-btn-gpu-profiler">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                                <rect x="9" y="9" width="6" height="6"></rect>
+                                <line x1="9" y1="1" x2="9" y2="4"></line>
+                                <line x1="15" y1="1" x2="15" y2="4"></line>
+                                <line x1="9" y1="20" x2="9" y2="23"></line>
+                                <line x1="15" y1="20" x2="15" y2="23"></line>
+                            </svg>
+                            <span>GPU & Hardware</span>
+                            <span class="status-tag tag-live">Profiler</span>
                         </button>
 
                         <button class="menu-btn disabled" title="Coming in Phase 3">
@@ -438,8 +451,113 @@
                             </div>
                         </div>
                     </div>
-                </section>
-            </main>
+            </div> <!-- End view-logit-lens -->
+
+            <!-- Dedicated GPU & Hardware Profiler Tab View -->
+            <div class="tab-view" id="view-gpu-profiler" style="display: none;">
+                <div class="studio-main-inner">
+                    <!-- Hardware Architecture & SM Specs -->
+                    <section class="panel gpu-arch-panel">
+                        <div class="panel-header">
+                            <div class="header-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                                    <rect x="9" y="9" width="6" height="6"></rect>
+                                    <line x1="9" y1="1" x2="9" y2="4"></line>
+                                    <line x1="15" y1="1" x2="15" y2="4"></line>
+                                    <line x1="9" y1="20" x2="9" y2="23"></line>
+                                    <line x1="15" y1="20" x2="15" y2="23"></line>
+                                    <line x1="20" y1="9" x2="23" y2="9"></line>
+                                    <line x1="20" y1="15" x2="23" y2="15"></line>
+                                    <line x1="1" y1="9" x2="4" y2="9"></line>
+                                    <line x1="1" y1="15" x2="4" y2="15"></line>
+                                </svg>
+                                <h2>CUDA Hardware Architecture & SM Stream Specs</h2>
+                                <span class="badge-token" id="prof-device-name">NVIDIA GPU</span>
+                            </div>
+                        </div>
+
+                        <div class="gpu-arch-grid">
+                            <div class="arch-card">
+                                <span class="arch-label">Compute Capability</span>
+                                <span class="arch-val" id="prof-compute-cap">7.5</span>
+                            </div>
+                            <div class="arch-card">
+                                <span class="arch-label">Streaming Multiprocessors</span>
+                                <span class="arch-val" id="prof-sm-count">40 SMs</span>
+                            </div>
+                            <div class="arch-card">
+                                <span class="arch-label">Total VRAM Capacity</span>
+                                <span class="arch-val" id="prof-total-vram">15.1 GB</span>
+                            </div>
+                            <div class="arch-card">
+                                <span class="arch-label">Active Tensor Memory</span>
+                                <span class="arch-val" id="prof-active-tensors">0.0 MB</span>
+                            </div>
+                            <div class="arch-card">
+                                <span class="arch-label">PyTorch Alloc Retries</span>
+                                <span class="arch-val" id="prof-retries">0</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 64-Block VRAM Memory Topology Map -->
+                    <section class="panel gpu-topology-panel">
+                        <div class="panel-header">
+                            <div class="header-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                                </svg>
+                                <h2>VRAM Memory Pool 64-Block Topology Map</h2>
+                            </div>
+
+                            <div class="gpu-grid-legend">
+                                <span class="legend-chip vram-chip-weights">■ Weights</span>
+                                <span class="legend-chip vram-chip-cache">■ Layer Activations</span>
+                                <span class="legend-chip vram-chip-free">■ Free Buffer</span>
+                            </div>
+                        </div>
+
+                        <div class="topology-grid-container" id="prof-64-blocks-container">
+                            <!-- 64 Block Tiles rendered via JS -->
+                        </div>
+                    </section>
+
+                    <!-- Layer-by-Layer Activation Footprint -->
+                    <section class="panel layer-memory-panel">
+                        <div class="panel-header">
+                            <div class="header-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                                <h2>Layer-by-Layer Activation VRAM Footprint</h2>
+                            </div>
+                        </div>
+
+                        <div class="table-scroll">
+                            <table class="studio-table" id="prof-layer-table">
+                                <thead>
+                                    <tr>
+                                        <th>Layer Name</th>
+                                        <th>Activation Size (MB)</th>
+                                        <th>VRAM Share Bar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prof-layer-tbody">
+                                    <tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Run prompt analysis to observe per-layer memory footprint.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div> <!-- End view-gpu-profiler -->
+        </main>
         </div>
     </div>
 

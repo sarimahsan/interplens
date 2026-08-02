@@ -608,12 +608,62 @@ textarea#prompt-input:focus {
     letter-spacing: 0.05em;
 }
 
-.gpu-stat-val {
+/* GPU Profiler Dedicated Tab Styles */
+.gpu-arch-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.arch-card {
+    background-color: var(--bg-app);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.arch-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.arch-val {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text-main);
 }
+
+.topology-grid-container {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.mem-bar-bg {
+    width: 100%;
+    height: 8px;
+    background-color: var(--bg-app);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.mem-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #06b6d4 0%, #3b82f6 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
 
 
 .response-body {

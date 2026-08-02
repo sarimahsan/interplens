@@ -163,6 +163,19 @@ def get_gpu_status() -> Dict[str, Any]:
     return get_gpu_grid_status(device)
 
 
+@app.get("/api/hardware/gpu-profiler")
+def get_gpu_profiler(session_id: Optional[str] = Query(None)) -> Dict[str, Any]:
+    """Returns granular GPU hardware specs, 64-block memory topology, and per-layer activation memory breakdown."""
+    from interplens.utils.device import get_detailed_gpu_profiler
+    adapter = _active_adapter
+    cache = None
+    if session_id:
+        sess = global_session_store.get_session(session_id)
+        if sess:
+            cache = sess.cache
+    return get_detailed_gpu_profiler(adapter, cache)
+
+
 @app.post("/api/run", response_model=RunResponse)
 def run_prompt(req: RunRequest):
     """Runs forward pass on prompt, caches activation tensors, and returns session ID."""
