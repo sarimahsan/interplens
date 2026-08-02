@@ -80,7 +80,8 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
-            device_map="auto" if str(device).startswith("cuda") else None,
+            device_map="cuda" if str(device).startswith("cuda") else None,
+            low_cpu_mem_usage=True,
             trust_remote_code=True
         )
         if not str(device).startswith("cuda") and hasattr(model, "to"):
