@@ -121,7 +121,7 @@ async function fetchGpuHardwareStatus() {
 
 async function fetchGpuProfilerData() {
     try {
-        const sessId = currentAnalysisData ? currentAnalysisData.session_id : '';
+        const sessId = (currentAnalysisData && currentAnalysisData.session_id) || (currentSession && currentSession.session_id) || '';
         const res = await fetch(`/api/hardware/gpu-profiler${sessId ? '?session_id=' + sessId : ''}`);
         if (!res.ok) return;
         const prof = await res.json();
