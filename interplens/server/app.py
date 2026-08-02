@@ -43,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_active_adapter = None
 _model_loading_status = {"status": "idle", "model_name": "none", "error": None}
 
 
