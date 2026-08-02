@@ -142,7 +142,7 @@ function renderMatrixGrid(matrixData) {
     for (let l = 0; l < numLayers; l++) {
         const layerLbl = document.createElement('div');
         layerLbl.className = 'grid-layer-label';
-        layerLbl.textContent = l === 0 ? 'Embedding' : `Layer ${l - 1}`;
+        layerLbl.textContent = l === 0 ? 'Embedding' : `Resid L${l - 1}`;
         grid.appendChild(layerLbl);
 
         positions.forEach(p => {
@@ -203,7 +203,7 @@ function renderTopPredictionsTable(matrixData) {
 
     const lastPos = matrixData.positions[matrixData.positions.length - 1];
     lastPos.layers.forEach((lData, lIdx) => {
-        const lName = lIdx === 0 ? 'Embed' : `Layer ${lIdx - 1}`;
+        const lName = lIdx === 0 ? 'Embed' : `Resid L${lIdx - 1}`;
         const top1 = lData.top_tokens[0] || { token: '?', probability: 0 };
         const top2 = lData.top_tokens[1] || { token: '?', probability: 0 };
 
@@ -223,7 +223,7 @@ function showMatrixTooltip(e, targetCell, posData, layerIdx, layerData) {
     const tooltip = document.getElementById('matrix-tooltip');
     if (!tooltip || !layerData || !layerData.top_tokens) return;
 
-    const layerLabel = layerIdx === 0 ? 'Embedding Layer' : `Layer ${layerIdx - 1}`;
+    const layerLabel = layerIdx === 0 ? 'Embedding Stream' : `Residual Stream L${layerIdx - 1}`;
     let html = `<div class="tooltip-title">Pos ${posData.position} ("${escapeHtml(formatTokenStr(posData.token))}") • ${layerLabel}</div>`;
 
     layerData.top_tokens.forEach((t, i) => {
@@ -870,27 +870,31 @@ function registerEventListeners() {
             document.querySelectorAll('.engine-menu .menu-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            const viewLogit = document.getElementById('view-logit-lens');
-            const viewGpu = document.getElementById('view-gpu-profiler');
+            document.querySelectorAll('.tab-view').forEach(v => {
+                v.classList.remove('active');
+                v.style.display = 'none';
+            });
 
             if (targetEngine === 'gpu-profiler') {
-                if (viewLogit) {
-                    viewLogit.classList.remove('active');
-                    viewLogit.style.display = 'none';
-                }
-                if (viewGpu) {
-                    viewGpu.style.display = 'block';
-                    requestAnimationFrame(() => viewGpu.classList.add('active'));
+                const view = document.getElementById('view-gpu-profiler');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
                 }
                 if (window.fetchGpuProfilerData) window.fetchGpuProfilerData();
-            } else {
-                if (viewGpu) {
-                    viewGpu.classList.remove('active');
-                    viewGpu.style.display = 'none';
+            } else if (targetEngine === 'residual-stream') {
+                const view = document.getElementById('view-residual-stream');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
                 }
-                if (viewLogit) {
-                    viewLogit.style.display = 'block';
-                    requestAnimationFrame(() => viewLogit.classList.add('active'));
+                const sessId = (window.currentSession && window.currentSession.session_id) || '';
+                if (window.fetchResidualStreamMetrics && sessId) window.fetchResidualStreamMetrics(sessId);
+            } else {
+                const view = document.getElementById('view-logit-lens');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
                 }
             }
         });

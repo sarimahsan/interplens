@@ -91,7 +91,7 @@ function renderMatrixGrid(matrixData) {
     for (let l = 0; l < numLayers; l++) {
         const layerLbl = document.createElement('div');
         layerLbl.className = 'grid-layer-label';
-        layerLbl.textContent = l === 0 ? 'Embedding' : `Layer ${l - 1}`;
+        layerLbl.textContent = l === 0 ? 'Embedding' : `Resid L${l - 1}`;
         grid.appendChild(layerLbl);
 
         positions.forEach(p => {
@@ -152,7 +152,7 @@ function renderTopPredictionsTable(matrixData) {
 
     const lastPos = matrixData.positions[matrixData.positions.length - 1];
     lastPos.layers.forEach((lData, lIdx) => {
-        const lName = lIdx === 0 ? 'Embed' : `Layer ${lIdx - 1}`;
+        const lName = lIdx === 0 ? 'Embed' : `Resid L${lIdx - 1}`;
         const top1 = lData.top_tokens[0] || { token: '?', probability: 0 };
         const top2 = lData.top_tokens[1] || { token: '?', probability: 0 };
 
@@ -172,7 +172,7 @@ function showMatrixTooltip(e, targetCell, posData, layerIdx, layerData) {
     const tooltip = document.getElementById('matrix-tooltip');
     if (!tooltip || !layerData || !layerData.top_tokens) return;
 
-    const layerLabel = layerIdx === 0 ? 'Embedding Layer' : `Layer ${layerIdx - 1}`;
+    const layerLabel = layerIdx === 0 ? 'Embedding Stream' : `Residual Stream L${layerIdx - 1}`;
     let html = `<div class="tooltip-title">Pos ${posData.position} ("${escapeHtml(formatTokenStr(posData.token))}") • ${layerLabel}</div>`;
 
     layerData.top_tokens.forEach((t, i) => {

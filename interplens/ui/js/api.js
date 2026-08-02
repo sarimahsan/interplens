@@ -43,6 +43,30 @@ var API = window.API || {
         const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(`Session eviction failed: ${res.statusText}`);
         return await res.json();
+    },
+
+    async getResidualStreamMetrics(sessionId, position = null) {
+        let url = `/api/analysis/residual-stream?session_id=${sessionId}`;
+        if (position !== null) url += `&position=${position}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Residual stream fetch failed');
+        }
+        return await res.json();
+    },
+
+    async steerResidualStream(prompt, targetLayer = 0, multiplier = 1.0, steeringVector = null) {
+        const res = await fetch('/api/analysis/residual-stream/steer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, target_layer: targetLayer, multiplier, steering_vector: steeringVector })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Steering execution failed');
+        }
+        return await res.json();
     }
 };
 

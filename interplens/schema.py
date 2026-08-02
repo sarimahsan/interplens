@@ -73,3 +73,11 @@ class LogitLensMatrixResponse(BaseModel):
     num_layers: int
     positions: List[PositionLogitLensData]
 
+
+class SteeringRequest(BaseModel):
+    """Payload to inject a steering vector into a target layer residual stream."""
+    prompt: str
+    target_layer: int = 0
+    multiplier: float = 1.0
+    steering_vector: Optional[List[float]] = None
+

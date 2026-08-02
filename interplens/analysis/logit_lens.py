@@ -103,25 +103,25 @@ def compute_logit_lens(
 
     if embed_hook and embed_hook in cache:
         residual_tensors.append(cache[embed_hook])
-        layer_names.append("Embed")
+        layer_names.append("Embedding Stream")
 
     # Collect block residual stream hooks
     for layer in range(num_layers):
         hook_name = adapter.get_resid_post_hook_name(layer)
         if hook_name in cache:
             residual_tensors.append(cache[hook_name])
-            layer_names.append(f"L{layer}")
+            layer_names.append(f"Resid L{layer}")
         else:
             found = False
             for k, v in cache.items():
                 if f"blocks.{layer}" in k or f"layers.{layer}" in k or f"block_{layer}" in k or f"block.{layer}" in k:
                     residual_tensors.append(v)
-                    layer_names.append(f"L{layer}")
+                    layer_names.append(f"Resid L{layer}")
                     found = True
                     break
             if not found and len(residual_tensors) > 0:
                 residual_tensors.append(residual_tensors[-1])
-                layer_names.append(f"L{layer}")
+                layer_names.append(f"Resid L{layer}")
 
     if not residual_tensors:
         raise ValueError("No residual stream tensors found in activation cache for Logit Lens.")

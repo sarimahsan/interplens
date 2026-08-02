@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 try:
     from interplens.config import settings
-    from interplens.schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo
+    from interplens.schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo, SteeringRequest
     from interplens.utils.device import get_vram_usage, get_optimal_device
     from interplens.server.session import global_session_store
     from interplens.adapters.inplace import InPlaceModelAdapter
@@ -22,7 +22,7 @@ try:
 except ImportError:
     # Fallback if imported from within the interplens package directory directly
     from config import settings
-    from schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo
+    from schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo, SteeringRequest
     from utils.device import get_vram_usage, get_optimal_device
     from server.session import global_session_store
     from adapters.inplace import InPlaceModelAdapter
@@ -268,6 +268,49 @@ def get_logit_lens(
             status_code=500,
             detail=f"Error computing Logit Lens: {str(e)}"
         )
+
+
+@app.get("/api/analysis/residual-stream")
+def get_residual_stream_metrics(
+    session_id: str = Query(..., description="Active session ID"),
+    position: Optional[int] = Query(None, description="Optional token position index"),
+):
+    """Computes residual stream L2 norms and layer-by-layer cosine similarity matrices for a session."""
+    session = global_session_store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
+
+    adapter = session.adapter or get_active_adapter()
+    from interplens.analysis.residual_stream import compute_residual_metrics
+    return compute_residual_metrics(
+        adapter=adapter,
+        cache=session.cache,
+        tokens=session.tokens,
+        session_id=session.session_id,
+        position=position,
+    )
+
+
+@app.post("/api/analysis/residual-stream/steer")
+def steer_residual_stream(req: SteeringRequest):
+    """Injects activation steering vector into target layer during forward pass."""
+    adapter = get_active_adapter()
+    if not req.prompt:
+        raise HTTPException(status_code=400, detail="Prompt string cannot be empty.")
+
+    info = get_adapter_model_info(adapter)
+    vec = req.steering_vector
+    if vec is None:
+        vec = [0.1] * info.hidden_dim
+
+    from interplens.analysis.residual_stream import apply_activation_steering
+    return apply_activation_steering(
+        adapter=adapter,
+        prompt=req.prompt,
+        target_layer=req.target_layer,
+        steering_vector=vec,
+        multiplier=req.multiplier,
+    )
 
 
 # Mount UI static files if directory exists

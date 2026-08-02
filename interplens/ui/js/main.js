@@ -139,27 +139,31 @@ function registerEventListeners() {
             document.querySelectorAll('.engine-menu .menu-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            const viewLogit = document.getElementById('view-logit-lens');
-            const viewGpu = document.getElementById('view-gpu-profiler');
+            document.querySelectorAll('.tab-view').forEach(v => {
+                v.classList.remove('active');
+                v.style.display = 'none';
+            });
 
             if (targetEngine === 'gpu-profiler') {
-                if (viewLogit) {
-                    viewLogit.classList.remove('active');
-                    viewLogit.style.display = 'none';
-                }
-                if (viewGpu) {
-                    viewGpu.style.display = 'block';
-                    requestAnimationFrame(() => viewGpu.classList.add('active'));
+                const view = document.getElementById('view-gpu-profiler');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
                 }
                 if (window.fetchGpuProfilerData) window.fetchGpuProfilerData();
-            } else {
-                if (viewGpu) {
-                    viewGpu.classList.remove('active');
-                    viewGpu.style.display = 'none';
+            } else if (targetEngine === 'residual-stream') {
+                const view = document.getElementById('view-residual-stream');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
                 }
-                if (viewLogit) {
-                    viewLogit.style.display = 'block';
-                    requestAnimationFrame(() => viewLogit.classList.add('active'));
+                const sessId = (window.currentSession && window.currentSession.session_id) || '';
+                if (window.fetchResidualStreamMetrics && sessId) window.fetchResidualStreamMetrics(sessId);
+            } else {
+                const view = document.getElementById('view-logit-lens');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
                 }
             }
         });
@@ -236,6 +240,9 @@ async function executePromptAnalysis() {
 
         fetchSystemHealth();
         if (window.fetchGpuProfilerData) window.fetchGpuProfilerData();
+        if (window.fetchResidualStreamMetrics && window.currentSession.session_id) {
+            window.fetchResidualStreamMetrics(window.currentSession.session_id);
+        }
 
     } catch (err) {
         alert(`Analysis Error: ${err.message}`);

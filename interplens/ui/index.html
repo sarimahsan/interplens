@@ -106,12 +106,11 @@
                             <span>GPU & Hardware</span>
                         </button>
 
-                        <button class="menu-btn disabled" title="Coming in Phase 3">
+                        <button class="menu-btn" data-engine="residual-stream" title="Residual Stream Vector Analysis & Activation Steering">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                             </svg>
                             <span>Residual Stream</span>
-                            <span class="status-tag">Phase 3</span>
                         </button>
 
                         <button class="menu-btn disabled" title="Coming in Phase 3">
@@ -623,6 +622,115 @@
                         </section>
                     </div>
                 </div>
+
+                <!-- Phase 3: Residual Stream Analysis & Steering Explorer View -->
+                <div class="tab-view" id="view-residual-stream" style="display: none;">
+                    <div class="studio-main-inner">
+                        <!-- Activation Steering Control Panel -->
+                        <section class="panel control-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                                    </svg>
+                                    <h2>Residual Stream Activation Steering Controller</h2>
+                                </div>
+                            </div>
+
+                            <div class="control-grid">
+                                <div class="setting-group" style="gap: 16px; flex-wrap: wrap;">
+                                    <div class="setting-item">
+                                        <label for="steer-layer-select">Target Steering Layer:</label>
+                                        <select id="steer-layer-select" class="studio-select">
+                                            <option value="0">Layer 0</option>
+                                            <option value="4" selected>Layer 4</option>
+                                            <option value="8">Layer 8</option>
+                                            <option value="11">Layer 11</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="setting-item">
+                                        <label for="steer-multiplier">Multiplier ($\alpha$):</label>
+                                        <input type="number" id="steer-multiplier" class="studio-select" value="2.5" step="0.5" style="width: 80px;">
+                                    </div>
+
+                                    <button id="steer-run-btn" class="btn-primary">
+                                        <span>Inject Steering Vector</span>
+                                    </button>
+                                </div>
+
+                                <div class="response-card-content" id="steer-result-card" style="display:none; margin-top: 10px; background: var(--bg-panel); border: 1px solid var(--border-highlight); border-radius: 6px; padding: 12px;">
+                                    <div class="response-primary-prediction">
+                                        <span class="resp-label">Steered Output Prediction:</span>
+                                        <span class="resp-token-badge" id="steer-top-tok">--</span>
+                                        <span class="resp-prob-tag" id="steer-top-prob">--%</span>
+                                        <span class="resp-logit-tag" id="steer-status-tag">Status: Success</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Top Charts Row: L2 Vector Norms & Layer Transition Cosine Similarity -->
+                        <div class="profiler-middle-row">
+                            <!-- L2 Norm Growth Across Layers -->
+                            <section class="panel chart-panel">
+                                <div class="panel-header">
+                                    <div class="header-title">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                        </svg>
+                                        <h2>Residual Stream L2 Vector Norm $\|x_l\|$ Growth</h2>
+                                    </div>
+                                </div>
+                                <div class="prof-chart-box">
+                                    <canvas id="resid-norm-chart"></canvas>
+                                </div>
+                            </section>
+
+                            <!-- Consecutive Layer Transition Cosine Similarity -->
+                            <section class="panel chart-panel">
+                                <div class="panel-header">
+                                    <div class="header-title">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                                        </svg>
+                                        <h2>Layer-to-Layer Vector Alignment $\cos(x_l, x_{l+1})$</h2>
+                                    </div>
+                                </div>
+                                <div class="prof-chart-box">
+                                    <canvas id="resid-cos-chart"></canvas>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Full Layer-by-Layer Cosine Similarity Matrix -->
+                        <section class="panel matrix-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                                        <line x1="3" y1="15" x2="21" y2="15"></line>
+                                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                                        <line x1="15" y1="3" x2="15" y2="21"></line>
+                                    </svg>
+                                    <h2>Layer-by-Layer Residual Vector Direction Cosine Matrix</h2>
+                                </div>
+                            </div>
+
+                            <div class="matrix-container">
+                                <div class="grid-wrapper" id="resid-cos-matrix-container">
+                                    <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                                        Run prompt analysis to generate residual stream vector cosine matrix.
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
@@ -631,6 +739,7 @@
     <script src="js/api.js"></script>
     <script src="js/logit_lens.js"></script>
     <script src="js/gpu_profiler.js"></script>
+    <script src="js/residual_stream.js"></script>
     <script src="js/main.js"></script>
 </body>
 
