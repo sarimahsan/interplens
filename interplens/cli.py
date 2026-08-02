@@ -2,8 +2,8 @@
 
 import argparse
 import sys
-from interplens.config import settings
-from interplens.utils.device import resolve_device, get_vram_usage
+from .config import settings
+from .utils.device import resolve_device, get_vram_usage
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
             print(f"💾 VRAM Allocated: {vram['allocated_mb']}MB / {vram['total_mb']}MB")
             
         import threading
-        from interplens.server.app import init_model
+        from .server.app import init_model
 
         # Start model loading in background thread so web server opens instantly
         loader_thread = threading.Thread(

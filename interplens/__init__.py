@@ -1,8 +1,8 @@
 """InterpLens: An interactive mechanistic interpretability package and visual debugger for LLM internals."""
 
 from typing import Any, Optional
-from interplens.config import settings
-from interplens.adapters import (
+from .config import settings
+from .adapters import (
     BaseModelAdapter,
     InPlaceModelAdapter,
     CustomModelAdapter,
@@ -11,8 +11,8 @@ from interplens.adapters import (
     get_adapter_for_model,
     register_adapter,
 )
-from interplens.server.session import SessionStore, global_session_store
-from interplens.utils.device import get_optimal_device, resolve_device, free_gpu_memory, get_vram_usage
+from .server.session import SessionStore, global_session_store
+from .utils.device import get_optimal_device, resolve_device, free_gpu_memory, get_vram_usage
 
 __version__ = settings.version
 
