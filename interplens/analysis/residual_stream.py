@@ -162,12 +162,13 @@ def apply_activation_steering(
 
     def py_steering_hook(module, args, output):
         tensor = output[0] if isinstance(output, tuple) else output
+        delta = steer_delta.to(device=tensor.device, dtype=tensor.dtype)
         if tensor.ndim == 3:
-            mod_output = tensor + steer_delta.view(1, 1, -1)
+            mod_output = tensor + delta.view(1, 1, -1)
         elif tensor.ndim == 2:
-            mod_output = tensor + steer_delta.view(1, -1)
+            mod_output = tensor + delta.view(1, -1)
         else:
-            mod_output = tensor + steer_delta
+            mod_output = tensor + delta
 
         if isinstance(output, tuple):
             return (mod_output,) + output[1:]
