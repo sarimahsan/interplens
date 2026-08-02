@@ -12,12 +12,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
-from interplens.config import settings
-from interplens.schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo
-from interplens.utils.device import get_vram_usage, get_optimal_device
-from interplens.server.session import global_session_store
-from interplens.adapters.inplace import InPlaceModelAdapter
-from interplens.analysis.logit_lens import compute_logit_lens
+try:
+    from interplens.config import settings
+    from interplens.schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo
+    from interplens.utils.device import get_vram_usage, get_optimal_device
+    from interplens.server.session import global_session_store
+    from interplens.adapters.inplace import InPlaceModelAdapter
+    from interplens.analysis.logit_lens import compute_logit_lens
+except ImportError:
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    from interplens.config import settings
+    from interplens.schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo
+    from interplens.utils.device import get_vram_usage, get_optimal_device
+    from interplens.server.session import global_session_store
+    from interplens.adapters.inplace import InPlaceModelAdapter
+    from interplens.analysis.logit_lens import compute_logit_lens
 
 app = FastAPI(
     title="InterpLens Debugger API",
