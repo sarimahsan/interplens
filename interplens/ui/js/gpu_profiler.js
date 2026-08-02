@@ -294,10 +294,25 @@ function showBlockTooltip(e, blk) {
     const tooltip = document.getElementById('matrix-tooltip');
     if (!tooltip || !blk) return;
 
+    let color = '#94a3b8';
+    let statusText = 'Unallocated Free Buffer';
+    let descText = 'Unallocated VRAM safety buffer. Available for longer prompt tokens or larger batch sizes without OOM.';
+
+    if (blk.type === 'weights') {
+        color = '#3b82f6';
+        statusText = 'Allocated Model Weights';
+        descText = 'Contains static neural network parameters (weights, embeddings, attention layers) loaded into GPU VRAM.';
+    } else if (blk.type === 'cache') {
+        color = '#06b6d4';
+        statusText = 'Active KV / Activation Cache';
+        descText = 'Dynamic memory consumed by Key-Value (KV) attention matrices and intermediate residual stream tensors.';
+    }
+
     let html = `<div class="tooltip-title">VRAM Block #${blk.id} • ${blk.label}</div>`;
     html += `<div class="tooltip-row"><span>Memory Range:</span> <strong style="color:var(--primary);">${blk.range_mb || (blk.mb + ' MB')}</strong></div>`;
-    html += `<div class="tooltip-row"><span>Chunk Size:</span> <strong>${blk.mb} MB</strong></div>`;
-    html += `<div class="tooltip-row"><span>Status:</span> <strong style="color:${blk.type === 'weights' ? '#3b82f6' : (blk.type === 'cache' ? '#06b6d4' : 'var(--text-muted)')}">${blk.type === 'weights' ? 'Allocated Model Weights' : (blk.type === 'cache' ? 'Active KV/Activation Cache' : 'Unallocated Free Buffer')}</strong></div>`;
+    html += `<div class="tooltip-row"><span>Block Size:</span> <strong>${blk.mb} MB</strong></div>`;
+    html += `<div class="tooltip-row"><span>Status:</span> <strong style="color:${color}">${statusText}</strong></div>`;
+    html += `<div class="tooltip-entropy" style="margin-top:6px; color:var(--text-sub); line-height:1.4;">${descText}</div>`;
 
     tooltip.innerHTML = html;
     tooltip.classList.remove('hidden');

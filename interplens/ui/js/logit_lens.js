@@ -311,3 +311,5 @@ window.renderTokensFlow = renderTokensFlow;
 window.renderMatrixGrid = renderMatrixGrid;
 window.renderModelResponseCard = renderModelResponseCard;
 window.renderInspectionDetail = renderInspectionDetail;
+window.positionMatrixTooltip = positionMatrixTooltip;
+window.hideMatrixTooltip = hideMatrixTooltip;
