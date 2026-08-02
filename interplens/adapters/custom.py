@@ -142,11 +142,16 @@ class CustomModelAdapter(BaseModelAdapter):
             self.auto_hooker.remove_hooks()
 
     def get_unembedding_weight(self) -> torch.Tensor:
-        """Attempts to locate unembedding linear layer or matrix."""
+        """Attempts to locate unembedding linear layer or matrix [hidden_dim, vocab_size]."""
+        if hasattr(self._model_instance, "lm_head") and hasattr(self._model_instance.lm_head, "weight"):
+            w = self._model_instance.lm_head.weight
+            return w.T if w.shape[0] == self.vocab_size else w
         for name, param in self._model_instance.named_parameters():
             if "unembed" in name.lower() or "lm_head" in name.lower() or "output" in name.lower():
                 if param.ndim == 2:
-                    return param.T if param.shape[0] > param.shape[1] else param
+                    if param.shape[0] == self.vocab_size or param.shape[0] > param.shape[1]:
+                        return param.T
+                    return param
         # Fallback dummy matrix
         return torch.randn(self.hidden_dim, self.vocab_size, device=self.device)
 

@@ -85,6 +85,10 @@ def compute_logit_lens(
             ln_final = model.final_layernorm
         elif hasattr(model, "norm"):
             ln_final = model.norm
+        elif hasattr(model, "model") and hasattr(model.model, "norm"):
+            ln_final = model.model.norm
+        elif hasattr(model, "transformer") and hasattr(model.transformer, "ln_f"):
+            ln_final = model.transformer.ln_f
 
     # Collect residual stream tensors per layer
     residual_tensors = []
