@@ -1,0 +1,179 @@
+<!-- Logit Lens Tab View Partial -->
+<div class="tab-view active" id="view-logit-lens">
+    <!-- Control Panel -->
+    <section class="panel control-panel">
+        <div class="panel-header">
+            <div class="header-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 17 10 11 4 5"></polyline>
+                    <line x1="12" y1="19" x2="20" y2="19"></line>
+                </svg>
+                <h2>Prompt & Inference Settings</h2>
+            </div>
+            <div class="preset-pills">
+                <span class="preset-label">Quick Prompts:</span>
+                <button class="btn-preset" data-prompt="The Eiffel Tower is located in the city of">Eiffel Tower</button>
+                <button class="btn-preset" data-prompt="When Mary and John went to the store, John gave a book to">Indirect Object</button>
+                <button class="btn-preset" data-prompt="The capital of France is">Capital City</button>
+            </div>
+        </div>
+
+        <div class="control-grid">
+            <div class="prompt-box">
+                <textarea id="prompt-input" class="prompt-textarea" placeholder="Enter prompt to run model forward pass and observe intermediate residual stream predictions...">The Eiffel Tower is located in the city of</textarea>
+            </div>
+
+            <div class="control-actions">
+                <div class="setting-group">
+                    <div class="setting-item">
+                        <label for="topk-select">Top-K Tokens:</label>
+                        <select id="topk-select" class="studio-select">
+                            <option value="3">3</option>
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="ln-toggle" checked>
+                            <span>Apply Final LayerNorm (RMSNorm)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button id="run-btn" class="btn-primary">
+                    <div id="run-spinner" class="spinner hidden"></div>
+                    <span id="run-btn-text">Run Model Analysis</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tokens Flow Banner -->
+    <section class="panel tokens-panel">
+        <div class="panel-header">
+            <div class="header-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                </svg>
+                <h2>Input Tokens Sequence</h2>
+                <span class="badge-token" id="session-tag-display">No Active Session</span>
+            </div>
+        </div>
+        <div class="tokens-flow" id="tokens-flow">
+            <div style="font-size:12px; color:var(--text-muted); padding:4px;">Run prompt analysis above to view tokenized sequence.</div>
+        </div>
+    </section>
+
+    <!-- Model Final Output Response Card -->
+    <section class="panel response-card-panel" id="response-card">
+        <div class="panel-header">
+            <div class="header-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <h2>Model Next Token Output Prediction</h2>
+            </div>
+        </div>
+
+        <div class="response-card-content">
+            <div class="response-primary-prediction">
+                <span class="resp-label">Final Predicted Token:</span>
+                <span class="resp-token-badge" id="resp-top-token">--</span>
+                <span class="resp-prob-tag" id="resp-top-prob">--%</span>
+                <span class="resp-logit-tag">Logit: <strong id="resp-top-logit">--</strong></span>
+            </div>
+
+            <div class="table-scroll" style="margin-top: 10px;">
+                <table class="studio-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Candidate Token</th>
+                            <th>Probability</th>
+                            <th>Unembedding Logit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resp-top-tbody">
+                        <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Run analysis to view model top token candidates.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Logit Lens Matrix Heatmap -->
+    <section class="panel matrix-panel">
+        <div class="panel-header">
+            <div class="header-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                </svg>
+                <h2>Logit Lens Intermediate Predictions Grid (Positions x Layers)</h2>
+            </div>
+
+            <div class="matrix-legend">
+                <span>Top-1 Probability:</span>
+                <div class="legend-bar"></div>
+                <span>100%</span>
+            </div>
+        </div>
+
+        <div class="matrix-container">
+            <div class="grid-wrapper" id="matrix-grid-container">
+                <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                    Click "Run Model Analysis" to compute intermediate residual stream logit lens projections.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Floating Matrix Hover Tooltip -->
+    <div id="matrix-tooltip" class="matrix-tooltip hidden"></div>
+
+    <!-- Drilldown Detail Panel -->
+    <section class="panel detail-panel" id="detail-card" style="display: none;">
+        <div class="panel-header">
+            <div class="header-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                <h2 id="detail-title">Token Position Inspection</h2>
+                <span class="badge-token" id="detail-subtitle">Position 0</span>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <div class="chart-container">
+                <canvas id="detail-chart"></canvas>
+            </div>
+
+            <div class="table-scroll">
+                <table class="studio-table" id="top-preds-table">
+                    <thead>
+                        <tr>
+                            <th>Layer</th>
+                            <th>Top #1 Token</th>
+                            <th>Probability</th>
+                            <th>Top #2 Token</th>
+                            <th>Probability</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>

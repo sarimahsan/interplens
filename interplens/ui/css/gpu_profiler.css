@@ -1,0 +1,173 @@
+/* GPU & Hardware Profiler Dedicated Tab Styles */
+
+.profiler-top-row,
+.profiler-middle-row,
+.profiler-bottom-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.gpu-arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.arch-card {
+    background-color: var(--bg-app);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.arch-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.arch-val {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+/* Live VRAM Gauge & Peak Marker Card */
+.vram-gauge-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.vram-gauge-track {
+    position: relative;
+    width: 100%;
+    height: 22px;
+    background-color: var(--bg-app);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    display: flex;
+}
+
+.vram-gauge-fill {
+    height: 100%;
+    background-color: rgba(59, 130, 246, 0.85);
+    transition: width 0.3s ease;
+}
+
+.vram-gauge-res-fill {
+    height: 100%;
+    background-color: rgba(6, 182, 212, 0.45);
+    transition: width 0.3s ease;
+}
+
+.vram-peak-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: #f59e0b;
+    box-shadow: 0 0 8px #f59e0b;
+    z-index: 10;
+    transition: left 0.3s ease;
+}
+
+.vram-gauge-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+}
+
+.vram-stat-col .lbl { color: var(--text-muted); }
+.vram-stat-col strong {
+    font-family: var(--font-mono);
+    color: var(--text-main);
+}
+
+/* Telemetry Charts Box */
+.prof-chart-box {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    margin-top: 10px;
+}
+
+/* Session Evict Button */
+.session-evict-btn {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.session-evict-btn:hover {
+    background-color: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+}
+
+/* 64-Block VRAM Memory Topology Grid */
+.topology-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.vram-tile {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+
+    &.type-weights {
+        background-color: rgba(59, 130, 246, 0.75);
+        border-color: #3b82f6;
+    }
+    &.type-cache {
+        background-color: rgba(6, 182, 212, 0.75);
+        border-color: #06b6d4;
+    }
+    &.type-free {
+        background-color: var(--bg-app);
+        border-color: var(--border-color);
+    }
+
+    &:hover {
+        transform: scale(1.15);
+        z-index: 5;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+    }
+}
+
+.gpu-grid-legend {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+}
+
+.legend-chip {
+    font-family: var(--font-mono);
+    font-weight: 600;
+
+    &.vram-chip-weights { color: #3b82f6; }
+    &.vram-chip-cache { color: #06b6d4; }
+    &.vram-chip-free { color: var(--text-muted); }
+}
