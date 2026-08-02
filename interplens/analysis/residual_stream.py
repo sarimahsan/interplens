@@ -144,22 +144,41 @@ def apply_activation_steering(
 
     steer_delta = (steer_tensor * multiplier).to(device=adapter.device)
 
-    # Hook function to inject delta vector into target layer
-    def steering_hook(tensor: torch.Tensor, hook: Any = None) -> torch.Tensor:
-        if tensor.ndim == 3:
-            return tensor + steer_delta.view(1, 1, -1)
-        elif tensor.ndim == 2:
-            return tensor + steer_delta.view(1, -1)
-        return tensor + steer_delta
-
-    hook_name = adapter.get_resid_post_hook_name(target_layer)
+    model = getattr(adapter, "model", None) or getattr(adapter, "_model_instance", None)
     
-    # Run forward pass with hook
+    # Target module hook search
+    target_module = None
+    hook_name = adapter.get_resid_post_hook_name(target_layer)
+    if model is not None:
+        for name, module in model.named_modules():
+            if name == hook_name or f"blocks.{target_layer}" in name or f"layers.{target_layer}" in name:
+                target_module = module
+                break
+
+        if target_module is None:
+            blocks = getattr(model, "h", None) or getattr(model, "layers", None) or getattr(getattr(model, "model", None), "layers", None)
+            if blocks and target_layer < len(blocks):
+                target_module = blocks[target_layer]
+
+    def py_steering_hook(module, args, output):
+        tensor = output[0] if isinstance(output, tuple) else output
+        if tensor.ndim == 3:
+            mod_output = tensor + steer_delta.view(1, 1, -1)
+        elif tensor.ndim == 2:
+            mod_output = tensor + steer_delta.view(1, -1)
+        else:
+            mod_output = tensor + steer_delta
+
+        if isinstance(output, tuple):
+            return (mod_output,) + output[1:]
+        return mod_output
+
+    handle = None
+    if target_module is not None:
+        handle = target_module.register_forward_hook(py_steering_hook)
+
     try:
-        out_logits, cache = adapter.run_with_cache(prompt, fwd_hooks=[(hook_name, steering_hook)])
-        tokens = adapter.to_str_tokens(prompt) if hasattr(adapter, "to_str_tokens") else [str(i) for i in range(out_logits.shape[1])]
-        
-        # Extract top predicted token under steering
+        out_logits, cache = adapter.run_with_cache(prompt)
         last_logits = out_logits[0, -1] if out_logits.ndim == 3 else out_logits[-1]
         probs = F.softmax(last_logits, dim=-1)
         top_prob, top_id = torch.max(probs, dim=-1)
@@ -181,3 +200,6 @@ def apply_activation_steering(
             "status": "error",
             "error": str(e),
         }
+    finally:
+        if handle is not None:
+            handle.remove()

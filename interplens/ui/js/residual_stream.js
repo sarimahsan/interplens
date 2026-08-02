@@ -31,7 +31,7 @@ function renderNormsChart(data) {
         data: {
             labels,
             datasets: [{
-                label: `L2 Vector Norm ||x_l|| (Pos: "${data.selected_token}")`,
+                label: `L2 Vector Norm ||xₗ|| (Pos: "${data.selected_token}")`,
                 data: norms,
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.15)',
@@ -144,9 +144,16 @@ async function executeActivationSteering() {
         const card = document.getElementById('steer-result-card');
         if (card) card.style.display = 'block';
 
-        if (document.getElementById('steer-top-tok')) document.getElementById('steer-top-tok').textContent = res.top_steered_token || '--';
-        if (document.getElementById('steer-top-prob')) document.getElementById('steer-top-prob').textContent = `${res.top_steered_prob}%`;
-        if (document.getElementById('steer-status-tag')) document.getElementById('steer-status-tag').textContent = `Status: ${res.status}`;
+        if (document.getElementById('steer-top-tok')) {
+            const tokStr = typeof window.formatTokenStr === 'function' ? window.formatTokenStr(res.top_steered_token) : (res.top_steered_token || '--');
+            document.getElementById('steer-top-tok').textContent = tokStr;
+        }
+        if (document.getElementById('steer-top-prob')) {
+            document.getElementById('steer-top-prob').textContent = res.top_steered_prob !== undefined && res.top_steered_prob !== null ? `${res.top_steered_prob}%` : '--%';
+        }
+        if (document.getElementById('steer-status-tag')) {
+            document.getElementById('steer-status-tag').textContent = `Status: ${res.status || 'OK'}${res.error ? ' (' + res.error + ')' : ''}`;
+        }
     } catch (err) {
         alert(`Steering error: ${err.message}`);
     } finally {
