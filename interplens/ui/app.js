@@ -139,7 +139,8 @@ function renderMatrixGrid(matrixData) {
                 <span class="cell-prob">${(topTok.probability * 100).toFixed(1)}%</span>
             `;
 
-            cell.addEventListener('mouseenter', () => showMatrixTooltip(cell, p, l, layerData));
+            cell.addEventListener('mouseenter', (e) => showMatrixTooltip(e, cell, p, l, layerData));
+            cell.addEventListener('mousemove', (e) => positionMatrixTooltip(e, cell));
             cell.addEventListener('mouseleave', () => hideMatrixTooltip());
             cell.addEventListener('click', () => renderInspectionDetail(p.position));
 
@@ -200,7 +201,7 @@ function renderTopPredictionsTable(matrixData) {
     });
 }
 
-function showMatrixTooltip(targetCell, posData, layerIdx, layerData) {
+function showMatrixTooltip(e, targetCell, posData, layerIdx, layerData) {
     const tooltip = document.getElementById('matrix-tooltip');
     if (!tooltip || !layerData || !layerData.top_tokens) return;
 
@@ -216,35 +217,46 @@ function showMatrixTooltip(targetCell, posData, layerIdx, layerData) {
         `;
     });
 
-    if (layerData.entropy !== undefined) {
-        html += `<div class="tooltip-entropy">Entropy: ${layerData.entropy} bits | KL: ${layerData.kl_divergence || 0}</div>`;
+    if (layerData.entropy !== undefined && layerData.entropy !== null) {
+        const entVal = typeof layerData.entropy === 'number' ? layerData.entropy.toFixed(2) : layerData.entropy;
+        const klVal = typeof layerData.kl_divergence === 'number' ? layerData.kl_divergence.toFixed(2) : (layerData.kl_divergence || 0);
+        html += `<div class="tooltip-entropy">Entropy: ${entVal} bits | KL: ${klVal}</div>`;
     }
 
     tooltip.innerHTML = html;
     tooltip.classList.remove('hidden');
-    positionMatrixTooltip(targetCell);
+    positionMatrixTooltip(e, targetCell);
 }
 
-function positionMatrixTooltip(targetCell) {
+function positionMatrixTooltip(e, targetCell) {
     const tooltip = document.getElementById('matrix-tooltip');
-    if (!tooltip || !targetCell) return;
+    if (!tooltip) return;
 
-    const cellRect = targetCell.getBoundingClientRect();
-    const tooltipRect = tooltip.getBoundingClientRect();
+    const tooltipWidth = tooltip.offsetWidth || 230;
+    const tooltipHeight = tooltip.offsetHeight || 140;
 
-    let left = cellRect.left + (cellRect.width / 2) - (tooltipRect.width / 2);
-    let top = cellRect.top - tooltipRect.height - 10;
+    let mouseX = e ? e.clientX : 0;
+    let mouseY = e ? e.clientY : 0;
+
+    if (targetCell && (!e || !e.clientX)) {
+        const rect = targetCell.getBoundingClientRect();
+        mouseX = rect.left + rect.width / 2;
+        mouseY = rect.top;
+    }
+
+    let left = mouseX - (tooltipWidth / 2);
+    let top = mouseY - tooltipHeight - 12;
 
     if (top < 10) {
-        top = cellRect.bottom + 10;
+        top = mouseY + 14;
         tooltip.classList.add('tooltip-below');
     } else {
         tooltip.classList.remove('tooltip-below');
     }
 
     if (left < 10) left = 10;
-    if (left + tooltipRect.width > window.innerWidth - 10) {
-        left = window.innerWidth - tooltipRect.width - 10;
+    if (left + tooltipWidth > window.innerWidth - 10) {
+        left = window.innerWidth - tooltipWidth - 10;
     }
 
     tooltip.style.left = `${Math.max(5, left)}px`;
@@ -398,7 +410,14 @@ async function fetchGpuProfilerData() {
         if (peakMarker) peakMarker.style.left = `${peakPct}%`;
 
         const sessCountEl = document.getElementById('prof-session-count');
-        if (sessCountEl) sessCountEl.textContent = `${prof.sessions ? prof.sessions.length : 0} / ${prof.max_sessions || 3} Sessions`;
+        if (sessCountEl) {
+            const maxSess = prof.max_sessions || 1000;
+            if (maxSess >= 1000) {
+                sessCountEl.textContent = `${prof.sessions ? prof.sessions.length : 0} Active Sessions (Unlimited)`;
+            } else {
+                sessCountEl.textContent = `${prof.sessions ? prof.sessions.length : 0} / ${maxSess} Sessions`;
+            }
+        }
 
         const sessTbody = document.getElementById('session-cache-tbody');
         if (sessTbody) {
@@ -441,7 +460,9 @@ async function fetchGpuProfilerData() {
             prof.blocks.forEach((blk, i) => {
                 const tile = document.createElement('div');
                 tile.className = `vram-tile type-${blk.type}`;
-                tile.title = `VRAM Topology Block #${i + 1}: ${blk.label} (${blk.mb} MB)`;
+                tile.addEventListener('mouseenter', (e) => showBlockTooltip(e, blk));
+                tile.addEventListener('mousemove', (e) => positionMatrixTooltip(e, tile));
+                tile.addEventListener('mouseleave', () => hideMatrixTooltip());
                 container.appendChild(tile);
             });
         }
@@ -632,6 +653,20 @@ function renderKvGrowthChart(requestHistory, kvGrowth) {
     }
 }
 
+function showBlockTooltip(e, blk) {
+    const tooltip = document.getElementById('matrix-tooltip');
+    if (!tooltip || !blk) return;
+
+    let html = `<div class="tooltip-title">VRAM Block #${blk.id} • ${blk.label}</div>`;
+    html += `<div class="tooltip-row"><span>Memory Range:</span> <strong style="color:var(--primary);">${blk.range_mb || (blk.mb + ' MB')}</strong></div>`;
+    html += `<div class="tooltip-row"><span>Chunk Size:</span> <strong>${blk.mb} MB</strong></div>`;
+    html += `<div class="tooltip-row"><span>Status:</span> <strong style="color:${blk.type === 'weights' ? '#3b82f6' : (blk.type === 'cache' ? '#06b6d4' : 'var(--text-muted)')}">${blk.type === 'weights' ? 'Allocated Model Weights' : (blk.type === 'cache' ? 'Active KV/Activation Cache' : 'Unallocated Free Buffer')}</strong></div>`;
+
+    tooltip.innerHTML = html;
+    tooltip.classList.remove('hidden');
+    positionMatrixTooltip(e);
+}
+
 window.fetchGpuProfilerData = fetchGpuProfilerData;
 window.evictSessionById = evictSessionById;
 window.profilerTelemetry = profilerTelemetry;
@@ -646,34 +681,84 @@ document.addEventListener('DOMContentLoaded', () => {
 window.currentSession = null;
 window.currentMatrix = null;
 
+let healthPollTimer = null;
+
 async function fetchSystemHealth() {
     try {
         const data = await window.API.getSystemHealth();
 
         const dot = document.getElementById('status-dot');
         const text = document.getElementById('status-text');
+        const runBtn = document.getElementById('run-btn');
+        const runText = document.getElementById('run-btn-text');
+        const promptInput = document.getElementById('prompt-input');
+        const loadingOverlay = document.getElementById('model-loading-overlay');
+        const overlayTitle = document.getElementById('overlay-model-title');
+
+        const activeModel = data.active_model || 'Model';
 
         if (data.status === 'online') {
-            dot.className = 'status-dot status-online';
-            text.textContent = 'Backend Online';
+            if (dot) dot.className = 'status-dot status-online';
+            if (text) text.textContent = 'Backend Online';
+
+            // Unblock UI for interaction
+            if (runBtn) { runBtn.disabled = false; }
+            if (runText) { runText.textContent = 'Run Model Analysis'; }
+            if (promptInput) {
+                promptInput.disabled = false;
+                promptInput.placeholder = 'Enter prompt to run model forward pass and observe intermediate residual stream projections...';
+            }
+            document.querySelectorAll('.btn-preset').forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            });
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+
         } else if (data.status === 'loading') {
-            dot.className = 'status-dot status-busy';
-            text.textContent = `Loading Model (${data.active_model})...`;
+            if (dot) dot.className = 'status-dot status-busy';
+            if (text) text.textContent = `Loading Model (${activeModel})...`;
+
+            // Block UI while model is loading
+            if (runBtn) { runBtn.disabled = true; }
+            if (runText) { runText.textContent = 'Loading Weights...'; }
+            if (promptInput) {
+                promptInput.disabled = true;
+                promptInput.placeholder = `Loading ${activeModel} weights into VRAM... Please wait until initialization completes.`;
+            }
+            document.querySelectorAll('.btn-preset').forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            });
+            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+            if (overlayTitle) overlayTitle.textContent = `Loading Model Weights (${activeModel}) into VRAM...`;
+
+            // Fast poll every 2s while loading
+            clearTimeout(healthPollTimer);
+            healthPollTimer = setTimeout(fetchSystemHealth, 2000);
+
         } else if (data.status === 'error') {
-            dot.className = 'status-dot status-offline';
-            text.textContent = `Error: ${data.error || 'Model load failed'}`;
+            if (dot) dot.className = 'status-dot status-offline';
+            if (text) text.textContent = `Error: ${data.error || 'Model load failed'}`;
+
+            if (runBtn) { runBtn.disabled = true; }
+            if (runText) { runText.textContent = 'Model Load Error'; }
+            if (promptInput) { promptInput.disabled = true; }
+            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+            if (overlayTitle) overlayTitle.textContent = `Model Load Error: ${data.error || 'Check server logs'}`;
         } else {
-            dot.className = 'status-dot status-busy';
-            text.textContent = 'Initializing...';
+            if (dot) dot.className = 'status-dot status-busy';
+            if (text) text.textContent = 'Initializing...';
         }
 
-        document.getElementById('nav-model-name').textContent = data.active_model || 'None';
-        document.getElementById('nav-device-tag').textContent = data.device ? data.device.toUpperCase() : 'CPU';
+        if (document.getElementById('nav-model-name')) document.getElementById('nav-model-name').textContent = activeModel;
+        if (document.getElementById('nav-device-tag')) document.getElementById('nav-device-tag').textContent = data.device ? data.device.toUpperCase() : 'CPU';
 
         if (data.vram_usage && data.vram_usage.total_mb > 0) {
-            document.getElementById('nav-vram-usage').textContent = `VRAM: ${data.vram_usage.allocated_mb}MB / ${data.vram_usage.total_mb}MB`;
+            if (document.getElementById('nav-vram-usage')) document.getElementById('nav-vram-usage').textContent = `VRAM: ${data.vram_usage.allocated_mb}MB / ${data.vram_usage.total_mb}MB`;
         } else {
-            document.getElementById('nav-vram-usage').textContent = 'CPU RAM Active';
+            if (document.getElementById('nav-vram-usage')) document.getElementById('nav-vram-usage').textContent = 'CPU RAM Active';
         }
     } catch (err) {
         const dot = document.getElementById('status-dot');

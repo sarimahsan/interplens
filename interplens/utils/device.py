@@ -1,6 +1,7 @@
 """CUDA and PyTorch device memory management utilities for InterpLens."""
 
 import gc
+import math
 from typing import Dict, Any
 import torch
 
@@ -120,22 +121,33 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
         active_tensors = allocated_mb if allocated_mb > 0 else (stats.get("active_bytes.all.current", 0) / (1024 ** 2))
         alloc_retries = stats.get("num_alloc_retries", 0)
 
-        # 64-Block Memory Topology Grid
-        total_blocks = 64
+        # Adaptive VRAM Memory Topology Grid based on actual total GPU VRAM capacity
         weights_mb = allocated_mb
         cache_mb = max(0, reserved_mb - allocated_mb)
-        
-        w_blocks = min(total_blocks, max(1 if weights_mb > 0 else 0, int(round((weights_mb / total_mb) * total_blocks))))
-        c_blocks = min(total_blocks - w_blocks, max(0, int(round((cache_mb / total_mb) * total_blocks))))
-        f_blocks = max(0, total_blocks - w_blocks - c_blocks)
+        block_mb = 256 if total_mb <= 16384 else 512
+        total_blocks = max(16, int(math.ceil(total_mb / block_mb)))
 
         blocks = []
-        for i in range(w_blocks):
-            blocks.append({"id": i, "type": "weights", "label": "Model Weights", "mb": round(weights_mb / max(1, w_blocks), 1)})
-        for i in range(c_blocks):
-            blocks.append({"id": w_blocks + i, "type": "cache", "label": "Activation / KV Cache", "mb": round(cache_mb / max(1, c_blocks), 1)})
-        for i in range(f_blocks):
-            blocks.append({"id": w_blocks + c_blocks + i, "type": "free", "label": "Free VRAM Buffer", "mb": round(free_mb / max(1, f_blocks), 1)})
+        for i in range(total_blocks):
+            range_start = i * block_mb
+            range_end = min(total_mb, (i + 1) * block_mb)
+            if range_start < weights_mb:
+                b_type = "weights"
+                b_label = "Model Weights / Parameters"
+            elif range_start < (weights_mb + cache_mb):
+                b_type = "cache"
+                b_label = "Activation / KV Cache"
+            else:
+                b_type = "free"
+                b_label = "Free VRAM Buffer"
+            
+            blocks.append({
+                "id": i + 1,
+                "type": b_type,
+                "label": b_label,
+                "mb": block_mb,
+                "range_mb": f"{int(range_start)} MB - {int(range_end)} MB",
+            })
 
         # Per-layer parameter and activation memory breakdown
         layer_sizes = {}

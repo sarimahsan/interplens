@@ -171,3 +171,22 @@
     &.vram-chip-cache { color: #06b6d4; }
     &.vram-chip-free { color: var(--text-muted); }
 }
+
+/* Layer Memory Footprint VRAM Share Bar */
+.mem-bar-bg {
+    width: 100%;
+    min-width: 120px;
+    height: 14px;
+    background-color: var(--bg-app);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.mem-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #06b6d4);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}

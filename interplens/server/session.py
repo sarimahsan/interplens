@@ -45,7 +45,7 @@ class ActivationSession:
 class SessionStore:
     """Thread-safe LRU Cache store for managing active activation sessions."""
 
-    def __init__(self, max_sessions: int = 3):
+    def __init__(self, max_sessions: int = 1000):
         self.max_sessions = max_sessions
         self._sessions: OrderedDict[str, ActivationSession] = OrderedDict()
         self.request_history: list = []
@@ -165,4 +165,4 @@ class SessionStore:
 
 
 # Global default session store
-global_session_store = SessionStore(max_sessions=3)
+global_session_store = SessionStore(max_sessions=1000)

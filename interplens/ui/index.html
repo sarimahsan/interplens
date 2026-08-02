@@ -183,6 +183,13 @@
                 <!-- Logit Lens View -->
                 <div class="tab-view active" id="view-logit-lens">
                     <section class="panel control-panel">
+                        <!-- Model Loading Overlay Blocker -->
+                        <div class="model-loading-overlay hidden" id="model-loading-overlay">
+                            <div class="spinner" style="width: 22px; height: 22px; border-width: 3px;"></div>
+                            <div class="loading-overlay-title" id="overlay-model-title">Loading Model Weights into VRAM...</div>
+                            <div class="loading-overlay-subtitle" id="overlay-model-subtitle">Prompt controls disabled until model initialization completes.</div>
+                        </div>
+
                         <div class="panel-header">
                             <div class="header-title">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

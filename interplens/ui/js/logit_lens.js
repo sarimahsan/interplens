@@ -88,7 +88,8 @@ function renderMatrixGrid(matrixData) {
                 <span class="cell-prob">${(topTok.probability * 100).toFixed(1)}%</span>
             `;
 
-            cell.addEventListener('mouseenter', () => showMatrixTooltip(cell, p, l, layerData));
+            cell.addEventListener('mouseenter', (e) => showMatrixTooltip(e, cell, p, l, layerData));
+            cell.addEventListener('mousemove', (e) => positionMatrixTooltip(e, cell));
             cell.addEventListener('mouseleave', () => hideMatrixTooltip());
             cell.addEventListener('click', () => renderInspectionDetail(p.position));
 
@@ -149,7 +150,7 @@ function renderTopPredictionsTable(matrixData) {
     });
 }
 
-function showMatrixTooltip(targetCell, posData, layerIdx, layerData) {
+function showMatrixTooltip(e, targetCell, posData, layerIdx, layerData) {
     const tooltip = document.getElementById('matrix-tooltip');
     if (!tooltip || !layerData || !layerData.top_tokens) return;
 
@@ -165,35 +166,46 @@ function showMatrixTooltip(targetCell, posData, layerIdx, layerData) {
         `;
     });
 
-    if (layerData.entropy !== undefined) {
-        html += `<div class="tooltip-entropy">Entropy: ${layerData.entropy} bits | KL: ${layerData.kl_divergence || 0}</div>`;
+    if (layerData.entropy !== undefined && layerData.entropy !== null) {
+        const entVal = typeof layerData.entropy === 'number' ? layerData.entropy.toFixed(2) : layerData.entropy;
+        const klVal = typeof layerData.kl_divergence === 'number' ? layerData.kl_divergence.toFixed(2) : (layerData.kl_divergence || 0);
+        html += `<div class="tooltip-entropy">Entropy: ${entVal} bits | KL: ${klVal}</div>`;
     }
 
     tooltip.innerHTML = html;
     tooltip.classList.remove('hidden');
-    positionMatrixTooltip(targetCell);
+    positionMatrixTooltip(e, targetCell);
 }
 
-function positionMatrixTooltip(targetCell) {
+function positionMatrixTooltip(e, targetCell) {
     const tooltip = document.getElementById('matrix-tooltip');
-    if (!tooltip || !targetCell) return;
+    if (!tooltip) return;
 
-    const cellRect = targetCell.getBoundingClientRect();
-    const tooltipRect = tooltip.getBoundingClientRect();
+    const tooltipWidth = tooltip.offsetWidth || 230;
+    const tooltipHeight = tooltip.offsetHeight || 140;
 
-    let left = cellRect.left + (cellRect.width / 2) - (tooltipRect.width / 2);
-    let top = cellRect.top - tooltipRect.height - 10;
+    let mouseX = e ? e.clientX : 0;
+    let mouseY = e ? e.clientY : 0;
+
+    if (targetCell && (!e || !e.clientX)) {
+        const rect = targetCell.getBoundingClientRect();
+        mouseX = rect.left + rect.width / 2;
+        mouseY = rect.top;
+    }
+
+    let left = mouseX - (tooltipWidth / 2);
+    let top = mouseY - tooltipHeight - 12;
 
     if (top < 10) {
-        top = cellRect.bottom + 10;
+        top = mouseY + 14;
         tooltip.classList.add('tooltip-below');
     } else {
         tooltip.classList.remove('tooltip-below');
     }
 
     if (left < 10) left = 10;
-    if (left + tooltipRect.width > window.innerWidth - 10) {
-        left = window.innerWidth - tooltipRect.width - 10;
+    if (left + tooltipWidth > window.innerWidth - 10) {
+        left = window.innerWidth - tooltipWidth - 10;
     }
 
     tooltip.style.left = `${Math.max(5, left)}px`;

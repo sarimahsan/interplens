@@ -161,16 +161,15 @@ def compute_logit_lens(
     logits = _project_unembed(stacked_resid)  # (L_count, P, V)
     probs = F.softmax(logits, dim=-1)         # (L_count, P, V)
 
-    # Compute Shannon entropy H(P) = -sum(p * log2(p)) per layer and position
-    entropy_tensor = -torch.sum(probs * torch.log2(probs + 1e-9), dim=-1)  # (L_count, P)
+    # Cast to float32 for numerical stability (prevents float16 log2(0) NaN/null underflow)
+    probs_f32 = probs.to(torch.float32)
+    entropy_tensor = -torch.sum(probs_f32 * torch.log2(probs_f32 + 1e-7), dim=-1)  # (L_count, P)
 
     # Compute KL divergence KL(P_l || P_{l-1}) between consecutive layers
-    # For l=0 (embed layer), KL = 0.0
-    kl_tensor = torch.zeros((probs.shape[0], probs.shape[1]), device=probs.device)
+    kl_tensor = torch.zeros((probs.shape[0], probs.shape[1]), device=probs.device, dtype=torch.float32)
     if probs.shape[0] > 1:
-        # KL(P_l || P_{l-1}) = sum( P_l * (log2(P_l) - log2(P_{l-1})) )
-        log_p = torch.log2(probs + 1e-9)
-        kl_steps = torch.sum(probs[1:] * (log_p[1:] - log_p[:-1]), dim=-1) # (L_count-1, P)
+        log_p_f32 = torch.log2(probs_f32 + 1e-7)
+        kl_steps = torch.sum(probs_f32[1:] * (log_p_f32[1:] - log_p_f32[:-1]), dim=-1) # (L_count-1, P)
         kl_tensor[1:] = torch.clamp(kl_steps, min=0.0)
 
     # Extract top-K per position and layer

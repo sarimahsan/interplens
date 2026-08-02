@@ -47,7 +47,14 @@ async function fetchGpuProfilerData() {
         if (peakMarker) peakMarker.style.left = `${peakPct}%`;
 
         const sessCountEl = document.getElementById('prof-session-count');
-        if (sessCountEl) sessCountEl.textContent = `${prof.sessions ? prof.sessions.length : 0} / ${prof.max_sessions || 3} Sessions`;
+        if (sessCountEl) {
+            const maxSess = prof.max_sessions || 1000;
+            if (maxSess >= 1000) {
+                sessCountEl.textContent = `${prof.sessions ? prof.sessions.length : 0} Active Sessions (Unlimited)`;
+            } else {
+                sessCountEl.textContent = `${prof.sessions ? prof.sessions.length : 0} / ${maxSess} Sessions`;
+            }
+        }
 
         const sessTbody = document.getElementById('session-cache-tbody');
         if (sessTbody) {
@@ -90,7 +97,9 @@ async function fetchGpuProfilerData() {
             prof.blocks.forEach((blk, i) => {
                 const tile = document.createElement('div');
                 tile.className = `vram-tile type-${blk.type}`;
-                tile.title = `VRAM Topology Block #${i + 1}: ${blk.label} (${blk.mb} MB)`;
+                tile.addEventListener('mouseenter', (e) => showBlockTooltip(e, blk));
+                tile.addEventListener('mousemove', (e) => window.positionMatrixTooltip ? window.positionMatrixTooltip(e, tile) : null);
+                tile.addEventListener('mouseleave', () => window.hideMatrixTooltip ? window.hideMatrixTooltip() : null);
                 container.appendChild(tile);
             });
         }
@@ -279,6 +288,20 @@ function renderKvGrowthChart(requestHistory, kvGrowth) {
             }
         });
     }
+}
+
+function showBlockTooltip(e, blk) {
+    const tooltip = document.getElementById('matrix-tooltip');
+    if (!tooltip || !blk) return;
+
+    let html = `<div class="tooltip-title">VRAM Block #${blk.id} • ${blk.label}</div>`;
+    html += `<div class="tooltip-row"><span>Memory Range:</span> <strong style="color:var(--primary);">${blk.range_mb || (blk.mb + ' MB')}</strong></div>`;
+    html += `<div class="tooltip-row"><span>Chunk Size:</span> <strong>${blk.mb} MB</strong></div>`;
+    html += `<div class="tooltip-row"><span>Status:</span> <strong style="color:${blk.type === 'weights' ? '#3b82f6' : (blk.type === 'cache' ? '#06b6d4' : 'var(--text-muted)')}">${blk.type === 'weights' ? 'Allocated Model Weights' : (blk.type === 'cache' ? 'Active KV/Activation Cache' : 'Unallocated Free Buffer')}</strong></div>`;
+
+    tooltip.innerHTML = html;
+    tooltip.classList.remove('hidden');
+    if (window.positionMatrixTooltip) window.positionMatrixTooltip(e);
 }
 
 window.fetchGpuProfilerData = fetchGpuProfilerData;
