@@ -33,8 +33,16 @@ def main():
         if vram["total_mb"] > 0:
             print(f"💾 VRAM Allocated: {vram['allocated_mb']}MB / {vram['total_mb']}MB")
             
+        import threading
         from interplens.server.app import init_model
-        init_model(model_name, device)
+
+        # Start model loading in background thread so web server opens instantly
+        loader_thread = threading.Thread(
+            target=init_model,
+            args=(model_name, device),
+            daemon=True
+        )
+        loader_thread.start()
 
         import uvicorn
         uvicorn.run("interplens.server.app:app", host=host, port=port, reload=False)

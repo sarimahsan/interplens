@@ -63,7 +63,15 @@ async function fetchSystemHealth() {
 
         const modelEl = document.getElementById('header-model-name');
         const badgeEl = document.getElementById('loaded-model-badge');
-        if (data.active_model) {
+        
+        if (data.status === 'loading') {
+            if (modelEl) modelEl.textContent = `Loading ${data.active_model}...`;
+            if (badgeEl) badgeEl.textContent = `Loading ${data.active_model}...`;
+            setTimeout(fetchSystemHealth, 3000); // Poll status every 3s while downloading model
+        } else if (data.status === 'error') {
+            if (modelEl) modelEl.textContent = `Error Loading Model`;
+            if (badgeEl) badgeEl.textContent = `Error: ${data.error || 'Failed to load'}`;
+        } else if (data.active_model) {
             if (modelEl) modelEl.textContent = data.active_model;
             if (badgeEl) badgeEl.textContent = data.active_model;
         }

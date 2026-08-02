@@ -34,12 +34,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_model_loading_status = {"status": "idle", "model_name": "none", "error": None}
+
+
 # Global active model adapter instance
 def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
     """Loads target model (via TransformerLens or HuggingFace AutoModel fallback) onto GPU."""
-    global _active_adapter
+    global _active_adapter, _model_loading_status
     if device is None:
         device = get_optimal_device()
+
+    _model_loading_status["status"] = "loading"
+    _model_loading_status["model_name"] = model_name
+    _model_loading_status["error"] = None
 
     print(f"⚡ Loading model '{model_name}' onto {device}...")
 
@@ -48,6 +55,7 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
         from transformer_lens import HookedTransformer
         model = HookedTransformer.from_pretrained(model_name, device=device)
         _active_adapter = InPlaceModelAdapter(model, model_name=model_name)
+        _model_loading_status["status"] = "online"
         print(f"✅ Loaded '{model_name}' via TransformerLens on {device}")
         return _active_adapter
     except Exception as e1:
@@ -70,10 +78,14 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
             model = model.to(device)
 
         _active_adapter = CustomModelAdapter(model=model, tokenizer=tokenizer, model_name=model_name)
+        _model_loading_status["status"] = "online"
         print(f"✅ Loaded '{model_name}' via HuggingFace AutoModel on {device}")
         return _active_adapter
     except Exception as e2:
-        print(f"❌ Error: Failed to load model '{model_name}' via HuggingFace ({e2})")
+        err_msg = f"Failed to load model '{model_name}': {e2}"
+        _model_loading_status["status"] = "error"
+        _model_loading_status["error"] = err_msg
+        print(f"❌ Error: {err_msg}")
         return None
 
 
@@ -83,17 +95,17 @@ def get_active_adapter():
     if _active_adapter is None:
         init_model("gpt2")
     if _active_adapter is None:
-        raise HTTPException(
-            status_code=500,
-            detail="No model is currently loaded. Launch CLI with '--model <name>' (e.g. gpt2, gpt2-medium)."
-        )
+        err = _model_loading_status.get("error") or "No model loaded."
+        raise HTTPException(status_code=500, detail=f"Model loading error: {err}")
     return _active_adapter
 
 
 def set_active_adapter(adapter: InPlaceModelAdapter):
     """Sets a custom loaded model adapter."""
-    global _active_adapter
+    global _active_adapter, _model_loading_status
     _active_adapter = adapter
+    _model_loading_status["status"] = "online"
+    _model_loading_status["model_name"] = getattr(adapter, "model_name", "custom")
 
 
 def get_adapter_model_info(adapter) -> ModelInfo:
@@ -118,13 +130,14 @@ def get_health() -> Dict[str, Any]:
     vram = get_vram_usage(device)
     
     adapter = _active_adapter
-    model_name = get_adapter_model_info(adapter).model_name if adapter else "None"
+    model_name = get_adapter_model_info(adapter).model_name if adapter else _model_loading_status.get("model_name", "None")
 
     return {
-        "status": "online",
+        "status": _model_loading_status["status"] if _active_adapter is None else "online",
         "device": str(device),
         "active_model": model_name,
         "vram_usage": vram,
+        "error": _model_loading_status.get("error"),
         "sessions_cached": len(global_session_store._sessions),
     }
 
