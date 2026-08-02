@@ -1,124 +1,356 @@
-// InterpLens Studio Frontend Engine
+// InterpLens Studio Centralized Client Application
 
-document.addEventListener('DOMContentLoaded', () => {
-    initThemeManager();
-    fetchSystemHealth();
-    registerEventListeners();
-});
+// --- 1. REST API Client ---
+const API = {
+    async getSystemHealth() {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);
+        return await res.json();
+    },
 
-let currentSession = null;
+    async runModelForwardPass(prompt) {
+        const res = await fetch('/api/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Forward pass failed');
+        }
+        return await res.json();
+    },
+
+    async getLogitLensMatrix(sessionId, topK = 5, applyLn = true, position = null) {
+        let url = `/api/analysis/logit-lens?session_id=${sessionId}&top_k=${topK}&apply_ln=${applyLn}`;
+        if (position !== null) url += `&position=${position}`;
+        
+        const res = await fetch(url);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Logit Lens extraction failed');
+        }
+        return await res.json();
+    },
+
+    async getGpuProfiler(sessionId = '') {
+        const url = `/api/hardware/gpu-profiler${sessionId ? '?session_id=' + sessionId : ''}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`GPU Profiler fetch failed: ${res.statusText}`);
+        return await res.json();
+    },
+
+    async deleteSession(sessionId) {
+        const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`Session eviction failed: ${res.statusText}`);
+        return await res.json();
+    }
+};
+window.API = API;
+
+// --- 2. Logit Lens Analysis Module ---
 let currentMatrix = null;
 let detailChart = null;
-let activeMetric = 'prob'; // 'prob', 'rank', 'entropy'
+let activeMetric = 'prob';
 
-// --- Theme Management ---
-function initThemeManager() {
-    const themeBtn = document.getElementById('theme-switch-btn');
-    const storedTheme = localStorage.getItem('interplens_studio_theme');
-    
-    let activeTheme = storedTheme;
-    if (!activeTheme) {
-        activeTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-    }
+function formatTokenStr(str) {
+    if (!str) return '∅';
+    return str.replace(/\n/g, '↵').replace(/\t/g, '⇥');
+}
 
-    applyTheme(activeTheme);
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
-    themeBtn.addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-        applyTheme(next);
+function getProbHeatmapColor(prob) {
+    if (prob < 0.05) return 'rgba(30, 41, 59, 0.4)';
+    if (prob < 0.20) return 'rgba(2, 132, 199, 0.5)';
+    if (prob < 0.50) return 'rgba(6, 182, 212, 0.7)';
+    if (prob < 0.80) return 'rgba(16, 185, 129, 0.85)';
+    return 'rgba(245, 158, 11, 0.95)';
+}
+
+function renderTokensFlow(tokens) {
+    const banner = document.getElementById('tokens-flow');
+    if (!banner) return;
+    banner.innerHTML = '';
+
+    tokens.forEach((tok, idx) => {
+        const pill = document.createElement('div');
+        pill.className = `token-pill ${idx === 0 ? 'active' : ''}`;
+        pill.innerHTML = `
+            <span class="token-idx">#${idx}</span>
+            <span class="token-text">${escapeHtml(formatTokenStr(tok))}</span>
+        `;
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('.token-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            renderInspectionDetail(idx);
+        });
+        banner.appendChild(pill);
+    });
+}
+
+function renderMatrixGrid(matrixData) {
+    currentMatrix = matrixData;
+    window.currentMatrix = matrixData;
+    const container = document.getElementById('matrix-grid-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const positions = matrixData.positions;
+    if (!positions || positions.length === 0) return;
+
+    const numLayers = positions[0].layers.length;
+    const grid = document.createElement('div');
+    grid.className = 'matrix-grid';
+    grid.style.gridTemplateColumns = `100px repeat(${positions.length}, minmax(80px, 1fr))`;
+
+    // Header Row: Positions
+    const cornerHeader = document.createElement('div');
+    cornerHeader.className = 'grid-header-cell';
+    cornerHeader.textContent = 'Layer / Pos';
+    grid.appendChild(cornerHeader);
+
+    positions.forEach(p => {
+        const posHeader = document.createElement('div');
+        posHeader.className = 'grid-header-cell';
+        posHeader.title = `Position #${p.position}: ${p.token}`;
+        posHeader.innerHTML = `<strong>#${p.position}</strong><br><span style="color:var(--primary);">${escapeHtml(formatTokenStr(p.token))}</span>`;
+        grid.appendChild(posHeader);
     });
 
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-        if (!localStorage.getItem('interplens_studio_theme')) {
-            applyTheme(e.matches ? 'dark' : 'light');
-        }
+    // Grid Rows: Layer 0 -> Layer N
+    for (let l = 0; l < numLayers; l++) {
+        const layerLbl = document.createElement('div');
+        layerLbl.className = 'grid-layer-label';
+        layerLbl.textContent = l === 0 ? 'Embedding' : `Layer ${l - 1}`;
+        grid.appendChild(layerLbl);
+
+        positions.forEach(p => {
+            const layerData = p.layers[l];
+            const topTok = layerData.top_tokens[0] || { token: '?', probability: 0 };
+            
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.style.backgroundColor = getProbHeatmapColor(topTok.probability);
+            cell.innerHTML = `
+                <span class="cell-tok">${escapeHtml(formatTokenStr(topTok.token))}</span>
+                <span class="cell-prob">${(topTok.probability * 100).toFixed(1)}%</span>
+            `;
+
+            cell.addEventListener('mouseenter', () => showMatrixTooltip(cell, p, l, layerData));
+            cell.addEventListener('mouseleave', () => hideMatrixTooltip());
+            cell.addEventListener('click', () => renderInspectionDetail(p.position));
+
+            grid.appendChild(cell);
+        });
+    }
+
+    container.appendChild(grid);
+}
+
+function renderModelResponseCard(matrixData) {
+    const card = document.getElementById('response-card');
+    if (!card) return;
+
+    const lastPos = matrixData.positions[matrixData.positions.length - 1];
+    const topPredictions = lastPos.layers[lastPos.layers.length - 1].top_tokens;
+
+    document.getElementById('resp-top-token').textContent = formatTokenStr(topPredictions[0].token);
+    document.getElementById('resp-top-prob').textContent = `${(topPredictions[0].probability * 100).toFixed(1)}%`;
+    document.getElementById('resp-top-logit').textContent = topPredictions[0].logit !== null ? topPredictions[0].logit.toFixed(2) : 'N/A';
+
+    const tbody = document.getElementById('resp-top-tbody');
+    if (tbody) {
+        tbody.innerHTML = '';
+        topPredictions.forEach((t, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>#${i + 1}</td>
+                <td style="font-weight:700; color:var(--primary);">${escapeHtml(formatTokenStr(t.token))}</td>
+                <td>${(t.probability * 100).toFixed(2)}%</td>
+                <td style="font-family:var(--font-mono);">${t.logit !== null ? t.logit.toFixed(2) : '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+function renderTopPredictionsTable(matrixData) {
+    const tbody = document.querySelector('#top-preds-table tbody');
+    if (!tbody || !matrixData.positions) return;
+    tbody.innerHTML = '';
+
+    const lastPos = matrixData.positions[matrixData.positions.length - 1];
+    lastPos.layers.forEach((lData, lIdx) => {
+        const lName = lIdx === 0 ? 'Embed' : `Layer ${lIdx - 1}`;
+        const top1 = lData.top_tokens[0] || { token: '?', probability: 0 };
+        const top2 = lData.top_tokens[1] || { token: '?', probability: 0 };
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight:600;">${lName}</td>
+            <td style="font-family:var(--font-mono); font-weight:700; color:var(--primary);">${escapeHtml(formatTokenStr(top1.token))}</td>
+            <td>${(top1.probability * 100).toFixed(1)}%</td>
+            <td style="font-family:var(--font-mono); color:var(--text-sub);">${escapeHtml(formatTokenStr(top2.token))}</td>
+            <td>${(top2.probability * 100).toFixed(1)}%</td>
+        `;
+        tbody.appendChild(tr);
     });
 }
 
-function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('interplens_studio_theme', theme);
-    const textEl = document.getElementById('theme-mode-text');
-    if (textEl) textEl.textContent = theme === 'dark' ? 'Dark' : 'Light';
-    
-    if (detailChart) {
-        updateChartStyles(theme);
+function showMatrixTooltip(targetCell, posData, layerIdx, layerData) {
+    const tooltip = document.getElementById('matrix-tooltip');
+    if (!tooltip || !layerData || !layerData.top_tokens) return;
+
+    const layerLabel = layerIdx === 0 ? 'Embedding Layer' : `Layer ${layerIdx - 1}`;
+    let html = `<div class="tooltip-title">Pos ${posData.position} ("${escapeHtml(formatTokenStr(posData.token))}") • ${layerLabel}</div>`;
+
+    layerData.top_tokens.forEach((t, i) => {
+        html += `
+            <div class="tooltip-row">
+                <span class="tooltip-tok">#${i+1} ${escapeHtml(formatTokenStr(t.token))}</span>
+                <span class="tooltip-prob">${(t.probability * 100).toFixed(1)}% (logit: ${t.logit !== null ? t.logit.toFixed(2) : '-'})</span>
+            </div>
+        `;
+    });
+
+    if (layerData.entropy !== undefined) {
+        html += `<div class="tooltip-entropy">Entropy: ${layerData.entropy} bits | KL: ${layerData.kl_divergence || 0}</div>`;
     }
+
+    tooltip.innerHTML = html;
+    tooltip.classList.remove('hidden');
+    positionMatrixTooltip(targetCell);
 }
 
-// --- Health & GPU Hardware Check ---
-async function fetchSystemHealth() {
-    try {
-        const res = await fetch('/api/health');
-        if (!res.ok) return;
-        const data = await res.json();
-        
-        const vramText = document.getElementById('vram-display');
-        if (vramText && data.vram_usage) {
-            const alloc = data.vram_usage.allocated_mb || 0;
-            const total = data.vram_usage.total_mb || 0;
-            vramText.textContent = total > 0 ? `VRAM: ${alloc.toFixed(0)} / ${total.toFixed(0)} MB` : `Device: ${data.device.toUpperCase()}`;
-        }
+function positionMatrixTooltip(targetCell) {
+    const tooltip = document.getElementById('matrix-tooltip');
+    if (!tooltip || !targetCell) return;
 
-        const modelEl = document.getElementById('header-model-name');
-        const badgeEl = document.getElementById('loaded-model-badge');
-        
-        if (data.status === 'loading') {
-            if (modelEl) modelEl.textContent = `Loading ${data.active_model}...`;
-            if (badgeEl) badgeEl.textContent = `Loading ${data.active_model}...`;
-            setTimeout(fetchSystemHealth, 3000);
-        } else if (data.status === 'error') {
-            if (modelEl) modelEl.textContent = `Error Loading Model`;
-            if (badgeEl) badgeEl.textContent = `Error: ${data.error || 'Failed to load'}`;
-        } else if (data.active_model) {
-            if (modelEl) modelEl.textContent = data.active_model;
-            if (badgeEl) badgeEl.textContent = data.active_model;
-        }
+    const cellRect = targetCell.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
 
-        const deviceEl = document.getElementById('header-device-info');
-        if (deviceEl && data.device) {
-            deviceEl.textContent = data.device.toUpperCase();
-        }
+    let left = cellRect.left + (cellRect.width / 2) - (tooltipRect.width / 2);
+    let top = cellRect.top - tooltipRect.height - 10;
 
-        fetchGpuHardwareStatus();
-    } catch (err) {
-        console.warn('System status update error:', err);
+    if (top < 10) {
+        top = cellRect.bottom + 10;
+        tooltip.classList.add('tooltip-below');
+    } else {
+        tooltip.classList.remove('tooltip-below');
     }
+
+    if (left < 10) left = 10;
+    if (left + tooltipRect.width > window.innerWidth - 10) {
+        left = window.innerWidth - tooltipRect.width - 10;
+    }
+
+    tooltip.style.left = `${Math.max(5, left)}px`;
+    tooltip.style.top = `${Math.max(5, top)}px`;
 }
 
-async function fetchGpuHardwareStatus() {
-    try {
-        const res = await fetch('/api/hardware/gpu-status');
-        if (!res.ok) return;
-        const gpu = await res.json();
+function hideMatrixTooltip() {
+    const tooltip = document.getElementById('matrix-tooltip');
+    if (tooltip) tooltip.classList.add('hidden');
+}
 
-        const badge = document.getElementById('gpu-device-name-badge');
-        if (badge) badge.textContent = `${gpu.has_gpu ? 'CUDA' : 'CPU'}: ${gpu.device_name}`;
+function renderInspectionDetail(posIdx) {
+    if (!currentMatrix || !currentMatrix.positions[posIdx]) return;
+    const pos = currentMatrix.positions[posIdx];
 
-        document.getElementById('gpu-alloc-val').textContent = `${gpu.allocated_mb} MB`;
-        document.getElementById('gpu-res-val').textContent = `${gpu.reserved_mb} MB`;
-        document.getElementById('gpu-peak-val').textContent = `${gpu.max_allocated_mb} MB`;
-        document.getElementById('gpu-util-val').textContent = `${gpu.utilization_pct}%`;
+    const detailCard = document.getElementById('detail-card');
+    detailCard.style.display = 'block';
 
-        // Render 32 VRAM Block Tiles
-        const container = document.getElementById('vram-blocks-container');
-        if (container && gpu.blocks) {
-            container.innerHTML = '';
-            const mbPerBlock = gpu.total_mb > 0 ? (gpu.total_mb / 32).toFixed(0) : 0;
+    document.getElementById('detail-title').textContent = `Token Position #${pos.position}: "${formatTokenStr(pos.token)}"`;
+    document.getElementById('detail-subtitle').textContent = `Layers: 0..${pos.layers.length - 1}`;
 
-            gpu.blocks.forEach((blk, i) => {
-                const tile = document.createElement('div');
-                tile.className = `vram-tile type-${blk.type}`;
-                tile.title = `VRAM Block #${i + 1}: ${blk.label} (~${mbPerBlock} MB)`;
-                container.appendChild(tile);
+    const labels = pos.layers.map((_, i) => i === 0 ? 'Embed' : `L${i - 1}`);
+    const canvas = document.getElementById('detail-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (detailChart) detailChart.destroy();
+
+    const metric = activeMetric || 'prob';
+    let datasets = [];
+
+    if (metric === 'kl') {
+        const klData = pos.layers.map(l => l.kl_divergence || 0);
+        datasets = [{
+            label: 'KL Divergence (bits)',
+            data: klData,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            fill: true,
+            tension: 0.3
+        }];
+    } else if (metric === 'entropy') {
+        const entData = pos.layers.map(l => l.entropy || 0);
+        datasets = [{
+            label: 'Layer Entropy (bits)',
+            data: entData,
+            borderColor: '#06b6d4',
+            backgroundColor: 'rgba(6, 182, 212, 0.15)',
+            fill: true,
+            tension: 0.3
+        }];
+    } else if (metric === 'top5') {
+        const colors = ['#3b82f6', '#06b6d4', '#10b981', '#8b5cf6', '#f59e0b'];
+        const top5Candidates = pos.layers[pos.layers.length - 1].top_tokens.slice(0, 5);
+        datasets = top5Candidates.map((cand, idx) => {
+            const candProbData = pos.layers.map(l => {
+                const match = l.top_tokens.find(t => t.token === cand.token);
+                return match ? (match.probability * 100) : 0;
             });
-        }
-    } catch (err) {
-        console.warn('GPU hardware status fetch error:', err);
+            return {
+                label: `#${idx + 1} "${formatTokenStr(cand.token)}"`,
+                data: candProbData,
+                borderColor: colors[idx % colors.length],
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3
+            };
+        });
+    } else {
+        const probData = pos.layers.map(l => (l.top_tokens[0].probability * 100));
+        datasets = [{
+            label: 'Top-1 Probability (%)',
+            data: probData,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            fill: true,
+            tension: 0.3
+        }];
     }
+
+    detailChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            },
+            plugins: { legend: { display: metric === 'top5', labels: { color: '#94a3b8', font: { size: 11 } } } }
+        }
+    });
+
+    renderTopPredictionsTable(currentMatrix);
 }
 
+window.setActiveMetric = function(m) {
+    activeMetric = m;
+};
+window.renderTokensFlow = renderTokensFlow;
+window.renderMatrixGrid = renderMatrixGrid;
+window.renderModelResponseCard = renderModelResponseCard;
+window.renderInspectionDetail = renderInspectionDetail;
+
+// --- 3. GPU Profiler Module ---
 let profilerTelemetry = {
     vramHistory: [],
     latencyHistory: [],
@@ -130,12 +362,9 @@ let profilerTelemetry = {
 
 async function fetchGpuProfilerData() {
     try {
-        const sessId = (currentMatrix && currentMatrix.session_id) || (currentSession && currentSession.session_id) || '';
-        const res = await fetch(`/api/hardware/gpu-profiler${sessId ? '?session_id=' + sessId : ''}`);
-        if (!res.ok) return;
-        const prof = await res.json();
+        const sessId = (window.currentMatrix && window.currentMatrix.session_id) || (window.currentSession && window.currentSession.session_id) || '';
+        const prof = await window.API.getGpuProfiler(sessId);
 
-        // 1. Device Specs Card
         const badge = document.getElementById('prof-device-name');
         if (badge) badge.textContent = `${prof.has_gpu ? 'CUDA' : 'CPU'}: ${prof.device_name}`;
 
@@ -145,7 +374,6 @@ async function fetchGpuProfilerData() {
         if (document.getElementById('prof-compute-cap')) document.getElementById('prof-compute-cap').textContent = prof.compute_capability || 'N/A';
         if (document.getElementById('prof-sm-count')) document.getElementById('prof-sm-count').textContent = `${prof.multi_processor_count} SMs`;
 
-        // 2. Live VRAM Gauge & Peak Marker
         const totalMb = prof.total_memory_mb || 1;
         const allocMb = prof.allocated_mb || 0;
         const resMb = prof.reserved_mb || 0;
@@ -169,7 +397,6 @@ async function fetchGpuProfilerData() {
         const peakMarker = document.getElementById('vram-peak-marker');
         if (peakMarker) peakMarker.style.left = `${peakPct}%`;
 
-        // 3. LRU Session Cache Table with Evict Button
         const sessCountEl = document.getElementById('prof-session-count');
         if (sessCountEl) sessCountEl.textContent = `${prof.sessions ? prof.sessions.length : 0} / ${prof.max_sessions || 3} Sessions`;
 
@@ -197,7 +424,6 @@ async function fetchGpuProfilerData() {
             }
         }
 
-        // 4. Update Telemetry History & Render Charts
         const timeTag = new Date().toLocaleTimeString();
         if (profilerTelemetry.vramHistory.length === 0 || profilerTelemetry.vramHistory[profilerTelemetry.vramHistory.length - 1].time !== timeTag) {
             profilerTelemetry.vramHistory.push({ time: timeTag, alloc: allocMb, res: resMb, peak: peakMb });
@@ -209,7 +435,6 @@ async function fetchGpuProfilerData() {
         renderCacheBreakdownChart(prof.cache_breakdown);
         renderKvGrowthChart(prof.request_history, prof.kv_growth);
 
-        // 5. Render 64-Block VRAM Memory Topology Map
         const container = document.getElementById('prof-64-blocks-container');
         if (container && prof.blocks) {
             container.innerHTML = '';
@@ -221,7 +446,6 @@ async function fetchGpuProfilerData() {
             });
         }
 
-        // 6. Render Layer Memory Footprint Table
         const tbody = document.getElementById('prof-layer-tbody');
         if (tbody) {
             tbody.innerHTML = '';
@@ -252,13 +476,9 @@ async function fetchGpuProfilerData() {
 
 async function evictSessionById(sessionId) {
     try {
-        const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
-        if (res.ok) {
-            fetchGpuProfilerData();
-            fetchSystemHealth();
-        } else {
-            alert(`Eviction error for session ${sessionId}`);
-        }
+        await window.API.deleteSession(sessionId);
+        fetchGpuProfilerData();
+        if (window.fetchSystemHealth) window.fetchSystemHealth();
     } catch (err) {
         console.error('Session eviction failed:', err);
     }
@@ -412,11 +632,88 @@ function renderKvGrowthChart(requestHistory, kvGrowth) {
     }
 }
 
+window.fetchGpuProfilerData = fetchGpuProfilerData;
+window.evictSessionById = evictSessionById;
+window.profilerTelemetry = profilerTelemetry;
+
+// --- 4. Main App Controller ---
+document.addEventListener('DOMContentLoaded', () => {
+    initThemeManager();
+    fetchSystemHealth();
+    registerEventListeners();
+});
+
+window.currentSession = null;
+window.currentMatrix = null;
+
+async function fetchSystemHealth() {
+    try {
+        const data = await window.API.getSystemHealth();
+
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+
+        if (data.status === 'online') {
+            dot.className = 'status-dot status-online';
+            text.textContent = 'Backend Online';
+        } else if (data.status === 'loading') {
+            dot.className = 'status-dot status-busy';
+            text.textContent = `Loading Model (${data.active_model})...`;
+        } else if (data.status === 'error') {
+            dot.className = 'status-dot status-offline';
+            text.textContent = `Error: ${data.error || 'Model load failed'}`;
+        } else {
+            dot.className = 'status-dot status-busy';
+            text.textContent = 'Initializing...';
+        }
+
+        document.getElementById('nav-model-name').textContent = data.active_model || 'None';
+        document.getElementById('nav-device-tag').textContent = data.device ? data.device.toUpperCase() : 'CPU';
+
+        if (data.vram_usage && data.vram_usage.total_mb > 0) {
+            document.getElementById('nav-vram-usage').textContent = `VRAM: ${data.vram_usage.allocated_mb}MB / ${data.vram_usage.total_mb}MB`;
+        } else {
+            document.getElementById('nav-vram-usage').textContent = 'CPU RAM Active';
+        }
+    } catch (err) {
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+        if (dot) dot.className = 'status-dot status-offline';
+        if (text) text.textContent = 'Backend Offline';
+    }
+}
+
+function initThemeManager() {
+    const themeBtn = document.getElementById('theme-switch-btn');
+    const storedTheme = localStorage.getItem('interplens_studio_theme');
+    
+    let activeTheme = storedTheme;
+    if (!activeTheme) {
+        activeTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+
+    applyTheme(activeTheme);
+
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+        });
+    }
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('interplens_studio_theme', theme);
+    const label = document.getElementById('theme-mode-text');
+    if (label) label.textContent = theme === 'dark' ? 'Dark' : 'Light';
+}
+
 function registerEventListeners() {
     const runBtn = document.getElementById('run-btn');
-    runBtn.addEventListener('click', executePromptAnalysis);
+    if (runBtn) runBtn.addEventListener('click', executePromptAnalysis);
 
-    // Sidebar Tab Switching
     document.querySelectorAll('.engine-menu .menu-btn:not(.disabled)').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const targetEngine = btn.getAttribute('data-engine');
@@ -435,9 +732,9 @@ function registerEventListeners() {
                 }
                 if (viewGpu) {
                     viewGpu.style.display = 'block';
-                    setTimeout(() => viewGpu.classList.add('active'), 10);
+                    requestAnimationFrame(() => viewGpu.classList.add('active'));
                 }
-                fetchGpuProfilerData();
+                if (window.fetchGpuProfilerData) window.fetchGpuProfilerData();
             } else {
                 if (viewGpu) {
                     viewGpu.classList.remove('active');
@@ -445,7 +742,7 @@ function registerEventListeners() {
                 }
                 if (viewLogit) {
                     viewLogit.style.display = 'block';
-                    setTimeout(() => viewLogit.classList.add('active'), 10);
+                    requestAnimationFrame(() => viewLogit.classList.add('active'));
                 }
             }
         });
@@ -459,28 +756,20 @@ function registerEventListeners() {
         });
     });
 
-    // Export Buttons
-    const exportBtn = document.getElementById('btn-export-json');
-    if (exportBtn) exportBtn.addEventListener('click', exportMatrixJSON);
-
-    const copyCsvBtn = document.getElementById('btn-copy-csv');
-    if (copyCsvBtn) copyCsvBtn.addEventListener('click', copyMatrixCSV);
-
-    // Metric Toggles
     document.querySelectorAll('.btn-metric').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.btn-metric').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            activeMetric = btn.getAttribute('data-metric');
+            const metric = btn.getAttribute('data-metric');
+            if (window.setActiveMetric) window.setActiveMetric(metric);
             
             const activePill = document.querySelector('.token-pill.active');
-            const posIdx = activePill ? parseInt(activePill.querySelector('.token-idx').textContent) : 0;
-            renderInspectionDetail(isNaN(posIdx) ? 0 : posIdx);
+            const posIdx = activePill ? parseInt(activePill.querySelector('.token-idx').textContent.replace('#', '')) : 0;
+            if (window.renderInspectionDetail) window.renderInspectionDetail(isNaN(posIdx) ? 0 : posIdx);
         });
     });
 }
 
-// --- Execution Handler ---
 async function executePromptAnalysis() {
     const promptInput = document.getElementById('prompt-input').value.trim();
     if (!promptInput) {
@@ -498,504 +787,44 @@ async function executePromptAnalysis() {
 
     const t0 = performance.now();
     try {
-        // Step 1: POST /api/run
-        const runRes = await fetch('/api/run', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: promptInput })
-        });
+        window.currentSession = await window.API.runModelForwardPass(promptInput);
+        document.getElementById('session-tag-display').textContent = `Session: ${window.currentSession.session_id.substring(0, 8)}`;
 
-        if (!runRes.ok) {
-            const err = await runRes.json();
-            throw new Error(err.detail || 'Forward pass failed');
+        if (window.currentSession.model_info) {
+            document.getElementById('spec-layers').textContent = `${window.currentSession.model_info.num_layers} Blocks`;
+            document.getElementById('spec-dim').textContent = `${window.currentSession.model_info.hidden_dim}d`;
         }
 
-        currentSession = await runRes.json();
-        document.getElementById('session-tag-display').textContent = `Session: ${currentSession.session_id.substring(0, 8)}`;
+        window.renderTokensFlow(window.currentSession.tokens);
 
-        // Update Spec Cards
-        if (currentSession.model_info) {
-            document.getElementById('spec-layers').textContent = `${currentSession.model_info.num_layers} Blocks`;
-            document.getElementById('spec-dim').textContent = `${currentSession.model_info.hidden_dim}d`;
-        }
-
-        // Render Tokens Flow
-        renderTokensFlow(currentSession.tokens);
-
-        // Step 2: GET /api/analysis/logit-lens
         const topK = document.getElementById('topk-select').value;
         const applyLn = document.getElementById('ln-toggle').checked;
         
-        const lensUrl = `/api/analysis/logit-lens?session_id=${currentSession.session_id}&top_k=${topK}&apply_ln=${applyLn}`;
-        const lensRes = await fetch(lensUrl);
-        if (!lensRes.ok) {
-            const err = await lensRes.json();
-            throw new Error(err.detail || 'Logit Lens extraction failed');
-        }
-
-        currentMatrix = await lensRes.json();
+        window.currentMatrix = await window.API.getLogitLensMatrix(window.currentSession.session_id, topK, applyLn);
         const latencyMs = Math.round(performance.now() - t0);
 
-        // Record Latency Telemetry
-        profilerTelemetry.latencyHistory.push({ time: new Date().toLocaleTimeString(), ms: latencyMs });
-        if (profilerTelemetry.latencyHistory.length > 15) profilerTelemetry.latencyHistory.shift();
+        if (window.profilerTelemetry) {
+            window.profilerTelemetry.latencyHistory.push({ time: new Date().toLocaleTimeString(), ms: latencyMs });
+            if (window.profilerTelemetry.latencyHistory.length > 15) window.profilerTelemetry.latencyHistory.shift();
+        }
 
-        // Render Grid Matrix & Model Response Card
-        renderMatrixGrid(currentMatrix);
-        renderModelResponseCard(currentMatrix);
+        window.renderMatrixGrid(window.currentMatrix);
+        window.renderModelResponseCard(window.currentMatrix);
 
-        // Select position 0 by default
-        if (currentMatrix.positions && currentMatrix.positions.length > 0) {
-            renderInspectionDetail(0);
+        if (window.currentMatrix.positions && window.currentMatrix.positions.length > 0) {
+            window.renderInspectionDetail(0);
         }
 
         fetchSystemHealth();
-        fetchGpuProfilerData();
+        if (window.fetchGpuProfilerData) window.fetchGpuProfilerData();
 
     } catch (err) {
         alert(`Analysis Error: ${err.message}`);
     } finally {
         runBtn.disabled = false;
         spinner.classList.add('hidden');
-        runText.textContent = 'Execute Forward Pass';
+        runText.textContent = 'Run Model Analysis';
     }
 }
 
-// --- Format Token Display ---
-function formatTokenStr(tokenStr) {
-    if (!tokenStr) return '""';
-    let clean = tokenStr.replace(/Ġ/g, ' ').replace(/Ċ/g, '\\n');
-    return clean;
-}
-
-// --- Render Tokens Flow ---
-function renderTokensFlow(tokens) {
-    const container = document.getElementById('tokens-strip');
-    container.innerHTML = '';
-
-    tokens.forEach((t, idx) => {
-        const pill = document.createElement('div');
-        pill.className = `token-pill ${idx === 0 ? 'active' : ''}`;
-        pill.innerHTML = `<span class="token-idx">${idx}</span> <span class="token-str">${escapeHtml(formatTokenStr(t))}</span>`;
-        pill.addEventListener('click', () => {
-            document.querySelectorAll('.token-pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            renderInspectionDetail(idx);
-        });
-        container.appendChild(pill);
-    });
-}
-
-// --- Render Model Output Response Card ---
-function renderModelResponseCard(matrix) {
-    const card = document.getElementById('response-card');
-    if (!card || !matrix.positions || matrix.positions.length === 0) return;
-
-    card.style.display = 'block';
-
-    // Target the last position in prompt (which generates the model's next token output)
-    const lastPos = matrix.positions[matrix.positions.length - 1];
-    const finalLayer = lastPos.layers[lastPos.layers.length - 1];
-    const top1 = finalLayer.top_tokens[0];
-
-    document.getElementById('response-winner-badge').textContent = `Predicted Next Token: "${formatTokenStr(top1.token)}"`;
-    document.getElementById('response-tok-val').textContent = `"${formatTokenStr(top1.token)}"`;
-    document.getElementById('response-prob-val').textContent = `${(top1.probability * 100).toFixed(1)}% Probability`;
-    document.getElementById('response-logit-val').textContent = `Logit: ${top1.logit !== null ? top1.logit.toFixed(2) : '-'}`;
-
-    // Render candidate competition progress bars
-    const barsContainer = document.getElementById('candidate-bars-container');
-    barsContainer.innerHTML = '';
-
-    finalLayer.top_tokens.forEach((cand, idx) => {
-        const pct = (cand.probability * 100).toFixed(1);
-        const row = document.createElement('div');
-        row.className = 'cand-bar-row';
-        row.innerHTML = `
-            <span class="cand-tok-name" title="${escapeHtml(cand.token)}">#${idx+1} ${escapeHtml(formatTokenStr(cand.token))}</span>
-            <div class="cand-bar-outer">
-                <div class="cand-bar-inner ${idx === 0 ? 'winner' : ''}" style="width: ${pct}%;"></div>
-            </div>
-            <span class="cand-pct-val">${pct}%</span>
-        `;
-        barsContainer.appendChild(row);
-    });
-}
-
-// --- Render Logit Lens Matrix Grid ---
-function renderMatrixGrid(matrix) {
-    const container = document.getElementById('matrix-container');
-    container.innerHTML = '';
-
-    if (!matrix.positions || matrix.positions.length === 0) {
-        container.innerHTML = '<div class="empty-state">No matrix data available.</div>';
-        return;
-    }
-
-    const table = document.createElement('table');
-    table.className = 'studio-grid';
-
-    // Header Row
-    const thead = document.createElement('thead');
-    const headTr = document.createElement('tr');
-    
-    const cornerTh = document.createElement('th');
-    cornerTh.textContent = 'Layer';
-    headTr.appendChild(cornerTh);
-
-    matrix.positions.forEach(pos => {
-        const th = document.createElement('th');
-        th.innerHTML = `Pos ${pos.position}<br><span style="color: var(--primary); font-family: var(--font-mono);">${escapeHtml(formatTokenStr(pos.token))}</span>`;
-        headTr.appendChild(th);
-    });
-    thead.appendChild(headTr);
-    table.appendChild(thead);
-
-    // Body Rows
-    const tbody = document.createElement('tbody');
-    const totalLayers = matrix.num_layers;
-
-    for (let l = 0; l < totalLayers; l++) {
-        const tr = document.createElement('tr');
-        
-        const labelTd = document.createElement('td');
-        labelTd.style.fontWeight = '600';
-        labelTd.style.fontSize = '10px';
-        labelTd.style.color = 'var(--text-muted)';
-        labelTd.textContent = l === 0 ? 'Embed' : `L${l-1}`;
-        tr.appendChild(labelTd);
-
-        matrix.positions.forEach(pos => {
-            const td = document.createElement('td');
-            td.className = 'grid-cell';
-
-            const layerData = pos.layers[l];
-            const top1 = layerData && layerData.top_tokens ? layerData.top_tokens[0] : null;
-
-            if (top1) {
-                const prob = top1.probability;
-                const pct = (prob * 100).toFixed(1);
-
-                // Cell Intensity Styling
-                if (prob > 0.6) {
-                    td.style = `background-color: var(--cell-high); color: var(--cell-text-high);`;
-                } else if (prob > 0.2) {
-                    td.style = `background-color: var(--cell-mid); color: var(--text-main);`;
-                } else {
-                    td.style = `background-color: var(--cell-low); color: var(--text-sub);`;
-                }
-
-                td.innerHTML = `
-                    <div class="cell-tok-name">${escapeHtml(formatTokenStr(top1.token))}</div>
-                    <div class="cell-tok-pct">${pct}%</div>
-                `;
-
-                // Hover Tooltip Listener (Feature 3: Top-5 Floating Distribution)
-                td.addEventListener('mouseenter', (e) => showMatrixTooltip(e, pos, l, layerData));
-                td.addEventListener('mousemove', (e) => positionMatrixTooltip(e));
-                td.addEventListener('mouseleave', hideMatrixTooltip);
-
-                // Click Inspection Listener
-                td.addEventListener('click', () => {
-                    renderInspectionDetail(pos.position);
-                });
-            }
-            tr.appendChild(td);
-        });
-
-        tbody.appendChild(tr);
-    }
-
-    table.appendChild(tbody);
-    container.appendChild(table);
-}
-
-// --- Floating Matrix Hover Tooltip ---
-function showMatrixTooltip(e, posData, layerIdx, layerData) {
-    const tooltip = document.getElementById('matrix-tooltip');
-    if (!tooltip || !layerData || !layerData.top_tokens) return;
-
-    const layerLabel = layerIdx === 0 ? 'Embedding Layer' : `Layer ${layerIdx - 1}`;
-    let html = `<div class="tooltip-title">Pos ${posData.position} ("${escapeHtml(formatTokenStr(posData.token))}") • ${layerLabel}</div>`;
-
-    layerData.top_tokens.forEach((t, i) => {
-        html += `
-            <div class="tooltip-row">
-                <span class="tooltip-tok">#${i+1} ${escapeHtml(formatTokenStr(t.token))}</span>
-                <span class="tooltip-prob">${(t.probability * 100).toFixed(1)}% (logit: ${t.logit !== null ? t.logit.toFixed(2) : '-'})</span>
-            </div>
-        `;
-    });
-
-    if (layerData.entropy !== undefined) {
-        html += `<div class="tooltip-entropy">Entropy: ${layerData.entropy} bits</div>`;
-    }
-
-    tooltip.innerHTML = html;
-    tooltip.classList.remove('hidden');
-    positionMatrixTooltip(e);
-}
-
-function positionMatrixTooltip(e) {
-    const tooltip = document.getElementById('matrix-tooltip');
-    if (!tooltip) return;
-    const rect = tooltip.getBoundingClientRect();
-    let x = e.clientX + 8;
-    let y = e.clientY + 8;
-
-    if (x + rect.width > window.innerWidth - 10) {
-        x = e.clientX - rect.width - 8;
-    }
-    if (y + rect.height > window.innerHeight - 10) {
-        y = e.clientY - rect.height - 8;
-    }
-
-    tooltip.style.left = `${Math.max(5, x)}px`;
-    tooltip.style.top = `${Math.max(5, y)}px`;
-}
-
-function hideMatrixTooltip() {
-    const tooltip = document.getElementById('matrix-tooltip');
-    if (tooltip) tooltip.classList.add('hidden');
-}
-
-// --- Render Inspection Detail Panel ---
-function renderInspectionDetail(posIdx) {
-    if (!currentMatrix || !currentMatrix.positions[posIdx]) return;
-
-    const pos = currentMatrix.positions[posIdx];
-
-    const detailCard = document.getElementById('detail-card');
-    detailCard.style.display = 'block';
-
-    document.getElementById('detail-title').textContent = `Inspection: Position ${posIdx}`;
-    document.getElementById('detail-subtitle').textContent = `Target: "${formatTokenStr(pos.token)}"`;
-
-    // Populate Table
-    const tbody = document.querySelector('#drilldown-table tbody');
-    tbody.innerHTML = '';
-
-    const layerLabels = [];
-    const metricData = [];
-
-    pos.layers.forEach((lData, lIdx) => {
-        const lName = lIdx === 0 ? 'Embed' : `Layer ${lIdx-1}`;
-        layerLabels.push(lName);
-
-        const tr = document.createElement('tr');
-        let html = `<td><strong>${lName}</strong></td>`;
-        
-        const top1 = lData.top_tokens[0];
-        const top2 = lData.top_tokens[1];
-
-        if (activeMetric === 'prob') {
-            metricData.push(top1 ? top1.probability * 100 : 0);
-        } else if (activeMetric === 'rank') {
-            const rank = pos.target_token_ranks ? pos.target_token_ranks[lIdx] : (top1 ? top1.rank : 1);
-            metricData.push(rank);
-        } else if (activeMetric === 'kl') {
-            metricData.push(lData.kl_divergence || 0);
-        } else if (activeMetric === 'entropy') {
-            metricData.push(lData.entropy || 0);
-        }
-
-        if (top1) {
-            html += `<td><span class="badge-token">${escapeHtml(formatTokenStr(top1.token))}</span></td>
-                     <td>${(top1.probability * 100).toFixed(1)}%</td>`;
-        } else {
-            html += `<td>-</td><td>-</td>`;
-        }
-
-        if (top2) {
-            html += `<td><span class="badge-token" style="background-color: var(--bg-subtle); color: var(--text-sub);">${escapeHtml(formatTokenStr(top2.token))}</span></td>
-                     <td>${(top2.probability * 100).toFixed(1)}%</td>`;
-        } else {
-            html += `<td>-</td><td>-</td>`;
-        }
-
-        tr.innerHTML = html;
-        tbody.appendChild(tr);
-    });
-
-    if (activeMetric === 'ribbon') {
-        renderRibbonChart(layerLabels, pos.top5_trajectories || {});
-    } else {
-        renderLineChart(layerLabels, metricData);
-    }
-}
-
-function renderRibbonChart(labels, top5Trajectories) {
-    const ctx = document.getElementById('prob-chart').getContext('2d');
-    if (detailChart) detailChart.destroy();
-
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-    const textColor = isDark ? '#94a3b8' : '#475569';
-    const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
-
-    const datasets = [];
-    let colorIdx = 0;
-
-    for (const [tokStr, probSeries] of Object.entries(top5Trajectories)) {
-        const color = colorPalette[colorIdx % colorPalette.length];
-        datasets.push({
-            label: `Candidate "${formatTokenStr(tokStr)}"`,
-            data: probSeries,
-            borderColor: color,
-            backgroundColor: color + '15',
-            fill: false,
-            tension: 0.2,
-            pointRadius: 3
-        });
-        colorIdx++;
-    }
-
-    detailChart = new Chart(ctx, {
-        type: 'line',
-        data: { labels: labels, datasets: datasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    min: 0,
-                    max: 100,
-                    title: { display: true, text: 'Probability (%)', color: textColor, font: { family: 'Inter', size: 10 } },
-                    grid: { color: gridColor },
-                    ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
-                },
-                x: {
-                    grid: { color: gridColor },
-                    ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
-                }
-            },
-            plugins: {
-                legend: { labels: { color: textColor, font: { family: 'Inter', size: 11, weight: '500' } } }
-            }
-        }
-    });
-}
-
-function renderLineChart(labels, dataPts) {
-    const ctx = document.getElementById('prob-chart').getContext('2d');
-    if (detailChart) detailChart.destroy();
-
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const primaryColor = activeMetric === 'rank' ? '#eab308' : (activeMetric === 'kl' ? '#ef4444' : (activeMetric === 'entropy' ? '#06b6d4' : (isDark ? '#3b82f6' : '#2563eb')));
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-    const textColor = isDark ? '#94a3b8' : '#475569';
-
-    let yLabel = 'Top-1 Probability (%)';
-    let yScaleOpts = {
-        grid: { color: gridColor },
-        ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
-    };
-
-    if (activeMetric === 'prob') {
-        yLabel = 'Top-1 Probability (%)';
-        yScaleOpts.min = 0;
-        yScaleOpts.max = 100;
-    } else if (activeMetric === 'rank') {
-        yLabel = 'Target Token Rank (1 is top)';
-        yScaleOpts.reverse = true;
-        const maxRank = Math.max(...dataPts, 5);
-        yScaleOpts.suggestedMin = 1;
-        yScaleOpts.suggestedMax = maxRank;
-    } else if (activeMetric === 'kl') {
-        yLabel = 'KL Divergence KL(P_L || P_L-1) (bits)';
-        yScaleOpts.beginAtZero = true;
-        yScaleOpts.suggestedMax = Math.max(...dataPts, 1.0);
-    } else if (activeMetric === 'entropy') {
-        yLabel = 'Prediction Entropy (bits)';
-        yScaleOpts.beginAtZero = true;
-        yScaleOpts.suggestedMax = Math.max(...dataPts, 2.0);
-    }
-
-    detailChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: yLabel,
-                data: dataPts,
-                borderColor: primaryColor,
-                backgroundColor: primaryColor + '22',
-                fill: true,
-                tension: 0.25,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: yScaleOpts,
-                x: {
-                    grid: { color: gridColor },
-                    ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
-                }
-            },
-            plugins: {
-                legend: { labels: { color: textColor, font: { family: 'Inter', size: 12, weight: '500' } } }
-            }
-        }
-    });
-}
-
-// --- Data Export & Copy ---
-function exportMatrixJSON() {
-    if (!currentMatrix) {
-        alert('No analysis matrix data available to export.');
-        return;
-    }
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentMatrix, null, 2));
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute("href", dataStr);
-    dlAnchor.setAttribute("download", `interplens_logit_lens_${currentMatrix.session_id}.json`);
-    document.body.appendChild(dlAnchor);
-    dlAnchor.click();
-    dlAnchor.remove();
-}
-
-function copyMatrixCSV() {
-    if (!currentMatrix || !currentMatrix.positions) {
-        alert('No analysis matrix data available to copy.');
-        return;
-    }
-
-    let csv = "Layer," + currentMatrix.positions.map(p => `Pos_${p.position} ("${formatTokenStr(p.token)}")`).join(",") + "\n";
-
-    for (let l = 0; l < currentMatrix.num_layers; l++) {
-        const layerName = l === 0 ? "Embed" : `L${l-1}`;
-        const row = [layerName];
-        currentMatrix.positions.forEach(pos => {
-            const top1 = pos.layers[l] && pos.layers[l].top_tokens ? pos.layers[l].top_tokens[0] : null;
-            if (top1) {
-                row.push(`"${formatTokenStr(top1.token)}" (${(top1.probability*100).toFixed(1)}%)`);
-            } else {
-                row.push("-");
-            }
-        });
-        csv += row.join(",") + "\n";
-    }
-
-    navigator.clipboard.writeText(csv).then(() => {
-        alert('✅ Logit Lens CSV matrix copied to clipboard!');
-    }).catch(err => {
-        alert('Copy failed: ' + err);
-    });
-}
-
-function updateChartStyles(theme) {
-    if (currentMatrix && currentMatrix.positions) {
-        const activePill = document.querySelector('.token-pill.active');
-        const posIdx = activePill ? parseInt(activePill.querySelector('.token-idx').textContent) : 0;
-        renderInspectionDetail(isNaN(posIdx) ? 0 : posIdx);
-    }
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+window.fetchSystemHealth = fetchSystemHealth;

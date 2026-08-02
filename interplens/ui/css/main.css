@@ -9,18 +9,18 @@
     --bg-panel: #1e293b;
     --bg-subtle: #334155;
     --bg-hover: #475569;
-    
+
     --border-color: #334155;
     --border-highlight: #475569;
-    
+
     --text-main: #f8fafc;
     --text-sub: #cbd5e1;
     --text-muted: #94a3b8;
-    
+
     --primary: #3b82f6;
     --primary-hover: #2563eb;
     --primary-glow: rgba(59, 130, 246, 0.15);
-    
+
     --accent-cyan: #06b6d4;
     --accent-emerald: #10b981;
     --accent-purple: #8b5cf6;
@@ -37,18 +37,18 @@
     --bg-panel: #ffffff;
     --bg-subtle: #f1f5f9;
     --bg-hover: #e2e8f0;
-    
+
     --border-color: #e2e8f0;
     --border-highlight: #cbd5e1;
-    
+
     --text-main: #0f172a;
     --text-sub: #334155;
     --text-muted: #64748b;
-    
+
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
     --primary-glow: rgba(37, 99, 235, 0.1);
-    
+
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
@@ -123,7 +123,10 @@ body {
     border-radius: 12px;
 }
 
-.nav-center { display: flex; align-items: center; }
+.nav-center {
+    display: flex;
+    align-items: center;
+}
 
 .model-status-pill {
     display: flex;
@@ -138,7 +141,9 @@ body {
     color: var(--text-sub);
 }
 
-.dot-divider { color: var(--text-muted); }
+.dot-divider {
+    color: var(--text-muted);
+}
 
 .nav-right {
     display: flex;
@@ -166,10 +171,21 @@ body {
     border-color: var(--primary);
 }
 
-[data-theme="dark"] .icon-sun { display: block; }
-[data-theme="dark"] .icon-moon { display: none; }
-[data-theme="light"] .icon-sun { display: none; }
-[data-theme="light"] .icon-moon { display: block; }
+[data-theme="dark"] .icon-sun {
+    display: block;
+}
+
+[data-theme="dark"] .icon-moon {
+    display: none;
+}
+
+[data-theme="light"] .icon-sun {
+    display: none;
+}
+
+[data-theme="light"] .icon-moon {
+    display: block;
+}
 
 /* Studio Main Workspace */
 .studio-body {
@@ -263,9 +279,14 @@ body {
     margin-bottom: 6px;
 }
 
-.spec-row:last-child { margin-bottom: 0; }
+.spec-row:last-child {
+    margin-bottom: 0;
+}
 
-.spec-key { color: var(--text-muted); }
+.spec-key {
+    color: var(--text-muted);
+}
+
 .spec-val {
     font-weight: 600;
     color: var(--text-main);
@@ -294,50 +315,4 @@ body {
     display: block;
     opacity: 1;
     transform: translateY(0);
-}
-
-/* Responsive PC & Laptop Screen Breakpoints */
-@media (max-width: 1366px) {
-    .studio-sidebar {
-        width: 210px;
-        padding: 12px 8px;
-    }
-    
-    .menu-btn {
-        padding: 8px 10px;
-        font-size: 12px;
-    }
-
-    .studio-content {
-        padding: 14px 16px;
-        gap: 14px;
-    }
-
-    .brand-name {
-        font-size: 15px;
-    }
-
-    .model-status-pill {
-        padding: 4px 10px;
-        font-size: 11px;
-    }
-}
-
-@media (max-width: 1080px) {
-    .studio-sidebar {
-        width: 190px;
-    }
-
-    .brand-tag, .status-tag {
-        display: none;
-    }
-}
-
-@media (min-width: 1920px) {
-    .studio-content {
-        padding: 24px 32px;
-        gap: 24px;
-        max-width: 2400px;
-        margin: 0 auto;
-    }
 }

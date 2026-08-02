@@ -18,32 +18,32 @@ async function fetchSystemHealth() {
         const text = document.getElementById('status-text');
 
         if (data.status === 'online') {
-            dot.className = 'status-dot status-online';
-            text.textContent = 'Backend Online';
+            if (dot) dot.className = 'status-dot status-online';
+            if (text) text.textContent = 'Backend Online';
         } else if (data.status === 'loading') {
-            dot.className = 'status-dot status-busy';
-            text.textContent = `Loading Model (${data.active_model})...`;
+            if (dot) dot.className = 'status-dot status-busy';
+            if (text) text.textContent = `Loading Model (${data.active_model})...`;
         } else if (data.status === 'error') {
-            dot.className = 'status-dot status-offline';
-            text.textContent = `Error: ${data.error || 'Model load failed'}`;
+            if (dot) dot.className = 'status-dot status-offline';
+            if (text) text.textContent = `Error: ${data.error || 'Model load failed'}`;
         } else {
-            dot.className = 'status-dot status-busy';
-            text.textContent = 'Initializing...';
+            if (dot) dot.className = 'status-dot status-busy';
+            if (text) text.textContent = 'Initializing...';
         }
 
-        document.getElementById('nav-model-name').textContent = data.active_model || 'None';
-        document.getElementById('nav-device-tag').textContent = data.device ? data.device.toUpperCase() : 'CPU';
+        if (document.getElementById('nav-model-name')) document.getElementById('nav-model-name').textContent = data.active_model || 'None';
+        if (document.getElementById('nav-device-tag')) document.getElementById('nav-device-tag').textContent = data.device ? data.device.toUpperCase() : 'CPU';
 
         if (data.vram_usage && data.vram_usage.total_mb > 0) {
-            document.getElementById('nav-vram-usage').textContent = `VRAM: ${data.vram_usage.allocated_mb}MB / ${data.vram_usage.total_mb}MB`;
+            if (document.getElementById('nav-vram-usage')) document.getElementById('nav-vram-usage').textContent = `VRAM: ${data.vram_usage.allocated_mb}MB / ${data.vram_usage.total_mb}MB`;
         } else {
-            document.getElementById('nav-vram-usage').textContent = 'CPU RAM Active';
+            if (document.getElementById('nav-vram-usage')) document.getElementById('nav-vram-usage').textContent = 'CPU RAM Active';
         }
     } catch (err) {
         const dot = document.getElementById('status-dot');
         const text = document.getElementById('status-text');
-        dot.className = 'status-dot status-offline';
-        text.textContent = 'Backend Offline';
+        if (dot) dot.className = 'status-dot status-offline';
+        if (text) text.textContent = 'Backend Offline';
     }
 }
 
@@ -120,6 +120,20 @@ function registerEventListeners() {
             const promptText = e.target.getAttribute('data-prompt');
             document.getElementById('prompt-input').value = promptText;
             executePromptAnalysis();
+        });
+    });
+
+    // Metric Toggles (Prob, KL, Entropy, Top-5 Trajectories)
+    document.querySelectorAll('.btn-metric').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.btn-metric').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const metric = btn.getAttribute('data-metric');
+            if (window.setActiveMetric) window.setActiveMetric(metric);
+            
+            const activePill = document.querySelector('.token-pill.active');
+            const posIdx = activePill ? parseInt(activePill.querySelector('.token-idx').textContent.replace('#', '')) : 0;
+            if (window.renderInspectionDetail) window.renderInspectionDetail(isNaN(posIdx) ? 0 : posIdx);
         });
     });
 }

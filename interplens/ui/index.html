@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Modular CSS System -->
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/logit_lens.css">
@@ -107,6 +108,14 @@
 
                         <button class="menu-btn disabled" title="Coming in Phase 3">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                            <span>Residual Stream</span>
+                            <span class="status-tag">Phase 3</span>
+                        </button>
+
+                        <button class="menu-btn disabled" title="Coming in Phase 3">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
                             <span>Attention Map</span>
@@ -130,6 +139,23 @@
                             </svg>
                             <span>Causal Patching</span>
                             <span class="status-tag">Phase 5</span>
+                        </button>
+
+                        <button class="menu-btn disabled" title="Coming in Phase 6">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"></path>
+                            </svg>
+                            <span>Model Diff Comparison</span>
+                            <span class="status-tag">Phase 6</span>
+                        </button>
+
+                        <button class="menu-btn disabled" title="Coming in Phase 7">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                            <span>SAE Feature Explorer</span>
+                            <span class="status-tag">Phase 7</span>
                         </button>
                     </nav>
                 </div>
@@ -305,6 +331,14 @@
                                 </svg>
                                 <h2 id="detail-title">Token Position Inspection</h2>
                                 <span class="badge-token" id="detail-subtitle">Position 0</span>
+                            </div>
+
+                            <div class="metric-toggles">
+                                <span class="preset-label">Chart View:</span>
+                                <button class="btn-metric active" data-metric="prob">Top-1 Prob (%)</button>
+                                <button class="btn-metric" data-metric="kl">KL Divergence</button>
+                                <button class="btn-metric" data-metric="entropy">Entropy (bits)</button>
+                                <button class="btn-metric" data-metric="top5">Top-5 Trajectories</button>
                             </div>
                         </div>
 
@@ -571,7 +605,7 @@
         </div>
     </div>
 
-    <!-- Modular JS Client Scripts -->
+    <!-- Client Application Scripts -->
     <script src="js/api.js"></script>
     <script src="js/logit_lens.js"></script>
     <script src="js/gpu_profiler.js"></script>
