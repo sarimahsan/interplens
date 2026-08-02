@@ -521,11 +521,100 @@ textarea#prompt-input:focus {
 .cell-tok-name { font-weight: 600; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
 .cell-tok-pct { font-size: 10px; opacity: 0.85; margin-top: 2px; }
 
-/* Model Output Response Visualization Card */
-.response-panel {
-    border-color: rgba(59, 130, 246, 0.3);
-    background: linear-gradient(180deg, var(--bg-panel) 0%, rgba(59, 130, 246, 0.04) 100%);
+/* GPU VRAM Block Allocation Grid Card */
+.gpu-panel {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
 }
+
+.gpu-grid-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.vram-chip-weights { color: #3b82f6; font-weight: 600; }
+.vram-chip-cache { color: #06b6d4; font-weight: 600; }
+.vram-chip-free { color: var(--text-muted); font-weight: 500; }
+
+.gpu-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 10px;
+}
+
+.vram-blocks-grid {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 6px;
+}
+
+.vram-tile {
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-app);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+
+.vram-tile:hover {
+    transform: scale(1.1);
+    z-index: 5;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.vram-tile.type-weights {
+    background-color: rgba(59, 130, 246, 0.7);
+    border-color: #3b82f6;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+.vram-tile.type-cache {
+    background-color: rgba(6, 182, 212, 0.7);
+    border-color: #06b6d4;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+.vram-tile.type-free {
+    background-color: var(--bg-app);
+    border-color: var(--border-color);
+    opacity: 0.6;
+}
+
+.gpu-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    background-color: var(--bg-app);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 14px;
+}
+
+.gpu-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gpu-stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.gpu-stat-val {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
 
 .response-body {
     display: grid;

@@ -155,6 +155,14 @@ def get_health() -> Dict[str, Any]:
     }
 
 
+@app.get("/api/hardware/gpu-status")
+def get_gpu_status() -> Dict[str, Any]:
+    """Returns 32-block VRAM memory grid allocation and CUDA compute metrics."""
+    from interplens.utils.device import get_gpu_grid_status
+    device = get_optimal_device()
+    return get_gpu_grid_status(device)
+
+
 @app.post("/api/run", response_model=RunResponse)
 def run_prompt(req: RunRequest):
     """Runs forward pass on prompt, caches activation tensors, and returns session ID."""

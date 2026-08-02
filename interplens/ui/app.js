@@ -47,7 +47,7 @@ function applyTheme(theme) {
     }
 }
 
-// --- Health Check ---
+// --- Health & GPU Hardware Check ---
 async function fetchSystemHealth() {
     try {
         const res = await fetch('/api/health');
@@ -67,7 +67,7 @@ async function fetchSystemHealth() {
         if (data.status === 'loading') {
             if (modelEl) modelEl.textContent = `Loading ${data.active_model}...`;
             if (badgeEl) badgeEl.textContent = `Loading ${data.active_model}...`;
-            setTimeout(fetchSystemHealth, 3000); // Poll status every 3s while downloading model
+            setTimeout(fetchSystemHealth, 3000);
         } else if (data.status === 'error') {
             if (modelEl) modelEl.textContent = `Error Loading Model`;
             if (badgeEl) badgeEl.textContent = `Error: ${data.error || 'Failed to load'}`;
@@ -80,8 +80,42 @@ async function fetchSystemHealth() {
         if (deviceEl && data.device) {
             deviceEl.textContent = data.device.toUpperCase();
         }
+
+        fetchGpuHardwareStatus();
     } catch (err) {
         console.warn('System status update error:', err);
+    }
+}
+
+async function fetchGpuHardwareStatus() {
+    try {
+        const res = await fetch('/api/hardware/gpu-status');
+        if (!res.ok) return;
+        const gpu = await res.json();
+
+        const badge = document.getElementById('gpu-device-name-badge');
+        if (badge) badge.textContent = `${gpu.has_gpu ? 'CUDA' : 'CPU'}: ${gpu.device_name}`;
+
+        document.getElementById('gpu-alloc-val').textContent = `${gpu.allocated_mb} MB`;
+        document.getElementById('gpu-res-val').textContent = `${gpu.reserved_mb} MB`;
+        document.getElementById('gpu-peak-val').textContent = `${gpu.max_allocated_mb} MB`;
+        document.getElementById('gpu-util-val').textContent = `${gpu.utilization_pct}%`;
+
+        // Render 32 VRAM Block Tiles
+        const container = document.getElementById('vram-blocks-container');
+        if (container && gpu.blocks) {
+            container.innerHTML = '';
+            const mbPerBlock = gpu.total_mb > 0 ? (gpu.total_mb / 32).toFixed(0) : 0;
+
+            gpu.blocks.forEach((blk, i) => {
+                const tile = document.createElement('div');
+                tile.className = `vram-tile type-${blk.type}`;
+                tile.title = `VRAM Block #${i + 1}: ${blk.label} (~${mbPerBlock} MB)`;
+                container.appendChild(tile);
+            });
+        }
+    } catch (err) {
+        console.warn('GPU hardware status fetch error:', err);
     }
 }
 
