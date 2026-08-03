@@ -180,6 +180,12 @@ function registerEventListeners() {
                     requestAnimationFrame(() => view.classList.add('active'));
                 }
                 if (window.fetchNeuronData) window.fetchNeuronData(0, null, 10, null);
+            } else if (targetEngine === 'causal') {
+                const view = document.getElementById('view-causal');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
+                }
             } else {
                 const view = document.getElementById('view-logit-lens');
                 if (view) {

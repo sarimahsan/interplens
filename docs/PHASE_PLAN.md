@@ -85,10 +85,10 @@ Across every phase, all backend tensor operations MUST adhere to these PyTorch &
 ### 🔴 Phase 5: Automated Causal Interventions (Patching & ROME Sweeps)
 **Goal:** Enable causal experimentation (moving beyond correlation to causal proof).
 
-- [ ] **5.1 Activation Patching Engine:** Swap activations between clean & corrupt prompts (`causal_patching.py`).
-- [ ] **5.2 Causal Tracing Engine:** Automated layer × position sweep generator (`causal_tracing.py`).
-- [ ] **5.3 UI Panel Integration:** Interactive Causal Patching Heatmap tab with clean/corrupt prompt inputs and single-cell drilldown.
-- [ ] **5.4 Phase 5 Verification:** Verify patching logit-diff recovery on known benchmark prompts.
+- [x] **5.1 Activation Patching Engine:** Swap activations between clean & corrupt prompts (`causal_patching.py`).
+- [x] **5.2 Causal Tracing Engine:** Automated layer × position sweep generator (`causal_patching.py`).
+- [x] **5.3 UI Panel Integration:** Interactive Causal Patching Heatmap tab with clean/corrupt prompt inputs and single-cell drilldown.
+- [x] **5.4 Phase 5 Verification:** Verify patching logit-diff recovery on known benchmark prompts.
 
 ---
 
@@ -101,7 +101,7 @@ Across every phase, all backend tensor operations MUST adhere to these PyTorch &
 - [ ] **6.4 Phase 6 Verification:** Verify cross-family adapter parity.
 
 ---
-
+phase 7
 ### 🟤 Phase 7: Sparse Autoencoder (SAE) Feature Explorer
 **Goal:** Decompose polysemantic neurons into monosemantic sparse features using pretrained SAEs.
 

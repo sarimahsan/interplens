@@ -153,3 +153,38 @@ class TokenAttributionResponse(BaseModel):
     attributions: List[TokenAttributionScore]
 
 
+class CausalPatchingRequest(BaseModel):
+    """Payload request for clean vs corrupted activation patching sweep."""
+    clean_prompt: str
+    corrupt_prompt: str
+    target_token: Optional[str] = None
+
+
+class CausalTracingCell(BaseModel):
+    """Single cell metadata in layer x position causal patching matrix."""
+    layer: int
+    position: int
+    clean_token: str
+    corrupt_token: str
+    logit_diff_recovery: float
+    patched_logit_diff: float
+
+
+class CausalTracingResponse(BaseModel):
+    """Full payload for Automated Causal Interventions & ROME Causal Tracing Sweep."""
+    clean_prompt: str
+    corrupt_prompt: str
+    clean_tokens: List[str]
+    corrupt_tokens: List[str]
+    target_token: str
+    baseline_clean_logit_diff: float
+    baseline_corrupt_logit_diff: float
+    num_layers: int
+    seq_len: int
+    max_recovery_layer: int
+    max_recovery_position: int
+    max_recovery_percentage: float
+    heatmap_matrix: List[List[float]]  # num_layers x seq_len recovery matrix
+    cells: List[CausalTracingCell]
+
+

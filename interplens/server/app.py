@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 try:
     from interplens.config import settings
-    from interplens.schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo, SteeringRequest
+    from interplens.schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo, SteeringRequest, CausalPatchingRequest
     from interplens.utils.device import get_vram_usage, get_optimal_device
     from interplens.server.session import global_session_store
     from interplens.adapters.inplace import InPlaceModelAdapter
@@ -22,7 +22,7 @@ try:
 except ImportError:
     # Fallback if imported from within the interplens package directory directly
     from config import settings
-    from schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo, SteeringRequest
+    from schema import RunRequest, RunResponse, LogitLensMatrixResponse, ModelInfo, SteeringRequest, CausalPatchingRequest
     from utils.device import get_vram_usage, get_optimal_device
     from server.session import global_session_store
     from adapters.inplace import InPlaceModelAdapter
@@ -422,6 +422,26 @@ def get_model_topology():
     adapter = get_active_adapter()
     from interplens.analysis.topology import inspect_model_topology
     return inspect_model_topology(adapter)
+
+
+@app.post("/api/analysis/causal-patching")
+def run_causal_patching(req: CausalPatchingRequest):
+    """Runs a full layer x position activation patching sweep between clean and corrupted prompts."""
+    if not req.clean_prompt or not req.corrupt_prompt:
+        raise HTTPException(status_code=400, detail="Both 'clean_prompt' and 'corrupt_prompt' must be provided.")
+
+    adapter = get_active_adapter()
+    try:
+        from interplens.analysis.causal_patching import run_causal_patching_sweep
+    except ImportError:
+        from analysis.causal_patching import run_causal_patching_sweep
+
+    return run_causal_patching_sweep(
+        adapter=adapter,
+        clean_prompt=req.clean_prompt,
+        corrupt_prompt=req.corrupt_prompt,
+        target_token_str=req.target_token,
+    )
 
 
 # Mount UI static files if directory exists

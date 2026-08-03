@@ -21,6 +21,7 @@ Built on top of [TransformerLens](https://github.com/TransformerLensOrg/Transfor
 
 ## 🛠️ Architecture & Documentation
 
+- [Studio Features & Micro-Details](STUDIO_FEATURES.md) — Comprehensive guide to all features, engines, and micro-details.
 - [System Architecture](docs/ARCHITECTURE.md) — 4-tier model adapter & engine architecture.
 - [Package Specification](docs/PACKAGE_SPEC.md) — Class hierarchy, REST endpoints, and module design.
 - [UI & Visual Specification](docs/UI_SPEC.md) — Visual design tokens, component layout, and chart specs.

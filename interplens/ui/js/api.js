@@ -106,6 +106,23 @@ var API = window.API || {
             throw new Error(err.detail || 'Token attribution fetch failed');
         }
         return await res.json();
+    },
+
+    async runCausalPatching(cleanPrompt, corruptPrompt, targetToken = null) {
+        const res = await fetch('/api/analysis/causal-patching', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clean_prompt: cleanPrompt,
+                corrupt_prompt: corruptPrompt,
+                target_token: targetToken,
+            })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Causal patching execution failed');
+        }
+        return await res.json();
     }
 };
 
