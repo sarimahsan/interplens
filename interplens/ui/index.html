@@ -836,6 +836,16 @@
                                             <option value="0">Position 0</option>
                                         </select>
                                     </div>
+
+                                    <div class="setting-item">
+                                        <label for="neuron-topk-select">Top Neurons (K):</label>
+                                        <select id="neuron-topk-select" class="studio-select" onchange="triggerNeuronFetch()">
+                                            <option value="5">Top 5</option>
+                                            <option value="10" selected>Top 10</option>
+                                            <option value="20">Top 20</option>
+                                            <option value="50">Top 50</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </section>

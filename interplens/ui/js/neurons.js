@@ -150,13 +150,15 @@ function renderTokenAttribution(data) {
 function selectSingleNeuron(neuronIdx) {
     const layer = parseInt(document.getElementById('neuron-layer-select').value) || 0;
     const pos = parseInt(document.getElementById('neuron-pos-select').value) || 0;
-    fetchNeuronData(layer, pos, 10, neuronIdx);
+    const topK = parseInt(document.getElementById('neuron-topk-select').value) || 10;
+    fetchNeuronData(layer, pos, topK, neuronIdx);
 }
 
 function triggerNeuronFetch() {
     const layer = parseInt(document.getElementById('neuron-layer-select').value) || 0;
     const pos = parseInt(document.getElementById('neuron-pos-select').value) || 0;
-    fetchNeuronData(layer, pos, 10, null);
+    const topK = parseInt(document.getElementById('neuron-topk-select').value) || 10;
+    fetchNeuronData(layer, pos, topK, null);
 }
 
 window.fetchNeuronData = fetchNeuronData;
