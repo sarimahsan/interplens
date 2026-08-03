@@ -53,17 +53,19 @@ def compute_attention_metrics(
         if t.ndim == 4:
             t = t[0]  # Remove batch dimension -> (H, N, N)
         elif t.ndim == 2:
-            # Single head / pooled tensor -> expand to (1, N, N)
             t = t.unsqueeze(0)
         
-        # Verify shape matches seq_len
+        # Verify shape is valid (H, N, N)
         if t.ndim == 3:
-            actual_heads, h_q, h_k = t.shape
-            num_heads = actual_heads
-            # Squeeze or trim sequence dim if needed
-            if h_q != seq_len or h_k != seq_len:
-                t = t[:, :seq_len, :seq_len]
-            attn_grid = t
+            s0, s1, s2 = t.shape
+            if s1 == seq_len and s2 == seq_len:
+                num_heads = s0
+                attn_grid = t
+            elif s0 == seq_len and s1 == seq_len:
+                attn_grid = t.unsqueeze(0)
+            else:
+                # Captured tensor is a hidden state activation (e.g., [1, seq_len, hidden_dim]), not an attention map matrix
+                attn_grid = None
         else:
             attn_grid = None
     else:

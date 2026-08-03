@@ -125,9 +125,15 @@ class CustomModelAdapter(BaseModelAdapter):
                     input_ids = torch.tensor([input_ids], device=self.device)
                 elif input_ids.ndim == 1:
                     input_ids = input_ids.unsqueeze(0).to(self.device)
-                out = self._model_instance(input_ids)
+                try:
+                    out = self._model_instance(input_ids, output_attentions=True)
+                except Exception:
+                    out = self._model_instance(input_ids)
             else:
-                out = self._model_instance(prompt)
+                try:
+                    out = self._model_instance(prompt, output_attentions=True)
+                except Exception:
+                    out = self._model_instance(prompt)
                 
             if hasattr(out, "logits"):
                 logits = out.logits
@@ -137,6 +143,15 @@ class CustomModelAdapter(BaseModelAdapter):
                 logits = out
                 
             cache = dict(self.auto_hooker.captured_activations)
+
+            # Store real HuggingFace layer attention weight maps if outputted
+            attentions = getattr(out, "attentions", None)
+            if attentions is not None and isinstance(attentions, (tuple, list)):
+                for l_idx, attn_map in enumerate(attentions):
+                    if isinstance(attn_map, torch.Tensor):
+                        cache[f"layers.{l_idx}.attn.hook_pattern"] = attn_map
+                        cache[f"blocks.{l_idx}.attn.hook_pattern"] = attn_map
+
             return logits, cache
         finally:
             self.auto_hooker.remove_hooks()

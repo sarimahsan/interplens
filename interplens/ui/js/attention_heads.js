@@ -72,7 +72,7 @@ function renderDetailMatrix(data) {
 
     let html = `
         <div style="margin-bottom: 12px; font-size: 13px; color: var(--text-muted);">
-            Layer <strong>L${data.layer}</strong> • Head <strong>H${data.head}</strong> • $N \\times N$ Attention Matrix ($N=${n}$)
+            Layer <strong>L${data.layer}</strong> • Head <strong>H${data.head}</strong> • <strong>N &times; N Attention Matrix</strong> (N = ${n})
         </div>
         <div class="matrix-grid-wrapper" style="overflow-x: auto; max-width: 100%;">
             <table class="studio-table" style="border-collapse: collapse; font-family: var(--font-mono); font-size: 11px;">
