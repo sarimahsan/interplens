@@ -43,3 +43,9 @@ def test_inspect_model_topology():
     assert "total_parameters" in top
     assert len(top["nodes"]) >= 5
     assert top["hidden_dim"] == 64
+    assert "parameter_breakdown" in top
+    assert len(top["parameter_breakdown"]) >= 5
+
+    # Verify percentages sum close to 100%
+    total_pct = sum(item["percentage"] for item in top["parameter_breakdown"])
+    assert 99.0 <= total_pct <= 101.0

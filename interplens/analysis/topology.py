@@ -30,11 +30,14 @@ def inspect_model_topology(adapter: BaseModelAdapter) -> Dict[str, Any]:
     act_fn = getattr(config, "hidden_act", None) or getattr(config, "activation_function", None) or "GELU / SiLU"
     norm_eps = getattr(config, "layer_norm_epsilon", None) or getattr(config, "rms_norm_eps", None) or 1e-5
     
-    # Calculate parameter counts dynamically
+    # Calculate parameter counts dynamically per component
     total_params = 0
     embed_params = 0
-    block_params = 0
-    head_params = 0
+    attn_params = 0
+    mlp_params = 0
+    norm_params = 0
+    unembed_params = 0
+    other_params = 0
     dtype_str = "float32"
 
     if model is not None and isinstance(model, torch.nn.Module):
@@ -42,15 +45,28 @@ def inspect_model_topology(adapter: BaseModelAdapter) -> Dict[str, Any]:
             p_count = param.numel()
             total_params += p_count
             dtype_str = str(param.dtype).replace("torch.", "")
-            
-            if "embed" in name.lower() or "wte" in name.lower() or "wpe" in name.lower():
+            name_lower = name.lower()
+
+            if "embed" in name_lower or "wte" in name_lower or "wpe" in name_lower:
                 embed_params += p_count
-            elif "head" in name.lower() or "unembed" in name.lower() or "lm_head" in name.lower():
-                head_params += p_count
+            elif "lm_head" in name_lower or "unembed" in name_lower or "output_layer" in name_lower:
+                unembed_params += p_count
+            elif "attn" in name_lower or "attention" in name_lower or "self_attn" in name_lower or "q_proj" in name_lower or "k_proj" in name_lower or "v_proj" in name_lower or "o_proj" in name_lower or "c_attn" in name_lower or "c_proj" in name_lower:
+                attn_params += p_count
+            elif "mlp" in name_lower or "ffn" in name_lower or "feed_forward" in name_lower or "gate" in name_lower or "up_proj" in name_lower or "down_proj" in name_lower or "c_fc" in name_lower:
+                mlp_params += p_count
+            elif "norm" in name_lower or "ln_" in name_lower or "ln1" in name_lower or "ln2" in name_lower:
+                norm_params += p_count
+            else:
+                other_params += p_count
 
-        block_params = (total_params - embed_params - head_params) // max(1, num_layers)
+    # If untied unembedding is 0 because of weight tying with embeddings
+    if total_params > 0 and unembed_params == 0 and embed_params > 0:
+        # Note weight tying
+        unembed_params_note = "Tied with Embedding"
+    else:
+        unembed_params_note = None
 
-    # Format human readable parameter count (e.g., 124M, 3.0B)
     def fmt_params(n: int) -> str:
         if n >= 1e9:
             return f"{n / 1e9:.2f}B"
@@ -59,6 +75,56 @@ def inspect_model_topology(adapter: BaseModelAdapter) -> Dict[str, Any]:
         elif n >= 1e3:
             return f"{n / 1e3:.1f}K"
         return str(n)
+
+    # Parameter Breakdown payload
+    denom = max(1, total_params)
+    parameter_breakdown = [
+        {
+            "category": "MLP / Feed-Forward Sublayers",
+            "count": mlp_params,
+            "formatted": fmt_params(mlp_params),
+            "percentage": round((mlp_params / denom) * 100, 2),
+            "color": "#ec4899",
+        },
+        {
+            "category": "Multi-Head Attention (MHSA)",
+            "count": attn_params,
+            "formatted": fmt_params(attn_params),
+            "percentage": round((attn_params / denom) * 100, 2),
+            "color": "#8b5cf6",
+        },
+        {
+            "category": "Token & Position Embeddings",
+            "count": embed_params,
+            "formatted": fmt_params(embed_params),
+            "percentage": round((embed_params / denom) * 100, 2),
+            "color": "#06b6d4",
+        },
+        {
+            "category": "Unembedding / LM Head",
+            "count": unembed_params,
+            "formatted": fmt_params(unembed_params),
+            "percentage": round((unembed_params / denom) * 100, 2),
+            "note": unembed_params_note,
+            "color": "#f59e0b",
+        },
+        {
+            "category": "Layer Normalizations (LN/RMSNorm)",
+            "count": norm_params,
+            "formatted": fmt_params(norm_params),
+            "percentage": round((norm_params / denom) * 100, 2),
+            "color": "#10b981",
+        },
+    ]
+
+    if other_params > 0:
+        parameter_breakdown.append({
+            "category": "Other Parameters / Biases",
+            "count": other_params,
+            "formatted": fmt_params(other_params),
+            "percentage": round((other_params / denom) * 100, 2),
+            "color": "#64748b",
+        })
 
     # Build node pipeline topology nodes
     nodes = [
@@ -146,5 +212,6 @@ def inspect_model_topology(adapter: BaseModelAdapter) -> Dict[str, Any]:
         "vocab_size": vocab_size,
         "intermediate_size": intermediate_size,
         "activation_function": str(act_fn),
+        "parameter_breakdown": parameter_breakdown,
         "nodes": nodes,
     }
