@@ -42,25 +42,38 @@ def compute_residual_metrics(
     # Collect layer residual streams
     for l in range(num_layers):
         hook_name = adapter.get_resid_post_hook_name(l)
-        if hook_name in cache:
-            residual_tensors.append(cache[hook_name])
-            layer_labels.append(f"L{l}")
+        found_tensor = None
+
+        if hook_name in cache and cache[hook_name].ndim in (2, 3):
+            found_tensor = cache[hook_name]
         else:
             for k, v in cache.items():
-                if f"blocks.{l}" in k or f"layers.{l}" in k or f"block_{l}" in k:
-                    residual_tensors.append(v)
-                    layer_labels.append(f"L{l}")
+                k_lower = k.lower()
+                # Skip attention maps, MLP post-activations, and 4D tensors
+                if "pattern" in k_lower or "attn" in k_lower or "mlp" in k_lower or v.ndim not in (2, 3):
+                    continue
+                if f"blocks.{l}" in k_lower or f"layers.{l}" in k_lower or f"block_{l}" in k_lower or f"h.{l}" in k_lower:
+                    found_tensor = v
                     break
+
+        if found_tensor is not None:
+            residual_tensors.append(found_tensor)
+            layer_labels.append(f"L{l}")
 
     if not residual_tensors:
         return {"session_id": session_id, "tokens": tokens, "layers": [], "error": "No residual stream tensors in cache."}
 
-    # Format tensors to (num_layers, num_pos, d_model)
+    # Format tensors to 2D (num_pos, d_model)
     processed = []
     for t in residual_tensors:
-        if t.ndim == 3:
-            t = t[0]
-        processed.append(t.to(torch.float32))
+        t_cpu = t.detach().cpu().to(torch.float32)
+        if t_cpu.ndim == 3:
+            t_cpu = t_cpu[0]  # Remove batch dimension -> (P, D)
+        if t_cpu.ndim == 2:
+            processed.append(t_cpu)
+
+    if not processed:
+        return {"session_id": session_id, "tokens": tokens, "layers": [], "error": "No valid 2D residual tensors found."}
 
     stacked = torch.stack(processed, dim=0)  # (L_count, P, D)
     L_count, P_count, D_dim = stacked.shape

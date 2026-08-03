@@ -108,20 +108,26 @@ def compute_logit_lens(
     # Collect block residual stream hooks
     for layer in range(num_layers):
         hook_name = adapter.get_resid_post_hook_name(layer)
-        if hook_name in cache:
-            residual_tensors.append(cache[hook_name])
-            layer_names.append(f"Resid L{layer}")
+        found_tensor = None
+
+        if hook_name in cache and cache[hook_name].ndim in (2, 3):
+            found_tensor = cache[hook_name]
         else:
-            found = False
             for k, v in cache.items():
-                if f"blocks.{layer}" in k or f"layers.{layer}" in k or f"block_{layer}" in k or f"block.{layer}" in k:
-                    residual_tensors.append(v)
-                    layer_names.append(f"Resid L{layer}")
-                    found = True
+                k_lower = k.lower()
+                # Exclude attention maps, MLP post-activations, and 4D tensors
+                if "pattern" in k_lower or "attn" in k_lower or "mlp" in k_lower or v.ndim not in (2, 3):
+                    continue
+                if f"blocks.{layer}" in k_lower or f"layers.{layer}" in k_lower or f"block_{layer}" in k_lower or f"h.{layer}" in k_lower:
+                    found_tensor = v
                     break
-            if not found and len(residual_tensors) > 0:
-                residual_tensors.append(residual_tensors[-1])
-                layer_names.append(f"Resid L{layer}")
+
+        if found_tensor is not None:
+            residual_tensors.append(found_tensor)
+            layer_names.append(f"Resid L{layer}")
+        elif len(residual_tensors) > 0:
+            residual_tensors.append(residual_tensors[-1])
+            layer_names.append(f"Resid L{layer}")
 
     if not residual_tensors:
         raise ValueError("No residual stream tensors found in activation cache for Logit Lens.")
@@ -131,7 +137,8 @@ def compute_logit_lens(
     for t in residual_tensors:
         if t.ndim == 3:
             t = t[0]  # (pos, d_model)
-        processed_tensors.append(t)
+        if t.ndim == 2:
+            processed_tensors.append(t)
 
     # Stack: (num_layers, pos, d_model)
     stacked_resid = torch.stack(processed_tensors, dim=0)
