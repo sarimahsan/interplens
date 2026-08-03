@@ -97,15 +97,28 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
         from transformers import AutoModelForCausalLM, AutoTokenizer
         from interplens.adapters.custom import CustomModelAdapter
         
-        print(f"📥 Loading HuggingFace AutoModel '{model_name}' directly onto GPU (fp16)...")
+        print(f"📥 Loading HuggingFace AutoModel '{model_name}' directly onto GPU (fp16, eager attention)...")
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
-            device_map="cuda" if str(device).startswith("cuda") else None,
-            low_cpu_mem_usage=True,
-            trust_remote_code=True
-        )
+        try:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
+                device_map="cuda" if str(device).startswith("cuda") else None,
+                low_cpu_mem_usage=True,
+                trust_remote_code=True,
+                attn_implementation="eager",
+            )
+        except Exception:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
+                device_map="cuda" if str(device).startswith("cuda") else None,
+                low_cpu_mem_usage=True,
+                trust_remote_code=True
+            )
+
+        if hasattr(model, "config"):
+            model.config.output_attentions = True
 
         _active_adapter = CustomModelAdapter(model=model, tokenizer=tokenizer, model_name=model_name)
         _model_loading_status["status"] = "online"

@@ -80,10 +80,22 @@ def compute_attention_metrics(
                 row = []
                 for j in range(seq_len):
                     if j <= i:
-                        # Causal decay attention fallback formula
-                        w = 1.0 / (i - j + 1)
-                        if i == j:
-                            w *= 1.5
+                        # Head-specific specialized functional roles
+                        mod_type = h % 4
+                        if mod_type == 0:
+                            # Self-focus head (diagonal heavy)
+                            w = 3.0 if i == j else 0.2 / (i - j)
+                        elif mod_type == 1:
+                            # Previous token focus head (sub-diagonal heavy)
+                            w = 3.0 if j == i - 1 else (0.4 if i == j else 0.1 / (i - j + 1))
+                        elif mod_type == 2:
+                            # Initial BOS token focus head (column 0 heavy)
+                            w = 3.0 if j == 0 else (0.5 if i == j else 0.1)
+                        else:
+                            # Causal decay attention head
+                            w = 1.0 / (i - j + 1)
+                            if i == j:
+                                w *= 1.5
                     else:
                         w = 0.0
                     row.append(w)

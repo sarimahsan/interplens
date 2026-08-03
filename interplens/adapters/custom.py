@@ -57,6 +57,11 @@ class CustomModelAdapter(BaseModelAdapter):
         self._model_instance = model
         self.tokenizer = tokenizer
         self.tokenize_fn = tokenize_fn
+        if hasattr(model, "config"):
+            try:
+                model.config.output_attentions = True
+            except Exception:
+                pass
         self.auto_hooker = PyTorchAutoHooker(model)
         self._extract_custom_metadata()
 
