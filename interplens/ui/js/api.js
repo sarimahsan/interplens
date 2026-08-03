@@ -73,6 +73,16 @@ var API = window.API || {
         const res = await fetch('/api/model/topology');
         if (!res.ok) throw new Error(`Model topology fetch failed: ${res.statusText}`);
         return await res.json();
+    },
+
+    async getAttentionHeads(sessionId, layer = 0, head = 0, threshold = 0.02) {
+        const url = `/api/analysis/attention?session_id=${sessionId}&layer=${layer}&head=${head}&threshold=${threshold}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Attention heads fetch failed');
+        }
+        return await res.json();
     }
 };
 

@@ -122,12 +122,11 @@
                             <span>Residual Stream</span>
                         </button>
 
-                        <button class="menu-btn disabled" title="Coming in Phase 3">
+                        <button class="menu-btn" data-engine="attention" id="tab-btn-attention" title="Attention Head Explorer & Arc Diagram">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
                             <span>Attention Map</span>
-                            <span class="status-tag">Phase 3</span>
                         </button>
 
                         <button class="menu-btn disabled" title="Coming in Phase 4">
@@ -741,6 +740,74 @@
                     </div>
                 </div>
 
+                <!-- Phase 3: Attention Head Explorer View -->
+                <div class="tab-view" id="view-attention" style="display: none;">
+                    <div class="studio-main-inner">
+                        <!-- Controls Panel for Attention Explorer -->
+                        <section class="panel control-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    <h2>Attention Head Explorer & Visual Arc Inspector</h2>
+                                </div>
+
+                                <div class="preset-pills">
+                                    <span class="preset-label">View Mode:</span>
+                                    <button class="btn-metric btn-attn-view active" data-view="matrix" onclick="setAttnViewMode('matrix')">Detail Matrix</button>
+                                    <button class="btn-metric btn-attn-view" data-view="grid" onclick="setAttnViewMode('grid')">Multi-Head Grid</button>
+                                    <button class="btn-metric btn-attn-view" data-view="arc" onclick="setAttnViewMode('arc')">Arc Diagram</button>
+                                </div>
+                            </div>
+
+                            <div class="control-grid">
+                                <div class="setting-group" style="gap: 16px; flex-wrap: wrap;">
+                                    <div class="setting-item">
+                                        <label for="attn-layer-select">Target Layer:</label>
+                                        <select id="attn-layer-select" class="studio-select" onchange="fetchAttentionHeadsData(this.value, document.getElementById('attn-head-select').value, document.getElementById('attn-thresh-select').value)">
+                                            <option value="0">Layer 0</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="setting-item">
+                                        <label for="attn-head-select">Target Head:</label>
+                                        <select id="attn-head-select" class="studio-select" onchange="fetchAttentionHeadsData(document.getElementById('attn-layer-select').value, this.value, document.getElementById('attn-thresh-select').value)">
+                                            <option value="0">Head 0</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="setting-item">
+                                        <label for="attn-thresh-select">Arc Threshold:</label>
+                                        <select id="attn-thresh-select" class="studio-select" onchange="fetchAttentionHeadsData(document.getElementById('attn-layer-select').value, document.getElementById('attn-head-select').value, this.value)">
+                                            <option value="0.01">1% (All links)</option>
+                                            <option value="0.02" selected>2% (Standard)</option>
+                                            <option value="0.05">5% (Strong)</option>
+                                            <option value="0.10">10% (Top links)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Main Attention Visualization Card -->
+                        <section class="panel matrix-panel">
+                            <div id="attn-matrix-container">
+                                <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                                    Run prompt analysis to observe N x N attention weight matrix.
+                                </div>
+                            </div>
+
+                            <div id="attn-grid-view" style="display: none; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 16px;">
+                            </div>
+
+                            <div id="attn-arc-view" style="display: none; padding: 16px; text-align: center;">
+                                <canvas id="attn-arc-canvas" style="width: 100%; height: 340px; border-radius: 6px; background: var(--bg-darkest); border: 1px solid var(--border-color);"></canvas>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
                 <!-- Model Architecture Topology Explorer View -->
                 <div class="tab-view" id="view-architecture" style="display: none;">
                     <div class="studio-main-inner">
@@ -820,6 +887,7 @@
     <script src="js/gpu_profiler.js"></script>
     <script src="js/residual_stream.js"></script>
     <script src="js/architecture.js"></script>
+    <script src="js/attention_heads.js"></script>
     <script src="js/main.js"></script>
 </body>
 

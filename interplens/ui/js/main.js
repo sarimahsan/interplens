@@ -166,6 +166,13 @@ function registerEventListeners() {
                 }
                 const sessId = (window.currentSession && window.currentSession.session_id) || '';
                 if (window.fetchResidualStreamMetrics && sessId) window.fetchResidualStreamMetrics(sessId);
+            } else if (targetEngine === 'attention') {
+                const view = document.getElementById('view-attention');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
+                }
+                if (window.fetchAttentionHeadsData) window.fetchAttentionHeadsData(0, 0, 0.02);
             } else {
                 const view = document.getElementById('view-logit-lens');
                 if (view) {
@@ -249,6 +256,9 @@ async function executePromptAnalysis() {
         if (window.fetchGpuProfilerData) window.fetchGpuProfilerData();
         if (window.fetchResidualStreamMetrics && window.currentSession.session_id) {
             window.fetchResidualStreamMetrics(window.currentSession.session_id);
+        }
+        if (window.fetchAttentionHeadsData && window.currentSession.session_id) {
+            window.fetchAttentionHeadsData(0, 0, 0.02);
         }
 
     } catch (err) {

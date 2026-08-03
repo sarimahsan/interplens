@@ -81,3 +81,27 @@ class SteeringRequest(BaseModel):
     multiplier: float = 1.0
     steering_vector: Optional[List[float]] = None
 
+
+class AttentionLink(BaseModel):
+    """Represents a directional query-to-key connection link for arc diagram visualizer."""
+    source: int
+    target: int
+    source_token: str
+    target_token: str
+    weight: float
+
+
+class AttentionHeadResponse(BaseModel):
+    """Full response payload for Attention Head Explorer (matrix, grid, arc links)."""
+    session_id: str
+    prompt: str
+    tokens: List[str]
+    layer: int
+    head: int
+    num_heads: int
+    num_layers: int
+    matrix: List[List[float]]  # NxN matrix for target head
+    grid: Optional[List[List[List[float]]]] = None  # H x N x N for all heads in layer
+    arc_links: List[AttentionLink]
+
+

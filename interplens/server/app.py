@@ -313,6 +313,36 @@ def steer_residual_stream(req: SteeringRequest):
     )
 
 
+@app.get("/api/analysis/attention")
+def get_attention_heads(
+    session_id: str = Query(..., description="Active session ID"),
+    layer: int = Query(0, ge=0, description="Target layer index"),
+    head: int = Query(0, ge=0, description="Target head index"),
+    threshold: float = Query(0.02, ge=0.0, le=1.0, description="Arc connection link weight threshold"),
+):
+    """Computes N x N attention matrix, multi-head grid, and arc diagram links for a target layer and head."""
+    session = global_session_store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
+
+    adapter = session.adapter or get_active_adapter()
+    try:
+        from interplens.analysis.attention_heads import compute_attention_metrics
+    except ImportError:
+        from analysis.attention_heads import compute_attention_metrics
+
+    return compute_attention_metrics(
+        adapter=adapter,
+        cache=session.cache,
+        tokens=session.tokens,
+        session_id=session.session_id,
+        prompt=session.prompt,
+        layer=layer,
+        head=head,
+        threshold=threshold,
+    )
+
+
 @app.get("/api/model/topology")
 def get_model_topology():
     """Inspects active model parameters and builds a node diagram specification for the UI."""
