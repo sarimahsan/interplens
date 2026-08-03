@@ -173,6 +173,13 @@ function registerEventListeners() {
                     requestAnimationFrame(() => view.classList.add('active'));
                 }
                 if (window.fetchAttentionHeadsData) window.fetchAttentionHeadsData(0, 0, 0.02);
+            } else if (targetEngine === 'neurons') {
+                const view = document.getElementById('view-neurons');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
+                }
+                if (window.fetchNeuronData) window.fetchNeuronData(0, null, 10, null);
             } else {
                 const view = document.getElementById('view-logit-lens');
                 if (view) {
@@ -259,6 +266,9 @@ async function executePromptAnalysis() {
         }
         if (window.fetchAttentionHeadsData && window.currentSession.session_id) {
             window.fetchAttentionHeadsData(0, 0, 0.02);
+        }
+        if (window.fetchNeuronData && window.currentSession.session_id) {
+            window.fetchNeuronData(0, null, 10, null);
         }
 
     } catch (err) {

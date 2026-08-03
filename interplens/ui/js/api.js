@@ -83,6 +83,29 @@ var API = window.API || {
             throw new Error(err.detail || 'Attention heads fetch failed');
         }
         return await res.json();
+    },
+
+    async getNeuronActivations(sessionId, layer = 0, position = null, topK = 10, neuronIdx = null) {
+        let url = `/api/analysis/neurons?session_id=${sessionId}&layer=${layer}&top_k=${topK}`;
+        if (position !== null) url += `&position=${position}`;
+        if (neuronIdx !== null) url += `&neuron_idx=${neuronIdx}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Neuron activations fetch failed');
+        }
+        return await res.json();
+    },
+
+    async getTokenAttribution(sessionId, position = null, method = 'attention_rollout') {
+        let url = `/api/analysis/attribution?session_id=${sessionId}&method=${method}`;
+        if (position !== null) url += `&position=${position}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Token attribution fetch failed');
+        }
+        return await res.json();
     }
 };
 

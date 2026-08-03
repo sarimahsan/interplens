@@ -356,6 +356,66 @@ def get_attention_heads(
     )
 
 
+@app.get("/api/analysis/neurons")
+def get_neuron_activations(
+    session_id: str = Query(..., description="Active session ID"),
+    layer: int = Query(0, ge=0, description="Target layer index"),
+    position: Optional[int] = Query(None, description="Optional target token position index"),
+    top_k: int = Query(10, ge=1, le=50, description="Top-K highest firing neurons"),
+    neuron_idx: Optional[int] = Query(None, ge=0, description="Optional target neuron index for lighting strip"),
+):
+    """Computes top-K firing MLP neurons for token position and prompt text activation lighting strip."""
+    session = global_session_store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
+
+    adapter = session.adapter or get_active_adapter()
+    try:
+        from interplens.analysis.neurons import compute_neuron_activations
+    except ImportError:
+        from analysis.neurons import compute_neuron_activations
+
+    return compute_neuron_activations(
+        adapter=adapter,
+        cache=session.cache,
+        tokens=session.tokens,
+        session_id=session.session_id,
+        prompt=session.prompt,
+        layer=layer,
+        position=position,
+        top_k=top_k,
+        neuron_idx=neuron_idx,
+    )
+
+
+@app.get("/api/analysis/attribution")
+def get_token_attributions(
+    session_id: str = Query(..., description="Active session ID"),
+    position: Optional[int] = Query(None, description="Optional target token position index"),
+    method: str = Query("attention_rollout", description="Attribution calculation method"),
+):
+    """Computes input token attribution scores using Attention Rollout across layers."""
+    session = global_session_store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
+
+    adapter = session.adapter or get_active_adapter()
+    try:
+        from interplens.analysis.attribution import compute_token_attributions
+    except ImportError:
+        from analysis.attribution import compute_token_attributions
+
+    return compute_token_attributions(
+        adapter=adapter,
+        cache=session.cache,
+        tokens=session.tokens,
+        session_id=session.session_id,
+        prompt=session.prompt,
+        position=position,
+        method=method,
+    )
+
+
 @app.get("/api/model/topology")
 def get_model_topology():
     """Inspects active model parameters and builds a node diagram specification for the UI."""

@@ -129,12 +129,11 @@
                             <span>Attention Map</span>
                         </button>
 
-                        <button class="menu-btn disabled" title="Coming in Phase 4">
+                        <button class="menu-btn" data-engine="neurons" id="tab-btn-neurons" title="Neuron Activations & Token Attribution">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                             </svg>
                             <span>Neuron Activations</span>
-                            <span class="status-tag">Phase 4</span>
                         </button>
 
                         <button class="menu-btn disabled" title="Coming in Phase 5">
@@ -808,6 +807,97 @@
                     </div>
                 </div>
 
+                <!-- Phase 4: Neuron Activations & Token Attribution View -->
+                <div class="tab-view" id="view-neurons" style="display: none;">
+                    <div class="studio-main-inner">
+                        <!-- Controls Panel for Neuron Explorer -->
+                        <section class="panel control-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                    </svg>
+                                    <h2>Neuron Activations & Token Attribution Explorer</h2>
+                                </div>
+                            </div>
+
+                            <div class="control-grid">
+                                <div class="setting-group" style="gap: 16px; flex-wrap: wrap;">
+                                    <div class="setting-item">
+                                        <label for="neuron-layer-select">Target Layer:</label>
+                                        <select id="neuron-layer-select" class="studio-select" onchange="triggerNeuronFetch()">
+                                            <option value="0">Layer 0</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="setting-item">
+                                        <label for="neuron-pos-select">Target Token Position:</label>
+                                        <select id="neuron-pos-select" class="studio-select" onchange="triggerNeuronFetch()">
+                                            <option value="0">Position 0</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Top-K Firing MLP Neurons Bar Chart Card -->
+                        <section class="panel chart-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                                    </svg>
+                                    <h2>Top-Firing MLP Neurons</h2>
+                                </div>
+                            </div>
+                            <div id="neuron-bars-container" style="padding: 16px;">
+                                <div style="padding: 30px; text-align: center; color: var(--text-muted);">
+                                    Run prompt analysis to observe top-firing MLP neurons.
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Single Neuron Prompt Text Lighting Strip Card -->
+                        <section class="panel chart-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="5"></circle>
+                                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                                    </svg>
+                                    <h2>Single Neuron Prompt Text Lighting Strip</h2>
+                                </div>
+                            </div>
+                            <div id="neuron-lighting-container" style="padding: 16px;">
+                                <div style="padding: 30px; text-align: center; color: var(--text-muted);">
+                                    Select a neuron above to observe activation text lighting strip.
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Input Token Attribution Card (Attention Rollout) -->
+                        <section class="panel chart-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                    </svg>
+                                    <h2>Input Token Influence & Attribution (Attention Rollout)</h2>
+                                </div>
+                            </div>
+                            <div id="token-attribution-container" style="padding: 16px;">
+                                <div style="padding: 30px; text-align: center; color: var(--text-muted);">
+                                    Run prompt analysis to compute input token attribution influence.
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
                 <!-- Model Architecture Topology Explorer View -->
                 <div class="tab-view" id="view-architecture" style="display: none;">
                     <div class="studio-main-inner">
@@ -888,6 +978,7 @@
     <script src="js/residual_stream.js"></script>
     <script src="js/architecture.js"></script>
     <script src="js/attention_heads.js"></script>
+    <script src="js/neurons.js"></script>
     <script src="js/main.js"></script>
 </body>
 

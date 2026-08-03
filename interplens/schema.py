@@ -105,3 +105,51 @@ class AttentionHeadResponse(BaseModel):
     arc_links: List[AttentionLink]
 
 
+class NeuronInfo(BaseModel):
+    """Metadata describing a top firing MLP neuron."""
+    neuron_idx: int
+    layer: int
+    activation: float
+
+
+class NeuronLightingToken(BaseModel):
+    """Single token activation score for single neuron prompt lighting strip visualizer."""
+    position: int
+    token: str
+    activation: float
+
+
+class NeuronAnalysisResponse(BaseModel):
+    """Full payload for Neuron Activation Explorer (top-K firing neurons & text lighting strip)."""
+    session_id: str
+    prompt: str
+    tokens: List[str]
+    layer: int
+    position: int
+    selected_token: str
+    d_mlp: int
+    top_neurons: List[NeuronInfo]
+    selected_neuron_idx: int
+    selected_neuron_activation: float
+    lighting_strip: List[NeuronLightingToken]
+
+
+class TokenAttributionScore(BaseModel):
+    """Attribution score for input prompt token."""
+    position: int
+    token: str
+    score: float
+    raw_score: float
+
+
+class TokenAttributionResponse(BaseModel):
+    """Full payload for Token Attribution Engine (Attention Rollout)."""
+    session_id: str
+    prompt: str
+    tokens: List[str]
+    target_position: int
+    target_token: str
+    method: str
+    attributions: List[TokenAttributionScore]
+
+
