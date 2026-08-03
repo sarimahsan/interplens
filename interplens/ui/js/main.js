@@ -1,4 +1,4 @@
-// InterpLens Studio Core Application Entry Point
+// InterpLens Studio Core Application Entry Point & State Persistence Engine
 
 var healthPollTimer = window.healthPollTimer || null;
 
@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initThemeManager();
     fetchSystemHealth();
     registerEventListeners();
+    restoreStudioState();
 });
 
 window.currentSession = null;
@@ -22,7 +23,6 @@ async function fetchSystemHealth() {
         const runText = document.getElementById('run-btn-text');
         const promptInput = document.getElementById('prompt-input');
         const loadingOverlay = document.getElementById('model-loading-overlay');
-        const overlayTitle = document.getElementById('overlay-model-title');
 
         const activeModel = data.active_model || 'Model';
 
@@ -61,57 +61,38 @@ async function fetchSystemHealth() {
                 btn.style.cursor = 'not-allowed';
             });
             if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-            if (overlayTitle) overlayTitle.textContent = `Loading Model Weights (${activeModel}) into VRAM...`;
 
-            // Fast poll every 2s while loading
-            clearTimeout(healthPollTimer);
-            healthPollTimer = setTimeout(fetchSystemHealth, 2000);
-
-        } else if (data.status === 'error') {
+        } else {
             if (dot) dot.className = 'status-dot status-offline';
-            if (text) text.textContent = `Error: ${data.error || 'Model load failed'}`;
-
-            if (runBtn) { runBtn.disabled = true; }
-            if (runText) { runText.textContent = 'Model Load Error'; }
-            if (promptInput) { promptInput.disabled = true; }
-            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-            if (overlayTitle) overlayTitle.textContent = `Model Load Error: ${data.error || 'Check server logs'}`;
-        } else {
-            if (dot) dot.className = 'status-dot status-busy';
-            if (text) text.textContent = 'Initializing...';
+            if (text) text.textContent = 'Backend Offline';
         }
 
-        if (document.getElementById('nav-model-name')) document.getElementById('nav-model-name').textContent = activeModel;
-        if (document.getElementById('nav-device-tag')) document.getElementById('nav-device-tag').textContent = data.device ? data.device.toUpperCase() : 'CPU';
-
-        if (data.vram_usage && data.vram_usage.total_mb > 0) {
-            if (document.getElementById('nav-vram-usage')) document.getElementById('nav-vram-usage').textContent = `VRAM: ${data.vram_usage.allocated_mb}MB / ${data.vram_usage.total_mb}MB`;
-        } else {
-            if (document.getElementById('nav-vram-usage')) document.getElementById('nav-vram-usage').textContent = 'CPU RAM Active';
+        if (data.active_model && document.getElementById('nav-model-name')) {
+            document.getElementById('nav-model-name').textContent = data.active_model;
         }
+
     } catch (err) {
         const dot = document.getElementById('status-dot');
         const text = document.getElementById('status-text');
         if (dot) dot.className = 'status-dot status-offline';
-        if (text) text.textContent = 'Backend Offline';
+        if (text) text.textContent = 'Disconnected';
+    } finally {
+        if (!healthPollTimer) {
+            healthPollTimer = setInterval(fetchSystemHealth, 5000);
+        }
     }
 }
 
 // --- Theme Management ---
 function initThemeManager() {
-    const themeBtn = document.getElementById('theme-switch-btn');
-    const storedTheme = localStorage.getItem('interplens_studio_theme');
-    
-    let activeTheme = storedTheme;
-    if (!activeTheme) {
-        activeTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-    }
+    const themeBtn = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('interplens_studio_theme') || 'dark';
 
-    applyTheme(activeTheme);
+    applyTheme(savedTheme);
 
     if (themeBtn) {
         themeBtn.addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme');
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
             const next = current === 'dark' ? 'light' : 'dark';
             applyTheme(next);
         });
@@ -135,6 +116,9 @@ function registerEventListeners() {
         btn.addEventListener('click', (e) => {
             const targetEngine = btn.getAttribute('data-engine');
             if (!targetEngine) return;
+
+            // Save active tab in localStorage
+            localStorage.setItem('interplens_active_tab', targetEngine);
 
             document.querySelectorAll('.engine-menu .menu-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -199,10 +183,28 @@ function registerEventListeners() {
     document.querySelectorAll('.btn-preset').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const promptText = e.target.getAttribute('data-prompt');
-            document.getElementById('prompt-input').value = promptText;
-            executePromptAnalysis();
+            if (promptText) {
+                document.getElementById('prompt-input').value = promptText;
+                executePromptAnalysis();
+            }
         });
     });
+
+    // Save prompt inputs on change
+    const promptInput = document.getElementById('prompt-input');
+    if (promptInput) {
+        promptInput.addEventListener('input', () => {
+            localStorage.setItem('interplens_last_prompt', promptInput.value);
+        });
+    }
+
+    const cleanInput = document.getElementById('causal-clean-input');
+    const corruptInput = document.getElementById('causal-corrupt-input');
+    const targetInput = document.getElementById('causal-target-input');
+
+    if (cleanInput) cleanInput.addEventListener('input', () => localStorage.setItem('interplens_causal_clean', cleanInput.value));
+    if (corruptInput) corruptInput.addEventListener('input', () => localStorage.setItem('interplens_causal_corrupt', corruptInput.value));
+    if (targetInput) targetInput.addEventListener('input', () => localStorage.setItem('interplens_causal_target', targetInput.value));
 
     // Metric Toggles (Prob, KL, Entropy, Top-5 Trajectories)
     document.querySelectorAll('.btn-metric').forEach(btn => {
@@ -219,7 +221,7 @@ function registerEventListeners() {
     });
 }
 
-// --- Execution Handler ---
+// --- Execution Handler & State Saver ---
 async function executePromptAnalysis() {
     const promptInput = document.getElementById('prompt-input').value.trim();
     if (!promptInput) {
@@ -227,13 +229,16 @@ async function executePromptAnalysis() {
         return;
     }
 
+    // Save prompt text to localStorage
+    localStorage.setItem('interplens_last_prompt', promptInput);
+
     const runBtn = document.getElementById('run-btn');
     const runText = document.getElementById('run-btn-text');
     const spinner = document.getElementById('run-spinner');
 
-    runBtn.disabled = true;
-    spinner.classList.remove('hidden');
-    runText.textContent = 'Running Model...';
+    if (runBtn) runBtn.disabled = true;
+    if (spinner) spinner.classList.remove('hidden');
+    if (runText) runText.textContent = 'Running Model...';
 
     const t0 = performance.now();
     try {
@@ -278,11 +283,45 @@ async function executePromptAnalysis() {
         }
 
     } catch (err) {
-        alert(`Analysis Error: ${err.message}`);
+        console.warn(`Analysis Error: ${err.message}`);
     } finally {
-        runBtn.disabled = false;
-        spinner.classList.add('hidden');
-        runText.textContent = 'Run Model Analysis';
+        if (runBtn) runBtn.disabled = false;
+        if (spinner) spinner.classList.add('hidden');
+        if (runText) runText.textContent = 'Run Model Analysis';
+    }
+}
+
+// --- Restore State & Active Tab on Page Reload ---
+function restoreStudioState() {
+    const savedPrompt = localStorage.getItem('interplens_last_prompt');
+    const savedClean = localStorage.getItem('interplens_causal_clean');
+    const savedCorrupt = localStorage.getItem('interplens_causal_corrupt');
+    const savedTarget = localStorage.getItem('interplens_causal_target');
+    const savedTab = localStorage.getItem('interplens_active_tab');
+
+    // Restore causal inputs
+    if (savedClean && document.getElementById('causal-clean-input')) {
+        document.getElementById('causal-clean-input').value = savedClean;
+    }
+    if (savedCorrupt && document.getElementById('causal-corrupt-input')) {
+        document.getElementById('causal-corrupt-input').value = savedCorrupt;
+    }
+    if (savedTarget && document.getElementById('causal-target-input')) {
+        document.getElementById('causal-target-input').value = savedTarget;
+    }
+
+    // Restore main prompt and re-run analysis
+    if (savedPrompt && document.getElementById('prompt-input')) {
+        document.getElementById('prompt-input').value = savedPrompt;
+        executePromptAnalysis();
+    }
+
+    // Restore active tab
+    if (savedTab) {
+        const targetBtn = document.querySelector(`.engine-menu .menu-btn[data-engine="${savedTab}"]`);
+        if (targetBtn) {
+            targetBtn.click();
+        }
     }
 }
 

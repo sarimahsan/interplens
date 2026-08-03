@@ -18,6 +18,11 @@ async function executeCausalPatchingSweep() {
         return;
     }
 
+    // Cache causal inputs in localStorage
+    localStorage.setItem('interplens_causal_clean', cleanPrompt);
+    localStorage.setItem('interplens_causal_corrupt', corruptPrompt);
+    if (targetToken) localStorage.setItem('interplens_causal_target', targetToken);
+
     const runBtn = document.getElementById('causal-run-btn');
     if (runBtn) runBtn.disabled = true;
 
