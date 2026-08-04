@@ -123,6 +123,16 @@ var API = window.API || {
             throw new Error(err.detail || 'Causal patching execution failed');
         }
         return await res.json();
+    },
+
+    async getInductionHeads(sequenceLength = 20, threshold = 0.15, topK = 10) {
+        const url = `/api/analysis/induction-heads?sequence_length=${sequenceLength}&threshold=${threshold}&top_k=${topK}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Induction head detection sweep failed');
+        }
+        return await res.json();
     }
 };
 

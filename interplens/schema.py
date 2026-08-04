@@ -188,3 +188,23 @@ class CausalTracingResponse(BaseModel):
     cells: List[CausalTracingCell]
 
 
+class InductionHeadScore(BaseModel):
+    """Single attention head induction score metadata."""
+    layer: int
+    head: int
+    score: float
+    is_induction_head: bool
+
+
+class InductionDetectorResponse(BaseModel):
+    """Full payload for Induction Head Auto-Detector sweep."""
+    total_heads_scanned: int
+    flagged_count: int
+    num_layers: int
+    num_heads: int
+    top_induction_heads: List[InductionHeadScore]
+    matrix_scores: List[List[float]]  # num_layers x num_heads matrix
+    tokens_used: List[str]
+    prompt_used: str
+
+

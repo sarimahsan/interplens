@@ -516,6 +516,27 @@ def run_causal_patching(req: CausalPatchingRequest):
     )
 
 
+@app.get("/api/analysis/induction-heads")
+def run_induction_detector(
+    sequence_length: int = Query(20, description="Length of random word sequence to duplicate S_1 S_2"),
+    threshold: float = Query(0.15, description="Induction score threshold for flagging active induction heads"),
+    top_k: int = Query(10, description="Top-K ranked induction heads to return"),
+):
+    """Runs automated repeated sequence test (S_1 S_2) and returns induction scores for all heads."""
+    adapter = get_active_adapter()
+    try:
+        from interplens.analysis.induction_heads import detect_induction_heads
+    except ImportError:
+        from analysis.induction_heads import detect_induction_heads
+
+    return detect_induction_heads(
+        adapter=adapter,
+        sequence_length=sequence_length,
+        threshold=threshold,
+        top_k=top_k,
+    )
+
+
 # Mount UI static files if directory exists
 ui_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui")
 if os.path.exists(ui_dir):

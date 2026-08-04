@@ -150,12 +150,12 @@
                             <span>Causal Patching</span>
                         </button>
 
-                        <button class="menu-btn disabled" title="Coming in Phase 6">
+                        <button class="menu-btn" data-engine="induction" id="tab-btn-induction" title="Induction Head Auto-Detector">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"></path>
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
-                            <span>Model Diff Comparison</span>
-                            <span class="status-tag">Phase 6</span>
+                            <span>Induction Detector</span>
                         </button>
 
                         <button class="menu-btn disabled" title="Coming in Phase 7">
@@ -1013,6 +1013,119 @@
                                 <span style="color: var(--text-muted);">Click any cell in the heatmap matrix above to inspect single-cell intervention recovery details.</span>
                             </div>
                         </section>
+                                  <!-- Induction Head Auto-Detector View (Phase 6) -->
+                <div class="tab-view" id="view-induction" style="display: none;">
+                    <div class="studio-main-inner">
+                        <!-- Control Header Panel -->
+                        <section class="panel control-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    <h2>Induction Head Auto-Detector (Repeated Token Sequence S₁ S₂ Sweep)</h2>
+                                </div>
+                            </div>
+                            <div style="padding: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+                                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                                    <div class="setting-item" style="display: flex; align-items: center; gap: 8px;">
+                                        <label for="induction-seq-len" style="font-size: 12px; font-weight: 600;">Sequence Sub-Length (N):</label>
+                                        <select id="induction-seq-len" class="studio-select">
+                                            <option value="15">15 Tokens</option>
+                                            <option value="20" selected>20 Tokens (S₁ S₂ = 40)</option>
+                                            <option value="30">30 Tokens</option>
+                                        </select>
+                                    </div>
+                                    <div class="setting-item" style="display: flex; align-items: center; gap: 8px;">
+                                        <label for="induction-threshold" style="font-size: 12px; font-weight: 600;">Induction Threshold:</label>
+                                        <input type="range" id="induction-threshold" min="0.05" max="0.40" step="0.01" value="0.15" style="width: 100px;">
+                                        <span id="induction-threshold-val" style="font-family: var(--font-mono); font-size: 12px; color: var(--primary);">0.15</span>
+                                    </div>
+                                </div>
+                                <button id="run-induction-btn" class="btn-primary" style="padding: 9px 18px; font-size: 13px;">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                    </svg>
+                                    <span>Run Induction Head Sweep</span>
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- Metric Summary Cards -->
+                        <div class="profiler-top-row">
+                            <section class="panel gpu-arch-panel">
+                                <div class="gpu-arch-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                                    <div class="arch-card">
+                                        <span class="lbl">Total Heads Scanned:</span>
+                                        <strong id="ind-kpi-scanned" style="color: var(--text-main);">--</strong>
+                                    </div>
+                                    <div class="arch-card">
+                                        <span class="lbl">Flagged Induction Heads:</span>
+                                        <strong id="ind-kpi-flagged" style="color: var(--primary);">-- Active</strong>
+                                    </div>
+                                    <div class="arch-card">
+                                        <span class="lbl">Top Performing Head:</span>
+                                        <strong id="ind-kpi-top" style="color: #f59e0b;">--</strong>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Heatmap Grid -->
+                        <section class="panel chart-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                                        <line x1="3" y1="15" x2="21" y2="15"></line>
+                                    </svg>
+                                    <h2>Induction Score Matrix (Layer × Attention Head)</h2>
+                                </div>
+                                <span id="induction-loading-spinner" class="status-tag hidden" style="background: rgba(59,130,246,0.1); color: var(--primary);">⚡ Scanning Model Attention Maps...</span>
+                            </div>
+                            <div id="induction-heatmap-grid" style="padding: 16px; overflow-x: auto;">
+                                <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                                    Click "Run Induction Head Sweep" to scan model layers for in-context induction heads.
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Top Ranked Heads Table -->
+                        <section class="panel chart-panel">
+                            <div class="panel-header">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                    </svg>
+                                    <h2>Top Ranked Induction Attention Heads</h2>
+                                </div>
+                            </div>
+                            <div style="padding: 16px; overflow-x: auto;">
+                                <table class="studio-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Attention Head</th>
+                                            <th>Induction Score</th>
+                                            <th>Score Meter</th>
+                                            <th>Classification</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="induction-top-table-body">
+                                        <tr>
+                                            <td colspan="5" style="text-align: center; color: var(--text-muted);">No scan executed yet.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
                     </div>
                 </div>
 
@@ -1119,7 +1232,11 @@
     <script src="js/attention_heads.js"></script>
     <script src="js/neurons.js"></script>
     <script src="js/causal.js"></script>
+    <script src="js/induction.js"></script>
     <script src="js/main.js"></script>
+</body>
+
+</html>in.js"></script>
 </body>
 
 </html>

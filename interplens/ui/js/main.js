@@ -173,6 +173,15 @@ function registerEventListeners() {
                     view.style.display = 'block';
                     requestAnimationFrame(() => view.classList.add('active'));
                 }
+            } else if (targetEngine === 'induction') {
+                const view = document.getElementById('view-induction');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
+                }
+                if (window.InductionEngine && window.InductionEngine.fetch) {
+                    window.InductionEngine.fetch();
+                }
             } else {
                 const view = document.getElementById('view-logit-lens');
                 if (view) {
