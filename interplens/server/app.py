@@ -48,11 +48,16 @@ _model_loading_status = {"status": "idle", "model_name": "none", "error": None}
 
 
 # Global active model adapter instance
-def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
+def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token: Optional[str] = None):
     """Loads target model into GPU VRAM."""
     global _active_adapter, _model_loading_status
     if device is None:
         device = get_optimal_device()
+
+    token = hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    if token:
+        os.environ["HF_TOKEN"] = token
+        os.environ["HUGGING_FACE_HUB_TOKEN"] = token
 
     # 0. Check if model is ALREADY loaded in GPU VRAM
     if _active_adapter is not None:
@@ -98,7 +103,8 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
         from interplens.adapters.custom import CustomModelAdapter
         
         print(f"📥 Loading HuggingFace AutoModel '{model_name}' directly onto GPU (fp16, eager attention)...")
-        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        token_kwargs = {"token": token} if token else {}
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
         try:
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
@@ -107,6 +113,7 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
                 low_cpu_mem_usage=True,
                 trust_remote_code=True,
                 attn_implementation="eager",
+                **token_kwargs
             )
         except Exception:
             model = AutoModelForCausalLM.from_pretrained(
@@ -114,7 +121,8 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
                 torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
                 device_map="cuda" if str(device).startswith("cuda") else None,
                 low_cpu_mem_usage=True,
-                trust_remote_code=True
+                trust_remote_code=True,
+                **token_kwargs
             )
 
         if hasattr(model, "config"):
@@ -134,9 +142,33 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None):
 
 def get_active_adapter():
     """Returns the loaded model adapter for the server session."""
-    global _active_adapter
-    if _active_adapter is None:
-        init_model("gpt2")
+    global _active_adapter, _model_loading_status
+    if _active_adapter is not None:
+        return _active_adapter
+
+    # If a model is currently downloading/loading in background thread, wait for completion
+    if _model_loading_status.get("status") == "loading":
+        model_name = _model_loading_status.get("model_name", "target model")
+        import time
+        for _ in range(120):
+            time.sleep(0.5)
+            if _active_adapter is not None:
+                return _active_adapter
+            if _model_loading_status.get("status") == "error":
+                err = _model_loading_status.get("error") or "Failed to load model."
+                raise HTTPException(status_code=500, detail=f"Model loading error: {err}")
+
+        raise HTTPException(
+            status_code=503,
+            detail=f"Model '{model_name}' is currently downloading/loading into GPU VRAM. Please wait a few seconds."
+        )
+
+    target_name = _model_loading_status.get("model_name")
+    if not target_name or target_name == "none":
+        target_name = "gpt2"
+
+    init_model(target_name)
+
     if _active_adapter is None:
         err = _model_loading_status.get("error") or "No model loaded."
         raise HTTPException(status_code=500, detail=f"Model loading error: {err}")

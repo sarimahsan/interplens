@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterpLens • Mechanistic Interpretability Documentation</title>
+    
+    <!-- SVG Favicon -->
+    <link rel="icon" type="image/svg+xml" href="../interplens/ui/favicon.svg">
+    <link rel="alternate icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338BDF8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/></svg>">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- FLOATING GLASS PILL HEADER NAVBAR -->
+    <nav class="floating-pill-navbar">
+        <!-- Logo Brand -->
+        <a href="#hero" class="pill-brand">
+            <div class="pill-logo-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+            </div>
+            <span>InterpLens <span style="font-size: 0.75rem; color: var(--brand-primary); font-family: var(--font-mono);">v0.1.0</span></span>
+        </a>
+
+        <!-- Middle Search Pill -->
+        <div class="pill-search-box">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="docs-search-input" class="pill-search-input" placeholder="Search topics, engines, API specs...">
+        </div>
+
+        <!-- Quick Nav Links -->
+        <div class="pill-nav-links">
+            <a href="#topic-1" class="pill-nav-item">Topic 1: Framework</a>
+            <a href="#topic-2" class="pill-nav-item">Topic 2: Engines</a>
+            <a href="#topic-2-5" class="pill-nav-item">2.5 Causal ROME</a>
+            <a href="#topic-3" class="pill-nav-item">Topic 3: API Reference</a>
+        </div>
+
+        <!-- Right Action Pills -->
+        <div class="pill-actions">
+            <button id="theme-toggle-btn" class="pill-action-btn">
+                <span id="theme-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                </span>
+                <span id="theme-text">Dark</span>
+            </button>
+
+            <a href="https://github.com/sarimahsan/interplens" target="_blank" class="pill-action-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                <span>GitHub</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- SPREAD OUT MAIN CANVAS LAYOUT -->
+    <div class="spread-layout">
+        <!-- Sticky Sidebar Navigation -->
+        <aside class="spread-sidebar">
+            <div class="sidebar-section-title">Topic 1: Framework</div>
+            <a href="#topic-1" class="sidebar-nav-link active">
+                <span>1.0 Overview & Vision</span>
+            </a>
+            <a href="#topic-1-1" class="sidebar-nav-link">
+                <span>1.1 Zero-Copy Attachment</span>
+            </a>
+            <a href="#topic-1-2" class="sidebar-nav-link">
+                <span>1.2 Installation & Setup</span>
+            </a>
+
+            <div class="sidebar-section-title">Topic 2: Engines Deep-Dive</div>
+            <a href="#topic-2-1" class="sidebar-nav-link">
+                <span>2.1 Logit Lens Engine</span>
+            </a>
+            <a href="#topic-2-2" class="sidebar-nav-link">
+                <span>2.2 Residual Stream Inspector</span>
+            </a>
+            <a href="#topic-2-3" class="sidebar-nav-link">
+                <span>2.3 Attention Head Explorer</span>
+            </a>
+            <a href="#topic-2-4" class="sidebar-nav-link">
+                <span>2.4 Neuron Activations</span>
+            </a>
+            <a href="#topic-2-5" class="sidebar-nav-link">
+                <span>2.5 Causal ROME Sweeps</span>
+            </a>
+            <a href="#topic-2-6" class="sidebar-nav-link">
+                <span>2.6 Parameter Topology</span>
+            </a>
+
+            <div class="sidebar-section-title">Topic 3 & 4: API & Models</div>
+            <a href="#topic-3" class="sidebar-nav-link">
+                <span>3.0 Python & REST API</span>
+            </a>
+            <a href="#topic-4" class="sidebar-nav-link">
+                <span>4.0 Model Compatibility</span>
+            </a>
+        </aside>
+
+        <!-- Main Content Spread Canvas -->
+        <main class="spread-content">
+            <!-- HERO BANNER -->
+            <section id="hero" class="hero-spread-card">
+                <div class="hero-spread-tag">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                    <span>InterpLens Studio Documentation</span>
+                </div>
+                <h1 class="hero-spread-h1">Mechanistic Interpretability Technical Manual</h1>
+                <p class="hero-spread-desc">
+                    Comprehensive architectural breakdown, mathematical formulations, interpretability engine guides, and causal intervention protocols for transformer language models.
+                </p>
+                <div class="hero-buttons-row">
+                    <a href="#topic-1" class="btn-pill-cta btn-cta-gradient">
+                        <span>Read Technical Manual</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </a>
+                </div>
+            </section>
+
+            <!-- TOPIC 1: CORE FRAMEWORK ARCHITECTURE -->
+            <section id="topic-1" style="margin-bottom: 4rem;">
+                <h2 style="font-size: 2.25rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.5rem; color: var(--brand-primary);">
+                    Topic 1: Core Framework Architecture & Setup
+                </h2>
+                <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    InterpLens is designed as a zero-copy, real-time visual debugger for deep transformer networks. Unlike offline analysis scripts, InterpLens hooks into live PyTorch models running in VRAM and exposes intermediate layer states directly to a interactive web interface.
+                </p>
+
+                <!-- Subtopic 1.1 -->
+                <div id="topic-1-1" class="spread-card" style="margin-bottom: 2rem;">
+                    <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.75rem;">
+                        1.1 Zero-Copy GPU Hook Adapter Architecture
+                    </h3>
+                    <p>
+                        The core engine relies on an abstract <code>HookedTransformerAdapter</code> layer. When you invoke <code>il.launch(model)</code>, InterpLens attaches lightweight PyTorch forward hooks (<code>register_forward_hook</code>) to each residual stream block, multi-head self-attention layer, and MLP expansion layer.
+                    </p>
+                    <ul style="margin: 1rem 0 1rem 1.5rem; color: var(--text-secondary);">
+                        <li><strong>Zero Weight Copies:</strong> Does not duplicate transformer weights in VRAM. It directly inspects existing tensor allocations.</li>
+                        <li><strong>Dynamic Hook Activation:</strong> Hooks capture intermediate activations ($x_l$, attention weights $A_{h}$, MLP activations $m_l$) strictly during active analysis calls and detach immediately afterward to minimize latency overhead.</li>
+                        <li><strong>Universal Model Support:</strong> Automatically introspects standard HuggingFace architectures (GPT-2, Qwen2.5, Llama-3, Mistral, Gemma) as well as TransformerLens <code>HookedTransformer</code> instances.</li>
+                    </ul>
+                </div>
+
+                <!-- Subtopic 1.2 -->
+                <div id="topic-1-2" class="spread-card">
+                    <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.75rem;">
+                        1.2 Installation & Launch Modes
+                    </h3>
+                    <p>Install the package directly via PyPI:</p>
+                    <div class="spread-code-box">
+                        <div class="spread-code-bar">
+                            <span>TERMINAL</span>
+                            <button class="copy-pill-btn">Copy</button>
+                        </div>
+                        <pre><code>pip install interplens</code></pre>
+                    </div>
+
+                    <p style="margin-top: 1.5rem;">Choose from three supported execution modes:</p>
+                    <div class="tabs-header-row" style="margin-top: 1rem;">
+                        <button class="tab-select-btn active" data-tab="mode-python">1. Python Attachment</button>
+                        <button class="tab-select-btn" data-tab="mode-cli">2. CLI Server</button>
+                        <button class="tab-select-btn" data-tab="mode-fastapi">3. Programmatic FastAPI</button>
+                    </div>
+
+                    <div class="tab-content active" data-tab="mode-python">
+                        <p style="margin-bottom: 0.75rem;">Attach to an active PyTorch / TransformerLens model in Python:</p>
+                        <div class="spread-code-box">
+                            <pre><code>import interplens as il
+from transformer_lens import HookedTransformer
+
+model = HookedTransformer.from_pretrained("gpt2-small", device="cuda")
+il.launch(model=model, port=8501)</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" data-tab="mode-cli">
+                        <p style="margin-bottom: 0.75rem;">Launch directly from command line interface:</p>
+                        <div class="spread-code-box">
+                            <pre><code>interplens launch --model Qwen/Qwen2.5-3B --device cuda --port 8501</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" data-tab="mode-fastapi">
+                        <p style="margin-bottom: 0.75rem;">Embed as an asynchronous FastAPI microservice:</p>
+                        <div class="spread-code-box">
+                            <pre><code>import uvicorn
+from interplens.server.app import app
+
+uvicorn.run(app, host="127.0.0.1", port=8501)</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TOPIC 2: INTERPRETABILITY ENGINES DEEP-DIVE -->
+            <section id="topic-2" style="margin-bottom: 4rem;">
+                <h2 style="font-size: 2.25rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.5rem; color: var(--brand-primary);">
+                    Topic 2: Interpretability Engines & Deep Dives
+                </h2>
+                <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 2rem;">
+                    Detailed breakdown of purpose, mathematical formulation, metrics, and interpretability workflows across all six core modules.
+                </p>
+
+                <!-- 2.1 LOGIT LENS ENGINE -->
+                <div id="topic-2-1" class="spread-card" style="margin-bottom: 2.5rem;">
+                    <div class="card-icon-header">
+                        <div class="card-icon-badge">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </div>
+                        <h3>2.1 Logit Lens Engine (Intermediate Vocabulary Projections)</h3>
+                    </div>
+
+                    <h4 style="color: var(--brand-primary); margin: 1rem 0 0.5rem 0;">Purpose & Concept</h4>
+                    <p>
+                        In transformer language models, the residual stream acts as a central highway ($x_0, x_1, \dots, x_L$) where layers read and write information. The Logit Lens engine bypasses late transformer layers by directly projecting intermediate residual stream vectors $x_l$ into vocabulary space via the unembedding matrix $W_U$.
+                    </p>
+
+                    <h4 style="color: var(--brand-primary); margin: 1.25rem 0 0.5rem 0;">Mathematical Formulation</h4>
+                    <div class="spread-code-box" style="padding: 1rem; font-family: var(--font-mono); color: var(--brand-primary);">
+                        \text{logits}_l = W_U \cdot \text{LN}(x_l) \quad \in \mathbb{R}^{V}
+                        <br><br>
+                        p_l(v) = \text{softmax}(\text{logits}_l) = \frac{\exp(\text{logits}_l(v))}{\sum_{v'} \exp(\text{logits}_l(v'))}
+                    </div>
+
+                    <h4 style="color: var(--brand-primary); margin: 1.25rem 0 0.5rem 0;">Key Analytics & Diagnostics</h4>
+                    <ul style="margin-left: 1.5rem; color: var(--text-secondary);">
+                        <li><strong>Layer $\times$ Position Prediction Grid:</strong> Shows the top-1 predicted token string at every layer for every prompt token position. Allows observing exactly where the model resolves facts (e.g. at Layer 14).</li>
+                        <li><strong>Probability & Logit Trajectory Curves:</strong> Plots confidence $p_l(\text{target})$ across layers to detect sharp prediction phase transitions.</li>
+                        <li><strong>Prediction Entropy:</strong> Calculates $H(p_l) = -\sum p_l(v) \log p_l(v)$ to measure uncertainty reduction across intermediate blocks.</li>
+                        <li><strong>KL Divergence:</strong> Computes $D_{KL}(p_L \parallel p_l)$ against final output logits to quantify how close intermediate layers are to the final output state.</li>
+                    </ul>
+                </div>
+
+                <!-- 2.2 RESIDUAL STREAM INSPECTOR -->
+                <div id="topic-2-2" class="spread-card" style="margin-bottom: 2.5rem;">
+                    <div class="card-icon-header">
+                        <div class="card-icon-badge" style="background: rgba(139, 92, 246, 0.12); border-color: rgba(139, 92, 246, 0.3); color: #8b5cf6;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        </div>
+                        <h3>2.2 Residual Stream Inspector (Vector Norms & Geometric Drift)</h3>
+                    </div>
+
+                    <h4 style="color: #8b5cf6; margin: 1rem 0 0.5rem 0;">Purpose & Concept</h4>
+                    <p>
+                        Monitors vector geometry and magnitude growth across the residual stream highway. As layers apply attention updates and MLP additions ($x_{l+1} = x_l + \text{MHSA}_l(x_l) + \text{MLP}_l(x_l)$), residual vector norms grow systematically.
+                    </p>
+
+                    <h4 style="color: #8b5cf6; margin: 1.25rem 0 0.5rem 0;">Mathematical Formulation</h4>
+                    <div class="spread-code-box" style="padding: 1rem; font-family: var(--font-mono); color: #8b5cf6;">
+                        \text{Norm}_l = \|x_l\|_2 = \sqrt{\sum_{i=1}^{d_{\text{model}}} x_{l,i}^2}
+                        <br><br>
+                        \text{CosSim}(x_i, x_j) = \frac{x_i \cdot x_j}{\|x_i\|_2 \|x_j\|_2}
+                    </div>
+
+                    <h4 style="color: #8b5cf6; margin: 1.25rem 0 0.5rem 0;">Key Analytics & Diagnostics</h4>
+                    <ul style="margin-left: 1.5rem; color: var(--text-secondary);">
+                        <li><strong>Layer L2 Vector Norm Curves:</strong> Tracks energy growth across layers to identify layers that make major vector additions.</li>
+                        <li><strong>Inter-Layer Cosine Similarity Heatmap ($L \times L$ Matrix):</strong> Measures directional alignment between residual representations at layer $i$ and layer $j$. High similarity blocks indicate passive passing of information, while sharp drops highlight transformation blocks.</li>
+                        <li><strong>GPU Hardware Profiler Telemetry:</strong> Real-time hardware VRAM memory footprint readout and forward pass latency profiling.</li>
+                    </ul>
+                </div>
+
+                <!-- 2.3 ATTENTION HEAD EXPLORER -->
+                <div id="topic-2-3" class="spread-card" style="margin-bottom: 2.5rem;">
+                    <div class="card-icon-header">
+                        <div class="card-icon-badge" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: #10b981;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        </div>
+                        <h3>2.3 Attention Head Explorer (QKV Routing & Circuit Graphs)</h3>
+                    </div>
+
+                    <h4 style="color: #10b981; margin: 1rem 0 0.5rem 0;">Purpose & Concept</h4>
+                    <p>
+                        Visualizes how attention heads route information across tokens. Inspects positional bias, induction heads, subject-verb agreement heads, and previous-token heads.
+                    </p>
+
+                    <h4 style="color: #10b981; margin: 1.25rem 0 0.5rem 0;">Mathematical Formulation</h4>
+                    <div class="spread-code-box" style="padding: 1rem; font-family: var(--font-mono); color: #10b981;">
+                        A_{l,h} = \text{softmax}\left(\frac{Q_{l,h} K_{l,h}^T}{\sqrt{d_k}}\right) \quad \in \mathbb{R}^{N \times N}
+                    </div>
+
+                    <h4 style="color: #10b981; margin: 1.25rem 0 0.5rem 0;">Key Analytics & Diagnostics</h4>
+                    <ul style="margin-left: 1.5rem; color: var(--text-secondary);">
+                        <li><strong>Single-Head Attention Heatmap ($N \times N$ Matrix):</strong> Renders exact Query-Key attention weight probabilities between all input token positions.</li>
+                        <li><strong>Multi-Head Grid View:</strong> Shows small thumbnail heatmaps for all heads in a selected layer simultaneously, enabling fast identification of active heads.</li>
+                        <li><strong>HTML5 Canvas Arc Link Visualizer:</strong> Draws curved connection links between Query and Key tokens, weighted and colored by attention magnitude.</li>
+                    </ul>
+                </div>
+
+                <!-- 2.4 NEURON ACTIVATION EXPLORER -->
+                <div id="topic-2-4" class="spread-card" style="margin-bottom: 2.5rem;">
+                    <div class="card-icon-header">
+                        <div class="card-icon-badge" style="background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); color: #f59e0b;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        </div>
+                        <h3>2.4 Neuron Activation Explorer (MLP Polysemanticity & Attribution)</h3>
+                    </div>
+
+                    <h4 style="color: #f59e0b; margin: 1rem 0 0.5rem 0;">Purpose & Concept</h4>
+                    <p>
+                        MLP layers expand the hidden state into a higher dimension (e.g. $d_{\text{mlp}} = 4 \times d_{\text{model}}$) where individual neurons act as key-value memories storing facts and concepts.
+                    </p>
+
+                    <h4 style="color: #f59e0b; margin: 1.25rem 0 0.5rem 0;">Mathematical Formulation</h4>
+                    <div class="spread-code-box" style="padding: 1rem; font-family: var(--font-mono); color: #f59e0b;">
+                        m_l = \text{GELU}(x_l W_{\text{in}} + b_{\text{in}}) \quad \in \mathbb{R}^{d_{\text{mlp}}}
+                    </div>
+
+                    <h4 style="color: #f59e0b; margin: 1.25rem 0 0.5rem 0;">Key Analytics & Diagnostics</h4>
+                    <ul style="margin-left: 1.5rem; color: var(--text-secondary);">
+                        <li><strong>Top-$K$ Firing Neurons Ranking:</strong> Filters and sorts the highest firing intermediate MLP neurons at any selected token position.</li>
+                        <li><strong>Prompt Text Lighting Strip:</strong> Highlights prompt tokens in green with background opacity scaled proportionally to the activation magnitude of a selected single neuron.</li>
+                        <li><strong>Input Token Attribution (Attention Rollout):</strong> Multiplies attention matrices across layers to compute total token influence flow from input to output.</li>
+                    </ul>
+                </div>
+
+                <!-- 2.5 AUTOMATED CAUSAL INTERVENTIONS & ROME -->
+                <div id="topic-2-5" class="spread-card" style="margin-bottom: 2.5rem;">
+                    <div class="card-icon-header">
+                        <div class="card-icon-badge" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+                        </div>
+                        <h3>2.5 Automated Causal Interventions & ROME Causal Tracing</h3>
+                    </div>
+
+                    <h4 style="color: #ef4444; margin: 1rem 0 0.5rem 0;">Purpose & Concept</h4>
+                    <p>
+                        Moves beyond passive observation to active causal experimentation (ROME-style causal tracing). InterpLens runs clean vs. corrupted forward passes, patches individual intermediate residual vectors $h_{l,p}^{\text{clean}}$ into corrupted runs, and measures causal recovery of the target prediction.
+                    </p>
+
+                    <h4 style="color: #ef4444; margin: 1.25rem 0 0.5rem 0;">Mathematical Recovery Formula</h4>
+                    <div class="spread-code-box" style="padding: 1rem; font-family: var(--font-mono); color: #ef4444;">
+                        \text{LogitDiff} = \text{logit}(y_{\text{target}}) - \text{logit}(y_{\text{corrupt\_target}})
+                        <br><br>
+                        \text{Recovery \%} = \frac{\text{LogitDiff}_{\text{patched}} - \text{LogitDiff}_{\text{corrupt}}}{\text{LogitDiff}_{\text{clean}} - \text{LogitDiff}_{\text{corrupt}}} \times 100\%
+                    </div>
+
+                    <h4 style="color: #ef4444; margin: 1.25rem 0 0.5rem 0;">Key Analytics & Diagnostics</h4>
+                    <ul style="margin-left: 1.5rem; color: var(--text-secondary);">
+                        <li><strong>Clean vs. Corrupt Prompt Workbench:</strong> Allows specifying target clean prompts (e.g. <em>"The Eiffel Tower is in"</em>) and corrupted control prompts (e.g. <em>"The Colosseum is in"</em>).</li>
+                        <li><strong>$N_{\text{layers}} \times N_{\text{pos}}$ Causal Recovery Heatmap:</strong> Full grid sweep showing exact causal recovery percentages for every single layer and token position. Identifies factual storage loci (e.g. Subject token at mid-layers).</li>
+                        <li><strong>Single-Cell Intervention Drilldown:</strong> Click any heatmap cell to view exact token strings, patched baseline logit differences, and recovery stats.</li>
+                    </ul>
+                </div>
+
+                <!-- 2.6 MODEL TOPOLOGY & PARAMETERS -->
+                <div id="topic-2-6" class="spread-card">
+                    <div class="card-icon-header">
+                        <div class="card-icon-badge" style="background: rgba(14, 165, 233, 0.12); border-color: rgba(14, 165, 233, 0.3); color: #0ea5e9;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                        </div>
+                        <h3>2.6 Model Architecture Topology & Parameter Breakdown</h3>
+                    </div>
+
+                    <h4 style="color: #0ea5e9; margin: 1rem 0 0.5rem 0;">Purpose & Concept</h4>
+                    <p>
+                        Introspects PyTorch model parameters (<code>model.named_parameters()</code>) to classify and compute exact parameter budget shares across architectural components.
+                    </p>
+
+                    <h4 style="color: #0ea5e9; margin: 1.25rem 0 0.5rem 0;">Classification Categories</h4>
+                    <ul style="margin-left: 1.5rem; color: var(--text-secondary);">
+                        <li><strong>MLP Expansion Sublayers:</strong> Linear gate, up, and down projection weights.</li>
+                        <li><strong>Multi-Head Self-Attention (MHSA):</strong> Query, Key, Value, and Output projection matrices ($W_Q, W_K, W_V, W_O$).</li>
+                        <li><strong>Embeddings:</strong> Token and positional embedding tables ($W_E$).</li>
+                        <li><strong>Language Model Head:</strong> Unembedding classification head ($W_U$).</li>
+                        <li><strong>LayerNorms:</strong> Pre-block and post-block normalization gains and biases ($\gamma, \beta$).</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- TOPIC 3: PYTHON & REST API REFERENCE -->
+            <section id="topic-3" style="margin-bottom: 4rem;">
+                <h2 style="font-size: 2.25rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.5rem; color: var(--brand-primary);">
+                    Topic 3: Python API & REST Endpoints Specification
+                </h2>
+
+                <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
+                    3.1 Programmatic Execution API
+                </h3>
+                <div class="spread-code-box">
+                    <div class="spread-code-bar">
+                        <span>Python API</span>
+                        <button class="copy-pill-btn">Copy</button>
+                    </div>
+                    <pre><code>import interplens as il
+from interplens.analysis.causal_patching import run_causal_patching_sweep
+
+# 1. Launch debugger GUI
+il.launch(model=model, port=8501)
+
+# 2. Run causal sweep programmatically
+results = run_causal_patching_sweep(
+    adapter=adapter,
+    clean_prompt="The Eiffel Tower is in",
+    corrupt_prompt="The Colosseum is in",
+    target_token_str="Paris"
+)
+
+print(f"Max Recovery: {results.max_recovery_percentage}% at Layer L{results.max_recovery_layer}")</code></pre>
+                </div>
+
+                <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 2rem 0 1rem 0;">
+                    3.2 FastAPI REST Service Endpoints
+                </h3>
+                <table class="spread-table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>POST</code></td>
+                            <td><code>/api/run</code></td>
+                            <td>Executes model forward pass and caches intermediate activation tensors.</td>
+                        </tr>
+                        <tr>
+                            <td><code>GET</code></td>
+                            <td><code>/api/analysis/logit-lens</code></td>
+                            <td>Returns layer-by-layer Top-K logit lens token predictions & probabilities.</td>
+                        </tr>
+                        <tr>
+                            <td><code>GET</code></td>
+                            <td><code>/api/analysis/residual-stream</code></td>
+                            <td>Returns residual L2 vector norms and inter-layer Cosine Similarity matrix.</td>
+                        </tr>
+                        <tr>
+                            <td><code>GET</code></td>
+                            <td><code>/api/analysis/attention</code></td>
+                            <td>Returns single-head attention matrix, multi-head grid, and arc diagram links.</td>
+                        </tr>
+                        <tr>
+                            <td><code>GET</code></td>
+                            <td><code>/api/analysis/neurons</code></td>
+                            <td>Ranks top-K firing MLP neurons and single neuron prompt text lighting strips.</td>
+                        </tr>
+                        <tr>
+                            <td><code>POST</code></td>
+                            <td><code>/api/analysis/causal-patching</code></td>
+                            <td>Runs clean vs corrupt activation patching sweep and returns $N_{\text{layers}} \times N_{\text{pos}}$ recovery matrix.</td>
+                        </tr>
+                        <tr>
+                            <td><code>GET</code></td>
+                            <td><code>/api/model/topology</code></td>
+                            <td>Inspects PyTorch parameter tensors and builds component parameter breakdown payload.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- TOPIC 4: MODEL COMPATIBILITY -->
+            <section id="topic-4" style="margin-bottom: 4rem;">
+                <h2 style="font-size: 2.25rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.5rem; color: var(--brand-primary);">
+                    Topic 4: Model Compatibility & Architecture Support
+                </h2>
+                <p style="font-size: 1.05rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    InterpLens supports all standard decoder-only transformer architectures out of the box across PyTorch and TransformerLens:
+                </p>
+
+                <div class="spread-card">
+                    <ul style="margin-left: 1.5rem; color: var(--text-secondary); font-size: 1rem; line-height: 2;">
+                        <li><strong>GPT-2 Family:</strong> GPT-2 Small (117M), Medium (345M), Large (762M), XL (1.5B)</li>
+                        <li><strong>Qwen 2.5 Family:</strong> Qwen2.5-0.5B, 1.5B, 3B, 7B, 14B</li>
+                        <li><strong>Llama 3 / 3.2 Family:</strong> Meta Llama 3.2 1B, 3B, Meta Llama 3 8B</li>
+                        <li><strong>Mistral Family:</strong> Mistral-7B-v0.1, Instruct</li>
+                        <li><strong>Gemma Family:</strong> Google Gemma-2B, Gemma-7B</li>
+                        <li><strong>EleutherAI Pythia Family:</strong> Pythia 70M, 160M, 410M, 1B, 2.8B, 6.9B, 12B</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer style="margin-top: 6rem; padding: 3rem 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                <p>© 2026 InterpLens Studio • Mechanistic Interpretability Debugger for PyTorch & TransformerLens.</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="main.js"></script>
+</body>
+
+</html>

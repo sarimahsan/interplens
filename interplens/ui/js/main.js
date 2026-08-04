@@ -85,7 +85,7 @@ async function fetchSystemHealth() {
 
 // --- Theme Management ---
 function initThemeManager() {
-    const themeBtn = document.getElementById('theme-toggle');
+    const themeBtn = document.getElementById('theme-switch-btn') || document.getElementById('theme-toggle');
     const savedTheme = localStorage.getItem('interplens_studio_theme') || 'dark';
 
     applyTheme(savedTheme);

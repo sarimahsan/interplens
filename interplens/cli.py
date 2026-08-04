@@ -16,6 +16,7 @@ def main():
     launch_parser.add_argument("--host", type=str, default=settings.host, help="Host address (default: 127.0.0.1)")
     launch_parser.add_argument("--port", type=int, default=settings.port, help="Port (default: 8501)")
     launch_parser.add_argument("--device", type=str, default="auto", help="Device (cpu, cuda, mps, auto)")
+    launch_parser.add_argument("--hf-token", "--token", type=str, default=None, help="HuggingFace access token for gated models")
     
     args = parser.parse_args()
     
@@ -24,9 +25,12 @@ def main():
         host = getattr(args, "host", settings.host)
         port = getattr(args, "port", settings.port)
         model_name = getattr(args, "model", "gpt2")
+        hf_token = getattr(args, "hf_token", None)
         
         print(f"🚀 Starting InterpLens Debugger v{settings.version}")
         print(f"📍 Model: {model_name} | Device: {device}")
+        if hf_token:
+            print("🔑 HuggingFace Access Token provided.")
         print(f"🌐 Server running at http://{host}:{port}")
         
         vram = get_vram_usage(device)
@@ -39,7 +43,7 @@ def main():
         # Start model loading in background thread so web server opens instantly
         loader_thread = threading.Thread(
             target=init_model,
-            args=(model_name, device),
+            args=(model_name, device, hf_token),
             daemon=True
         )
         loader_thread.start()
