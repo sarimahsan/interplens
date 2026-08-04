@@ -91,32 +91,40 @@ class CustomModelAdapter(BaseModelAdapter):
         """Tokenizes text using provided tokenizer or custom tokenize function."""
         if self.tokenize_fn is not None:
             return self.tokenize_fn(text)
-        if hasattr(self.tokenizer, "tokenize"):
-            return self.tokenizer.tokenize(text)
-        elif hasattr(self.tokenizer, "encode"):
-            ids = self.tokenizer.encode(text)
-            if hasattr(self.tokenizer, "decode"):
-                return [self.tokenizer.decode([i]) for i in ids]
-            return [str(i) for i in ids]
+
+        if self.tokenizer is not None:
+            if hasattr(self.tokenizer, "encode") and hasattr(self.tokenizer, "decode"):
+                try:
+                    ids = self.tokenizer.encode(text, add_special_tokens=False)
+                    if ids:
+                        tokens = []
+                        for i in ids:
+                            tok_str = self.tokenizer.decode([i])
+                            tokens.append(tok_str if tok_str else f"[{i}]")
+                        return tokens
+                except Exception:
+                    pass
+
+            if hasattr(self.tokenizer, "tokenize"):
+                try:
+                    return self.tokenizer.tokenize(text)
+                except Exception:
+                    pass
+
+        return text.split()
+
     def decode(self, token_ids: List[int]) -> str:
-        """Decodes token IDs back to human-readable string token labels."""
+        """Decodes token IDs back to human-readable string token labels using model's tokenizer."""
         if not token_ids:
             return ""
-        if hasattr(self.tokenizer, "decode"):
+        if self.tokenizer is not None and hasattr(self.tokenizer, "decode"):
             try:
-                res = self.tokenizer.decode(token_ids)
+                res = self.tokenizer.decode(token_ids, skip_special_tokens=False)
                 if res:
                     return res
             except Exception:
                 pass
-        try:
-            from transformers import AutoTokenizer
-            if not hasattr(self, "_fallback_tokenizer"):
-                self._fallback_tokenizer = AutoTokenizer.from_pretrained("gpt2")
-            return self._fallback_tokenizer.decode(token_ids)
-        except Exception:
-            pass
-        return str(token_ids[0])
+        return str(token_ids[0]) if isinstance(token_ids, list) else str(token_ids)
 
     @torch.inference_mode()
     def run_with_cache(self, prompt: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
@@ -125,7 +133,11 @@ class CustomModelAdapter(BaseModelAdapter):
         try:
             # Tokenize input to tensor if tokenizer supported
             if hasattr(self.tokenizer, "encode"):
-                input_ids = self.tokenizer.encode(prompt)
+                try:
+                    input_ids = self.tokenizer.encode(prompt, add_special_tokens=False)
+                except TypeError:
+                    input_ids = self.tokenizer.encode(prompt)
+
                 if not isinstance(input_ids, torch.Tensor):
                     input_ids = torch.tensor([input_ids], device=self.device)
                 elif input_ids.ndim == 1:

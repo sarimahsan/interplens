@@ -80,16 +80,7 @@ class InPlaceModelAdapter(BaseModelAdapter):
             except Exception:
                 pass
 
-        # 4. Fallback to lazy GPT-2 tokenizer if available
-        try:
-            from transformers import AutoTokenizer
-            if not hasattr(self, "_fallback_tokenizer"):
-                self._fallback_tokenizer = AutoTokenizer.from_pretrained("gpt2")
-            return self._fallback_tokenizer.decode(token_ids)
-        except Exception:
-            pass
-
-        return str(token_ids[0])
+        return str(token_ids[0]) if isinstance(token_ids, list) else str(token_ids)
 
     @torch.inference_mode()
     def run_with_cache(self, prompt: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:

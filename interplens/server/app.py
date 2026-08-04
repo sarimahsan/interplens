@@ -104,7 +104,42 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
         
         print(f"📥 Loading HuggingFace AutoModel '{model_name}' directly onto GPU (fp16, eager attention)...")
         token_kwargs = {"token": token} if token else {}
-        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
+        
+        tokenizer = None
+        tokenizer_warning = None
+
+        # 1. Primary Tokenizer Resolution
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
+        except Exception as t_err1:
+            print(f"⚠️ Primary tokenizer for '{model_name}' could not be loaded directly ({t_err1}).")
+            m_lower = model_name.lower()
+            fallback_repo = None
+            if "llama" in m_lower:
+                fallback_repo = "meta-llama/Llama-3.2-1B"
+            elif "qwen" in m_lower:
+                fallback_repo = "Qwen/Qwen2.5-0.5B"
+            elif "gemma" in m_lower:
+                fallback_repo = "google/gemma-2b"
+            elif "phi" in m_lower:
+                fallback_repo = "microsoft/phi-2"
+
+            if fallback_repo:
+                try:
+                    tokenizer = AutoTokenizer.from_pretrained(fallback_repo, trust_remote_code=True, **token_kwargs)
+                    tokenizer_warning = f"Primary tokenizer unavailable. Automatically resolved compatible tokenizer '{fallback_repo}'."
+                    print(f"✅ Automatically resolved compatible tokenizer '{fallback_repo}'!")
+                except Exception as t_err2:
+                    print(f"Notice: Fallback tokenizer '{fallback_repo}' also unavailable ({t_err2}).")
+
+            if tokenizer is None:
+                try:
+                    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+                    tokenizer_warning = f"Using generic fallback tokenizer for '{model_name}'."
+                except Exception:
+                    tokenizer_warning = f"No tokenizer found for '{model_name}'. Operating with raw token ID indexing."
+
+        # 2. Model Weight Loading
         try:
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
@@ -130,7 +165,11 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
 
         _active_adapter = CustomModelAdapter(model=model, tokenizer=tokenizer, model_name=model_name)
         _model_loading_status["status"] = "online"
+        _model_loading_status["warning"] = tokenizer_warning
         print(f"✅ Loaded '{model_name}' directly into CUDA GPU VRAM!")
+        if tokenizer_warning:
+            print(f"💡 Notice: {tokenizer_warning}")
+        return _active_adapter
         return _active_adapter
     except Exception as e2:
         err_msg = f"Failed to load model '{model_name}': {e2}"
@@ -212,6 +251,7 @@ def get_health() -> Dict[str, Any]:
         "device": str(device),
         "active_model": model_name,
         "vram_usage": vram,
+        "warning": _model_loading_status.get("warning"),
         "error": _model_loading_status.get("error"),
         "sessions_cached": len(global_session_store._sessions),
     }

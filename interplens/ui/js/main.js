@@ -28,7 +28,10 @@ async function fetchSystemHealth() {
 
         if (data.status === 'online') {
             if (dot) dot.className = 'status-dot status-online';
-            if (text) text.textContent = 'Backend Online';
+            if (text) {
+                text.textContent = data.warning ? `Online (${data.warning})` : 'Backend Online';
+                if (data.warning) text.style.color = 'var(--accent-amber)';
+            }
 
             // Unblock UI for interaction
             if (runBtn) { runBtn.disabled = false; }
