@@ -31,14 +31,14 @@
     }
 
     async function fetchAndRenderInductionHeads() {
-        const container = document.getElementById('induction-results-area');
+        const gridContainer = document.getElementById('induction-heatmap-grid');
         const loader = document.getElementById('induction-loading-spinner');
 
         const seqLen = parseInt(document.getElementById('induction-seq-len')?.value || '20', 10);
         const threshold = parseFloat(document.getElementById('induction-threshold')?.value || '0.15');
 
         if (loader) loader.classList.remove('hidden');
-        if (container) container.style.opacity = '0.5';
+        if (gridContainer) gridContainer.style.opacity = '0.5';
 
         try {
             const data = await window.API.getInductionHeads(seqLen, threshold, 10);
@@ -49,12 +49,12 @@
             renderTopHeadsTable(data, threshold);
         } catch (err) {
             console.error("Induction Detector Error:", err);
-            if (container) {
-                container.innerHTML = `<div class="error-banner">❌ Failed to run induction head auto-detection: ${err.message}</div>`;
+            if (gridContainer) {
+                gridContainer.innerHTML = `<div class="error-banner" style="padding: 20px; color: #ef4444; text-align: center;">❌ Failed to run induction head auto-detection: ${err.message}</div>`;
             }
         } finally {
             if (loader) loader.classList.add('hidden');
-            if (container) container.style.opacity = '1';
+            if (gridContainer) gridContainer.style.opacity = '1';
         }
     }
 
