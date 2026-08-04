@@ -82,10 +82,10 @@
         const heads = data.num_heads;
         const matrix = data.matrix_scores;
 
-        let html = `<div class="ind-grid-wrapper" style="grid-template-columns: 60px repeat(${heads}, 1fr);">`;
+        let html = `<div class="ind-grid-wrapper" style="grid-template-columns: 55px repeat(${heads}, minmax(42px, 1fr));">`;
 
         // Column Headers (Heads 0..H-1)
-        html += `<div class="ind-grid-corner">Layer \\ Head</div>`;
+        html += `<div class="ind-grid-corner">L \\ H</div>`;
         for (let h = 0; h < heads; h++) {
             html += `<div class="ind-grid-col-head">H${h}</div>`;
         }
@@ -96,17 +96,29 @@
             for (let h = 0; h < heads; h++) {
                 const score = matrix[l] ? (matrix[l][h] || 0.0) : 0.0;
                 const isFlagged = score >= threshold;
-                const opacity = Math.min(1.0, Math.max(0.08, score * 3.5));
-                const bgColor = isFlagged 
-                    ? `rgba(59, 130, 246, ${opacity})` 
-                    : `rgba(148, 163, 184, ${Math.max(0.05, opacity * 0.4)})`;
-                const border = isFlagged ? `1px solid var(--primary)` : `1px solid rgba(255, 255, 255, 0.05)`;
+
+                let bgColor, textColor, border;
+                if (isFlagged) {
+                    const intensity = Math.min(1.0, Math.max(0.6, score * 2.5));
+                    bgColor = `rgba(59, 130, 246, ${intensity})`;
+                    textColor = `#ffffff`;
+                    border = `1px solid rgba(147, 197, 253, 0.9)`;
+                } else if (score > 0) {
+                    const opacity = Math.min(0.45, Math.max(0.12, score * 2.0));
+                    bgColor = `rgba(59, 130, 246, ${opacity})`;
+                    textColor = `rgba(255, 255, 255, 0.9)`;
+                    border = `1px solid rgba(255, 255, 255, 0.08)`;
+                } else {
+                    bgColor = `rgba(15, 23, 42, 0.6)`;
+                    textColor = `rgba(148, 163, 184, 0.35)`;
+                    border = `1px solid rgba(255, 255, 255, 0.03)`;
+                }
 
                 html += `
                     <div class="ind-cell ${isFlagged ? 'flagged' : ''}" 
-                         style="background-color: ${bgColor}; border: ${border};" 
-                         title="Layer ${l}, Head ${h} | Induction Score: ${score.toFixed(4)} ${isFlagged ? '(Active Induction Head)' : ''}">
-                        <span class="ind-cell-score">${score.toFixed(2)}</span>
+                         style="background-color: ${bgColor}; color: ${textColor}; border: ${border};" 
+                         title="Layer ${l}, Head ${h} | Induction Score: ${score.toFixed(4)} ${isFlagged ? '(ACTIVE INDUCTION HEAD)' : ''}">
+                        <span class="ind-cell-score">${score > 0 ? score.toFixed(2) : '0.00'}</span>
                     </div>
                 `;
             }

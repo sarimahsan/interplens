@@ -71,18 +71,18 @@ def detect_induction_heads(
 
     for l in range(num_layers):
         attn_map = None
-        hook_name = adapter.get_attn_hook_name(l) if hasattr(adapter, "get_attn_hook_name") else f"layers.{l}.attn"
+        hook_name = adapter.get_attn_pattern_hook_name(l) if hasattr(adapter, "get_attn_pattern_hook_name") else f"layers.{l}.attn.hook_pattern"
 
-        if hook_name in cache and cache[hook_name].ndim in (3, 4):
+        if hook_name in cache and cache[hook_name].ndim in (3, 4) and cache[hook_name].shape[-1] == cache[hook_name].shape[-2]:
             attn_map = cache[hook_name]
         else:
+            # Fallback search for square attention pattern tensors (N_seq x N_seq)
             for k, v in cache.items():
                 k_lower = k.lower()
-                if f"blocks.{l}." in k_lower or f"layers.{l}." in k_lower or f"block_{l}" in k_lower or f"h.{l}" in k_lower:
-                    if "attn" in k_lower or "pattern" in k_lower:
-                        if v.ndim in (3, 4):
-                            attn_map = v
-                            break
+                if (f"blocks.{l}." in k_lower or f"layers.{l}." in k_lower or f"block_{l}" in k_lower or f"h.{l}" in k_lower):
+                    if ("pattern" in k_lower or "attn" in k_lower) and v.ndim in (3, 4) and v.shape[-1] == v.shape[-2]:
+                        attn_map = v
+                        break
 
         if attn_map is not None:
             t = attn_map.detach().cpu().to(torch.float32)

@@ -316,3 +316,111 @@ body {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* --- Induction Heatmap Matrix Styling --- */
+.ind-grid-wrapper {
+    display: grid;
+    gap: 4px;
+    padding: 14px;
+    background: var(--bg-darkest, #0b0f19);
+    border-radius: 10px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    overflow-x: auto;
+}
+
+.ind-grid-corner, .ind-grid-col-head, .ind-grid-row-head {
+    font-family: var(--font-mono, monospace);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted, #94a3b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+}
+
+.ind-cell {
+    position: relative;
+    border-radius: 4px;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono, monospace);
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ind-cell:hover {
+    transform: scale(1.2);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    border-color: #3b82f6 !important;
+}
+
+.ind-cell.flagged {
+    animation: inductionGlow 2.5s infinite alternate;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+}
+
+@keyframes inductionGlow {
+    0% { box-shadow: 0 0 4px rgba(59, 130, 246, 0.4); }
+    100% { box-shadow: 0 0 14px rgba(139, 92, 246, 0.8); }
+}
+
+.ind-cell-score {
+    pointer-events: none;
+}
+
+.head-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--primary, #3b82f6);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.tag-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+}
+
+.tag-active {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.tag-neutral {
+    background: rgba(148, 163, 184, 0.1);
+    color: #94a3b8;
+}
+
+.meter-bar-container {
+    width: 100%;
+    max-width: 140px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.meter-bar-fill {
+    height: 100%;
+    background: #64748b;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.meter-bar-fill.active-fill {
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+}
