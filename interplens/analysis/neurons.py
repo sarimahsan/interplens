@@ -32,8 +32,13 @@ def compute_neuron_activations(
     layer = max(0, min(layer, num_layers - 1))
     seq_len = len(tokens)
 
-    target_pos = position if position is not None and 0 <= position < seq_len else (seq_len - 1)
-    selected_token = tokens[target_pos]
+    if seq_len > 0:
+        target_pos = position if position is not None and 0 <= position < seq_len else (seq_len - 1)
+        target_pos = max(0, min(target_pos, seq_len - 1))
+        selected_token = tokens[target_pos]
+    else:
+        target_pos = 0
+        selected_token = ""
 
     # 1. Search activation cache for target layer MLP post-activation tensor
     mlp_tensor = None

@@ -96,8 +96,17 @@ def compute_residual_metrics(
             })
 
     # 3. Position inspection metrics
-    target_pos = position if position is not None and 0 <= position < P_count else (P_count - 1)
-    
+    max_pos = min(P_count, len(tokens)) - 1
+    if max_pos < 0:
+        target_pos = 0
+        selected_token_str = ""
+    else:
+        if position is not None and 0 <= position <= max_pos:
+            target_pos = position
+        else:
+            target_pos = max_pos
+        selected_token_str = tokens[target_pos] if target_pos < len(tokens) else ""
+
     pos_vector_history = []
     for l_idx in range(L_count):
         l_norm = round(float(norms_tensor[l_idx, target_pos].item()), 2)
@@ -120,7 +129,7 @@ def compute_residual_metrics(
         "session_id": session_id,
         "tokens": tokens,
         "selected_position": target_pos,
-        "selected_token": tokens[target_pos],
+        "selected_token": selected_token_str,
         "layer_labels": layer_labels,
         "vector_norms": [
             {
