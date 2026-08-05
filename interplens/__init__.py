@@ -1,5 +1,7 @@
 """InterpLens: An interactive mechanistic interpretability package and visual debugger for LLM internals."""
 
+import os
+import sys
 from typing import Any, Optional
 from .config import settings
 from .adapters import (
@@ -58,9 +60,22 @@ def launch(
     from .server.app import set_active_adapter, app
     set_active_adapter(adapter)
 
+    # Detect Google Colab environment
+    is_colab = "google.colab" in sys.modules or os.environ.get("COLAB_GPU") is not None
+    if is_colab and host == "127.0.0.1":
+        host = "0.0.0.0"
+
     print(f"🚀 InterpLens v{__version__} attached to model: {adapter.model_name}")
     print(f"📍 Device: {adapter.device} | Layers: {adapter.num_layers} | Hidden Dim: {adapter.hidden_dim}")
     print(f"🌐 Debugger Web UI active at http://{host}:{port}")
+
+    if is_colab:
+        try:
+            from google.colab import output
+            output.serve_kernel_port(port)
+            print(f"🔗 Colab Proxy Enabled for Port {port}")
+        except Exception:
+            pass
 
     if block:
         import uvicorn
