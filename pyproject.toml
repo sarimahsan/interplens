@@ -33,6 +33,10 @@ dev = [
 [project.scripts]
 interplens = "interplens.cli:main"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["interplens*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
