@@ -13,6 +13,27 @@ class ModelInfo(BaseModel):
     vocab_size: int
     device: str
     is_custom: bool = False
+    discovery_confidence: float = 1.0
+    static_fingerprint: Optional[Dict[str, Any]] = None
+    runtime_fingerprint: Optional[Dict[str, Any]] = None
+    capabilities: Optional[Dict[str, Any]] = None
+    engine_capabilities: Optional[Dict[str, Any]] = None
+
+
+class ModelReportResponse(BaseModel):
+    """Response payload for automated model inspection discovery report."""
+    model_name: str
+    architecture_id: str
+    family: str
+    discovery_confidence: float
+    capability_level: int
+    capability_level_name: str
+    static_fingerprint: Dict[str, Any]
+    runtime_fingerprint: Dict[str, Any]
+    model_capabilities: Dict[str, Any]
+    engine_capabilities: Dict[str, Any]
+    text_report: Optional[str] = None
+
 
 
 class RunRequest(BaseModel):

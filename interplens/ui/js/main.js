@@ -114,6 +114,42 @@ function registerEventListeners() {
     const runBtn = document.getElementById('run-btn');
     if (runBtn) runBtn.addEventListener('click', executePromptAnalysis);
 
+    // Model Discovery Report Modal Event Listeners
+    const reportBtn = document.getElementById('btn-model-report');
+    const reportModal = document.getElementById('model-report-modal');
+    const closeReportBtn = document.getElementById('close-model-report-modal');
+
+    if (reportBtn) {
+        reportBtn.addEventListener('click', async () => {
+            if (reportModal) reportModal.style.display = 'flex';
+            const modalBody = document.getElementById('model-report-modal-body');
+            if (modalBody) modalBody.textContent = 'Loading automated model discovery report...';
+            try {
+                const res = await fetch('/api/model/report');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (modalBody) modalBody.textContent = data.text_report || JSON.stringify(data, null, 2);
+                } else {
+                    if (modalBody) modalBody.textContent = 'Failed to load model discovery report from server.';
+                }
+            } catch (err) {
+                if (modalBody) modalBody.textContent = 'Error connecting to model discovery report endpoint.';
+            }
+        });
+    }
+
+    if (closeReportBtn) {
+        closeReportBtn.addEventListener('click', () => {
+            if (reportModal) reportModal.style.display = 'none';
+        });
+    }
+
+    if (reportModal) {
+        reportModal.addEventListener('click', (e) => {
+            if (e.target === reportModal) reportModal.style.display = 'none';
+        });
+    }
+
     // Sidebar Tab Router
     document.querySelectorAll('.engine-menu .menu-btn:not(.disabled)').forEach(btn => {
         btn.addEventListener('click', (e) => {

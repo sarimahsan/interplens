@@ -1,7 +1,7 @@
 """Abstract base class standardizing model interactions across architectures for InterpLens."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Union
 import torch
 
 
@@ -16,6 +16,15 @@ class BaseModelAdapter(ABC):
         self.hidden_dim: int = 0
         self.vocab_size: int = 0
         self._model_instance: Any = None
+
+        # Framework properties
+        self.static_fingerprint: Any = None
+        self.runtime_fingerprint: Any = None
+        self.capabilities: Any = None
+        self.engine_capabilities: Any = None
+        self.graph: Any = None
+        self.report: Any = None
+        self.discovery_confidence: float = 1.0
 
     @abstractmethod
     def load(self) -> None:
@@ -32,7 +41,7 @@ class BaseModelAdapter(ABC):
         return str(token_ids[0]) if token_ids else ""
 
     @abstractmethod
-    def run_with_cache(self, prompt: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    def run_with_cache(self, inputs: Union[str, Dict[str, Any], Any]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Runs forward pass under @torch.inference_mode() and returns (logits, activation_cache_dict)."""
         pass
 
@@ -57,7 +66,7 @@ class BaseModelAdapter(ABC):
         pass
 
     def get_model_info(self) -> Dict[str, Any]:
-        """Returns dictionary summary of model parameters and layer counts."""
+        """Returns summary metadata dictionary for model parameters, layer counts, and capability indicators."""
         return {
             "model_name": self.model_name,
             "num_layers": self.num_layers,
@@ -65,4 +74,9 @@ class BaseModelAdapter(ABC):
             "hidden_dim": self.hidden_dim,
             "vocab_size": self.vocab_size,
             "device": str(self.device),
+            "discovery_confidence": self.discovery_confidence,
+            "static_fingerprint": self.static_fingerprint.to_dict() if self.static_fingerprint else {},
+            "runtime_fingerprint": self.runtime_fingerprint.to_dict() if self.runtime_fingerprint else {},
+            "capabilities": self.capabilities.to_dict() if self.capabilities else {},
+            "engine_capabilities": self.engine_capabilities.to_dict() if self.engine_capabilities else {},
         }

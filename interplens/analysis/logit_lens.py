@@ -97,7 +97,8 @@ def compute_logit_lens(
     # Check for embedding hook
     embed_hook = None
     for name in cache.keys():
-        if "embed" in name.lower() and "hook" in name.lower():
+        n_lower = name.lower()
+        if "embed" in n_lower or "wte" in n_lower:
             embed_hook = name
             break
 

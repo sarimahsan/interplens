@@ -232,8 +232,13 @@ def get_adapter_model_info(adapter) -> ModelInfo:
         num_heads=info_dict.get("num_heads", 0),
         hidden_dim=info_dict.get("hidden_dim", 0),
         vocab_size=info_dict.get("vocab_size", 0),
-        device=str(adapter.device),
+        device=str(getattr(adapter, "device", "cpu")),
         is_custom=info_dict.get("is_custom", False),
+        discovery_confidence=info_dict.get("discovery_confidence", 1.0),
+        static_fingerprint=info_dict.get("static_fingerprint"),
+        runtime_fingerprint=info_dict.get("runtime_fingerprint"),
+        capabilities=info_dict.get("capabilities"),
+        engine_capabilities=info_dict.get("engine_capabilities"),
     )
 
 
@@ -244,7 +249,8 @@ def get_health() -> Dict[str, Any]:
     vram = get_vram_usage(device)
     
     adapter = _active_adapter
-    model_name = get_adapter_model_info(adapter).model_name if adapter else _model_loading_status.get("model_name", "None")
+    model_info = get_adapter_model_info(adapter) if adapter else None
+    model_name = model_info.model_name if model_info else _model_loading_status.get("model_name", "None")
 
     return {
         "status": _model_loading_status["status"] if _active_adapter is None else "online",
@@ -254,7 +260,22 @@ def get_health() -> Dict[str, Any]:
         "warning": _model_loading_status.get("warning"),
         "error": _model_loading_status.get("error"),
         "sessions_cached": len(global_session_store._sessions),
+        "engine_capabilities": model_info.engine_capabilities if model_info else None,
+        "discovery_confidence": model_info.discovery_confidence if model_info else 1.0,
     }
+
+
+@app.get("/api/model/report")
+def get_model_report():
+    """Returns automated model inspection discovery report for active adapter."""
+    adapter = get_active_adapter()
+    report = getattr(adapter, "report", None)
+    if report is not None:
+        res = report.to_dict()
+        res["text_report"] = report.format_text_report()
+        return res
+    raise HTTPException(status_code=404, detail="Model discovery report unavailable.")
+
 
 
 @app.get("/api/hardware/gpu-status")
