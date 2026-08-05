@@ -41,6 +41,38 @@ class GPT2Adapter(BaseModelAdapter):
             self.hidden_dim = self._model_instance.cfg.d_model
             self.vocab_size = self._model_instance.cfg.d_vocab
 
+            from interplens.adapters.fingerprint import StaticFingerprint, RuntimeFingerprint
+            from interplens.adapters.capabilities import evaluate_engine_capabilities
+            from interplens.adapters.discovery import HookDiscovery
+            from interplens.adapters.report import generate_model_report
+
+            discovery = HookDiscovery(self._model_instance, model_name=self.model_name)
+            self.graph, self.capabilities, self.strategy, self.discovery_confidence = discovery.discover()
+
+            self.static_fingerprint = StaticFingerprint(
+                architecture=self.strategy.architecture_id,
+                family=self.strategy.family.value,
+                hidden_size=self.hidden_dim,
+                num_layers=self.num_layers,
+                num_heads=self.num_heads,
+                vocab_size=self.vocab_size,
+            )
+            self.runtime_fingerprint = RuntimeFingerprint(
+                device=str(self.device),
+                dtype="float32",
+            )
+            self.engine_capabilities = evaluate_engine_capabilities(self.capabilities, self.runtime_fingerprint, self.discovery_confidence)
+            self.report = generate_model_report(
+                model_name=self.model_name,
+                strategy_id=self.strategy.architecture_id,
+                family=self.strategy.family.value,
+                confidence=self.discovery_confidence,
+                static_fp=self.static_fingerprint,
+                runtime_fp=self.runtime_fingerprint,
+                model_cap=self.capabilities,
+                engine_matrix=self.engine_capabilities,
+            )
+
     def tokenize(self, text: str) -> List[str]:
         """Converts string prompt into GPT-2 string tokens."""
         if self._model_instance is None:
