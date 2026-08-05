@@ -1,6 +1,6 @@
 """GPT-2 model family adapter implementation for InterpLens."""
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Union
 import torch
 try:
     from transformer_lens import HookedTransformer
@@ -78,6 +78,40 @@ class GPT2Adapter(BaseModelAdapter):
         if self._model_instance is None:
             self.load()
         return self._model_instance.to_str_tokens(text)
+
+    def decode(self, token_ids: Union[int, List[int]]) -> str:
+        """Decodes token IDs back to human-readable string token labels (e.g. ' Paris')."""
+        if token_ids is None:
+            return ""
+        if self._model_instance is None:
+            self.load()
+            
+        if isinstance(token_ids, int):
+            t_id = token_ids
+            ids_list = [token_ids]
+        elif isinstance(token_ids, (list, tuple)) and len(token_ids) > 0:
+            t_id = token_ids[0]
+            ids_list = list(token_ids)
+        else:
+            return ""
+
+        if hasattr(self._model_instance, "to_single_str_token"):
+            try:
+                res = self._model_instance.to_single_str_token(t_id)
+                if res:
+                    return res
+            except Exception:
+                pass
+
+        if hasattr(self._model_instance, "tokenizer") and hasattr(self._model_instance.tokenizer, "decode"):
+            try:
+                res = self._model_instance.tokenizer.decode(ids_list)
+                if res:
+                    return res
+            except Exception:
+                pass
+
+        return str(t_id)
 
     @torch.inference_mode()
     def run_with_cache(self, prompt: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:

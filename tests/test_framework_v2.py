@@ -1,4 +1,4 @@
-"""Unit tests for InterpLens v2.0 Model Framework, Strategy Registry, Hook Discovery, and Capabilities Matrix."""
+"""Unit tests for InterpLens v2.0 Model Framework, Strategy Registry, Hook Discovery, Capabilities Matrix, and Token Decoding."""
 
 import pytest
 import torch
@@ -18,6 +18,8 @@ from interplens.adapters import (
     evaluate_engine_capabilities,
     HookDiscovery,
     GenericAdapter,
+    CustomModelAdapter,
+    GPT2Adapter,
     ModelReport,
 )
 
@@ -41,6 +43,19 @@ class DummyCustomTransformer(nn.Module):
         for layer in self.layers:
             x = layer["self_attn"](x) + layer["mlp"](x)
         return self.lm_head(x)
+
+
+class DummyTokenizer:
+    def decode(self, token_ids, **kwargs):
+        if isinstance(token_ids, list):
+            return f"token_{token_ids[0]}"
+        return f"token_{token_ids}"
+
+    def encode(self, text, **kwargs):
+        return [1, 5, 12]
+
+    def convert_ids_to_tokens(self, token_id):
+        return f"tok_{token_id}"
 
 
 def test_strategy_registry():
@@ -83,7 +98,7 @@ def test_custom_plugin_registration():
 
 def test_hook_discovery_and_generic_adapter():
     dummy = DummyCustomTransformer()
-    adapter = GenericAdapter(model=dummy, model_name="DummyResearchModel")
+    adapter = GenericAdapter(model=dummy, model_name="DummyResearchModel", tokenizer=DummyTokenizer())
 
     assert adapter.model_name == "DummyResearchModel"
     assert adapter.num_layers == 3
@@ -97,6 +112,19 @@ def test_hook_discovery_and_generic_adapter():
 
     assert logits.shape == (1, 3, 100)
     assert len(cache) > 0
+
+    # Test token decoding
+    decoded_str = adapter.decode([12095])
+    assert decoded_str == "token_12095"
+
+
+def test_custom_adapter_decoding():
+    dummy = DummyCustomTransformer()
+    tok = DummyTokenizer()
+    adapter = CustomModelAdapter(model=dummy, tokenizer=tok)
+
+    assert adapter.decode(12095) == "token_12095"
+    assert adapter.decode([12095]) == "token_12095"
 
 
 def test_engine_capability_matrix():

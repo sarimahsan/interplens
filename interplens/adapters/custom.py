@@ -167,17 +167,34 @@ class CustomModelAdapter(BaseModelAdapter):
 
         return text.split()
 
-    def decode(self, token_ids: List[int]) -> str:
-        if not token_ids:
+    def decode(self, token_ids: Union[int, List[int]]) -> str:
+        if token_ids is None:
             return ""
-        if self.tokenizer is not None and hasattr(self.tokenizer, "decode"):
-            try:
-                res = self.tokenizer.decode(token_ids, skip_special_tokens=False)
-                if res:
-                    return res
-            except Exception:
-                pass
-        return str(token_ids[0]) if isinstance(token_ids, list) else str(token_ids)
+        if isinstance(token_ids, int):
+            t_id = token_ids
+            ids_list = [token_ids]
+        elif isinstance(token_ids, (list, tuple)) and len(token_ids) > 0:
+            t_id = token_ids[0]
+            ids_list = list(token_ids)
+        else:
+            return ""
+
+        if self.tokenizer is not None:
+            if hasattr(self.tokenizer, "decode"):
+                try:
+                    res = self.tokenizer.decode(ids_list, skip_special_tokens=False)
+                    if res:
+                        return res
+                except Exception:
+                    pass
+            if hasattr(self.tokenizer, "convert_ids_to_tokens"):
+                try:
+                    res = self.tokenizer.convert_ids_to_tokens(t_id)
+                    if res:
+                        return str(res)
+                except Exception:
+                    pass
+        return str(t_id)
 
     @torch.inference_mode()
     def run_with_cache(self, inputs: Union[str, Dict[str, Any], Any]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:

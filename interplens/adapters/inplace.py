@@ -90,13 +90,21 @@ class InPlaceModelAdapter(BaseModelAdapter):
             return [self._model_instance.tokenizer.decode([t]) for t in tokens]
         return [c for c in text]
 
-    def decode(self, token_ids: List[int]) -> str:
-        if not token_ids:
+    def decode(self, token_ids: Union[int, List[int]]) -> str:
+        if token_ids is None:
+            return ""
+        if isinstance(token_ids, int):
+            t_id = token_ids
+            ids_list = [token_ids]
+        elif isinstance(token_ids, (list, tuple)) and len(token_ids) > 0:
+            t_id = token_ids[0]
+            ids_list = list(token_ids)
+        else:
             return ""
         
         if hasattr(self._model_instance, "to_single_str_token"):
             try:
-                res = self._model_instance.to_single_str_token(token_ids[0])
+                res = self._model_instance.to_single_str_token(t_id)
                 if res:
                     return res
             except Exception:
@@ -105,13 +113,13 @@ class InPlaceModelAdapter(BaseModelAdapter):
         tokenizer = getattr(self, "tokenizer", None) or getattr(self._model_instance, "tokenizer", None)
         if tokenizer is not None and hasattr(tokenizer, "decode"):
             try:
-                res = tokenizer.decode(token_ids if isinstance(token_ids, list) else [token_ids])
+                res = tokenizer.decode(ids_list)
                 if res:
                     return res
             except Exception:
                 pass
 
-        return str(token_ids[0]) if isinstance(token_ids, list) else str(token_ids)
+        return str(t_id)
 
     @torch.inference_mode()
     def run_with_cache(self, inputs: Union[str, Dict[str, Any], Any]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
