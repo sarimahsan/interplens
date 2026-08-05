@@ -47,9 +47,9 @@ def get_adapter_for_model(
     if auto_hook and hasattr(model_or_name, "named_modules"):
         return CustomModelAdapter(model=model_or_name, tokenizer=tokenizer)
         
-    # Check if generic PyTorch model without config
-    if hasattr(model_or_name, "named_modules") and not hasattr(model_or_name, "cfg"):
-        return GenericAdapter(model=model_or_name, tokenizer=tokenizer)
+    # Default in-place adapter for loaded TransformerLens models
+    return InPlaceModelAdapter(model_instance=model_or_name)
+
 
 def register_adapter(name: str, adapter_cls: Type[BaseModelAdapter]):
     """Registers adapter class dynamically (legacy compatibility)."""
