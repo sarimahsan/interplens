@@ -2,7 +2,7 @@
 
 from typing import List, Dict, Any, Tuple, Union
 import torch
-from interplens.adapters.base import BaseModelAdapter
+from interplens.adapters.base import BaseModelAdapter, resolve_tokenizer
 from interplens.adapters.fingerprint import StaticFingerprint, RuntimeFingerprint
 from interplens.adapters.capabilities import evaluate_engine_capabilities, ModelCapability, CapabilityLevel
 from interplens.adapters.discovery import HookDiscovery
@@ -20,6 +20,7 @@ class InPlaceModelAdapter(BaseModelAdapter):
             
         super().__init__(model_name=model_name, device=device)
         self._model_instance = model_instance
+        self.tokenizer = resolve_tokenizer(model=model_instance, model_name=model_name)
 
         # 1. Run automatic Hook Discovery
         discovery = HookDiscovery(model_instance, model_name=model_name)

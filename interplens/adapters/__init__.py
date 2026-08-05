@@ -38,16 +38,27 @@ def get_adapter_for_model(
         return model_or_name
 
     if isinstance(model_or_name, str):
-        # Dedicated TransformerLens GPT-2 adapter
         if model_or_name.lower().startswith("gpt2"):
             return GPT2Adapter(model_name=model_or_name, device=device)
-        # Standard in-place or HuggingFace adapter
-        return GPT2Adapter(model_name=model_or_name, device=device)
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            import torch
+            tok = AutoTokenizer.from_pretrained(model_or_name, trust_remote_code=True)
+            mod = AutoModelForCausalLM.from_pretrained(
+                model_or_name,
+                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                device_map=device if device != "auto" else "auto",
+                attn_implementation="eager",
+                trust_remote_code=True,
+            )
+            return CustomModelAdapter(model=mod, tokenizer=tok, model_name=model_or_name)
+        except Exception:
+            return GPT2Adapter(model_name=model_or_name, device=device)
         
-    if auto_hook and hasattr(model_or_name, "named_modules"):
-        return CustomModelAdapter(model=model_or_name, tokenizer=tokenizer)
-        
-    # Default in-place adapter for loaded TransformerLens models
+    if hasattr(model_or_name, "named_modules"):
+        m_name = getattr(model_or_name, "name_or_path", getattr(getattr(model_or_name, "config", None), "_name_or_path", "PyTorch-Model"))
+        return CustomModelAdapter(model=model_or_name, tokenizer=tokenizer, model_name=str(m_name))
+
     return InPlaceModelAdapter(model_instance=model_or_name)
 
 

@@ -5,6 +5,37 @@ from typing import List, Dict, Any, Tuple, Optional, Union
 import torch
 
 
+def resolve_tokenizer(model: Any = None, model_name: str = "", tokenizer: Any = None) -> Any:
+    """Helper to resolve, discover, or load a tokenizer for any PyTorch/HuggingFace model."""
+    if tokenizer is not None:
+        return tokenizer
+
+    if model is not None:
+        if hasattr(model, "tokenizer") and getattr(model, "tokenizer") is not None:
+            return getattr(model, "tokenizer")
+
+    candidate_name = None
+    if model is not None:
+        if hasattr(model, "name_or_path") and model.name_or_path:
+            candidate_name = model.name_or_path
+        elif hasattr(model, "config") and hasattr(model.config, "_name_or_path") and model.config._name_or_path:
+            candidate_name = model.config._name_or_path
+
+    if not candidate_name and model_name and (
+        "/" in model_name or model_name.lower().startswith(("gpt2", "qwen", "llama", "mistral", "phi", "gemma"))
+    ):
+        candidate_name = model_name
+
+    if candidate_name:
+        try:
+            from transformers import AutoTokenizer
+            return AutoTokenizer.from_pretrained(candidate_name, trust_remote_code=True)
+        except Exception:
+            pass
+
+    return None
+
+
 class BaseModelAdapter(ABC):
     """Abstract base class standardizing model loading, tokenization, and hook resolution."""
 

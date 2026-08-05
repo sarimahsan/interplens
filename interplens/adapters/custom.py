@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Tuple, Optional, Callable, Union
 import torch
 import torch.nn as nn
 
-from interplens.adapters.base import BaseModelAdapter
+from interplens.adapters.base import BaseModelAdapter, resolve_tokenizer
 from interplens.adapters.fingerprint import StaticFingerprint, RuntimeFingerprint
 from interplens.adapters.capabilities import evaluate_engine_capabilities
 from interplens.adapters.discovery import HookDiscovery
@@ -50,14 +50,14 @@ class CustomModelAdapter(BaseModelAdapter):
     def __init__(
         self,
         model: nn.Module,
-        tokenizer: Any,
+        tokenizer: Any = None,
         model_name: str = "Custom-PyTorch-Model",
         tokenize_fn: Optional[Callable[[str], List[str]]] = None,
     ):
         device = str(next(model.parameters()).device) if len(list(model.parameters())) > 0 else "cpu"
         super().__init__(model_name=model_name, device=device)
         self._model_instance = model
-        self.tokenizer = tokenizer
+        self.tokenizer = resolve_tokenizer(model=model, model_name=model_name, tokenizer=tokenizer)
         self.tokenize_fn = tokenize_fn
         if hasattr(model, "config"):
             try:

@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Tuple, Optional, Union
 import torch
 import torch.nn as nn
 
-from interplens.adapters.base import BaseModelAdapter
+from interplens.adapters.base import BaseModelAdapter, resolve_tokenizer
 from interplens.adapters.fingerprint import StaticFingerprint, RuntimeFingerprint
 from interplens.adapters.capabilities import evaluate_engine_capabilities, CapabilityLevel
 from interplens.adapters.discovery import HookDiscovery
@@ -23,7 +23,7 @@ class GenericAdapter(BaseModelAdapter):
         device = str(next(model.parameters()).device) if len(list(model.parameters())) > 0 else "cpu"
         super().__init__(model_name=model_name, device=device)
         self._model_instance = model
-        self.tokenizer = tokenizer
+        self.tokenizer = resolve_tokenizer(model=model, model_name=model_name, tokenizer=tokenizer)
 
         # 1. Run automatic Hook Discovery
         discovery = HookDiscovery(model, model_name=model_name)
