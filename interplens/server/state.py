@@ -111,27 +111,28 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
         except Exception as t_err1:
             logger.warning(f"Primary tokenizer for '{model_name}' could not be loaded directly: {t_err1}")
             m_lower = model_name.lower()
-            fallback_repo = None
-            if "llama" in m_lower:
-                fallback_repo = "meta-llama/Llama-3.2-1B"
-            elif "qwen" in m_lower:
-                fallback_repo = "Qwen/Qwen2.5-0.5B"
+            fallback_repos = []
+            if "qwen" in m_lower:
+                fallback_repos = ["Qwen/Qwen2.5-0.5B", "Qwen/Qwen1.5-0.5B"]
+            elif "llama" in m_lower:
+                fallback_repos = ["huggyllama/llama-7b", "meta-llama/Llama-3.2-1B"]
             elif "gemma" in m_lower:
-                fallback_repo = "google/gemma-2b"
+                fallback_repos = ["google/gemma-2b", "fxmarty/gemma-2b-tokenizer"]
             elif "phi" in m_lower:
-                fallback_repo = "microsoft/phi-2"
+                fallback_repos = ["microsoft/phi-2", "microsoft/Phi-3-mini-4k-instruct"]
 
-            if fallback_repo:
+            for repo in fallback_repos:
                 try:
-                    tokenizer = AutoTokenizer.from_pretrained(fallback_repo, trust_remote_code=True, **token_kwargs)
-                    tokenizer_warning = f"Primary tokenizer unavailable. Automatically resolved compatible tokenizer '{fallback_repo}'."
+                    tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True, **token_kwargs)
+                    tokenizer_warning = f"Primary tokenizer for '{model_name}' was unavailable. Resolved compatible architecture tokenizer '{repo}'."
+                    break
                 except Exception as t_err2:
-                    logger.warning(f"Fallback tokenizer '{fallback_repo}' also unavailable: {t_err2}")
+                    logger.warning(f"Fallback tokenizer '{repo}' unavailable: {t_err2}")
 
             if tokenizer is None:
                 try:
                     tokenizer = AutoTokenizer.from_pretrained("gpt2")
-                    tokenizer_warning = f"Using generic fallback tokenizer for '{model_name}'."
+                    tokenizer_warning = f"⚠️ Tokenizer Warning: Could not load matching tokenizer for '{model_name}'. Using generic fallback tokenizer (predictions may be inaccurate). Please load matching tokenizer using --tokenizer <repo_id>."
                 except Exception:
                     tokenizer_warning = f"No tokenizer found for '{model_name}'. Operating with raw token ID indexing."
 
@@ -190,6 +191,29 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
                 model.config.output_attentions = True
             except Exception:
                 pass
+
+        # Try resolving tokenizer from loaded model's name_or_path if missing
+        if tokenizer is None:
+            m_path = getattr(model, "name_or_path", getattr(getattr(model, "config", None), "_name_or_path", None))
+            if m_path:
+                try:
+                    tokenizer = AutoTokenizer.from_pretrained(m_path, trust_remote_code=True, **token_kwargs)
+                except Exception:
+                    pass
+
+        # Verify tokenizer vocabulary compatibility with model vocabulary size
+        if model is not None and tokenizer is not None:
+            m_vocab = getattr(getattr(model, "config", None), "vocab_size", None)
+            t_vocab = len(tokenizer) if hasattr(tokenizer, "__len__") else getattr(tokenizer, "vocab_size", None)
+
+            if m_vocab and t_vocab and abs(m_vocab - t_vocab) > 100:
+                tokenizer_warning = (
+                    f"⚠️ Mismatched Tokenizer Warning: Model vocabulary size is {m_vocab:,}, "
+                    f"but active tokenizer vocabulary size is {t_vocab:,}. "
+                    f"Mismatched token IDs will produce inaccurate predictions. "
+                    f"Please load the matching tokenizer using --tokenizer <repo_id_or_path>."
+                )
+                logger.warning(tokenizer_warning)
 
         adapter = CustomModelAdapter(model=model, tokenizer=tokenizer, model_name=model_name)
         state_manager.set_adapter(adapter)
