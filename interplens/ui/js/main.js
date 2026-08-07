@@ -1,10 +1,12 @@
 // InterpLens Studio Core Application Entry Point & State Persistence Engine
 
-var healthPollTimer = window.healthPollTimer || null;
+let telemetryWs = null;
+let telemetryPollInterval = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initThemeManager();
     fetchSystemHealth();
+    initTelemetryWebSocket();
     registerEventListeners();
     restoreStudioState();
 });
@@ -12,77 +14,164 @@ document.addEventListener('DOMContentLoaded', () => {
 window.currentSession = null;
 window.currentMatrix = null;
 
-// --- System Health Polling & Model Lock Engine ---
+// --- System Health & Live VRAM Telemetry Engine ---
+function initTelemetryWebSocket() {
+    try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/ws/telemetry`;
+
+        telemetryWs = new WebSocket(wsUrl);
+
+        telemetryWs.onopen = () => {
+            updateWsStatusTag(true);
+            if (telemetryPollInterval) {
+                clearInterval(telemetryPollInterval);
+                telemetryPollInterval = null;
+            }
+        };
+
+        telemetryWs.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                processTelemetryData(data);
+            } catch (e) {
+                console.error('Telemetry WS parse error:', e);
+            }
+        };
+
+        telemetryWs.onerror = () => {
+            updateWsStatusTag(false);
+        };
+
+        telemetryWs.onclose = () => {
+            updateWsStatusTag(false);
+            if (!telemetryPollInterval) {
+                telemetryPollInterval = setInterval(fetchSystemHealth, 2000);
+            }
+            setTimeout(initTelemetryWebSocket, 4000);
+        };
+    } catch (e) {
+        updateWsStatusTag(false);
+        if (!telemetryPollInterval) {
+            telemetryPollInterval = setInterval(fetchSystemHealth, 2000);
+        }
+    }
+}
+
+function updateWsStatusTag(isConnected) {
+    const tag = document.getElementById('nav-ws-status');
+    if (!tag) return;
+    if (isConnected) {
+        tag.style.background = 'rgba(16, 185, 129, 0.15)';
+        tag.style.color = '#10b981';
+        tag.innerHTML = `<span style="width: 6px; height: 6px; border-radius: 50%; background-color: #10b981; display: inline-block;"></span> WS LIVE`;
+    } else {
+        tag.style.background = 'rgba(56, 189, 248, 0.15)';
+        tag.style.color = '#38bdf8';
+        tag.innerHTML = `<span style="width: 6px; height: 6px; border-radius: 50%; background-color: #38bdf8; display: inline-block;"></span> HTTP POLL`;
+    }
+}
+
 async function fetchSystemHealth() {
     try {
         const data = await window.API.getSystemHealth();
-
-        const dot = document.getElementById('status-dot');
-        const text = document.getElementById('status-text');
-        const runBtn = document.getElementById('run-btn');
-        const runText = document.getElementById('run-btn-text');
-        const promptInput = document.getElementById('prompt-input');
-        const loadingOverlay = document.getElementById('model-loading-overlay');
-
-        const activeModel = data.active_model || 'Model';
-
-        if (data.status === 'online') {
-            if (dot) dot.className = 'status-dot status-online';
-            if (text) {
-                text.textContent = data.warning ? `Online (${data.warning})` : 'Backend Online';
-                if (data.warning) text.style.color = 'var(--accent-amber)';
-            }
-
-            // Unblock UI for interaction
-            if (runBtn) { runBtn.disabled = false; }
-            if (runText) { runText.textContent = 'Run Model Analysis'; }
-            if (promptInput) {
-                promptInput.disabled = false;
-                promptInput.placeholder = 'Enter prompt to run model forward pass and observe intermediate residual stream projections...';
-            }
-            document.querySelectorAll('.btn-preset').forEach(btn => {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                btn.style.cursor = 'pointer';
-            });
-            if (loadingOverlay) loadingOverlay.classList.add('hidden');
-
-        } else if (data.status === 'loading') {
-            if (dot) dot.className = 'status-dot status-busy';
-            if (text) text.textContent = `Loading Model (${activeModel})...`;
-
-            // Block UI while model is loading
-            if (runBtn) { runBtn.disabled = true; }
-            if (runText) { runText.textContent = 'Loading Weights...'; }
-            if (promptInput) {
-                promptInput.disabled = true;
-                promptInput.placeholder = `Loading ${activeModel} weights into VRAM... Please wait until initialization completes.`;
-            }
-            document.querySelectorAll('.btn-preset').forEach(btn => {
-                btn.disabled = true;
-                btn.style.opacity = '0.5';
-                btn.style.cursor = 'not-allowed';
-            });
-            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-
-        } else {
-            if (dot) dot.className = 'status-dot status-offline';
-            if (text) text.textContent = 'Backend Offline';
-        }
-
-        if (data.active_model && document.getElementById('nav-model-name')) {
-            document.getElementById('nav-model-name').textContent = data.active_model;
-        }
-
+        processTelemetryData(data);
     } catch (err) {
         const dot = document.getElementById('status-dot');
         const text = document.getElementById('status-text');
         if (dot) dot.className = 'status-dot status-offline';
         if (text) text.textContent = 'Disconnected';
-    } finally {
-        if (!healthPollTimer) {
-            healthPollTimer = setInterval(fetchSystemHealth, 5000);
+    }
+}
+
+function processTelemetryData(data) {
+    if (!data) return;
+
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    const runBtn = document.getElementById('run-btn');
+    const runText = document.getElementById('run-btn-text');
+    const promptInput = document.getElementById('prompt-input');
+    const loadingOverlay = document.getElementById('model-loading-overlay');
+
+    const activeModel = data.active_model || 'Model';
+
+    if (data.status === 'online') {
+        if (dot) dot.className = 'status-dot status-online';
+        if (text) {
+            text.textContent = data.warning ? `Online (${data.warning})` : 'Backend Online';
+            if (data.warning) text.style.color = 'var(--accent-amber)';
         }
+
+        // Unblock UI for interaction
+        if (runBtn) { runBtn.disabled = false; }
+        if (runText) { runText.textContent = 'Run Model Analysis'; }
+        if (promptInput) {
+            promptInput.disabled = false;
+            promptInput.placeholder = 'Enter prompt to run model forward pass and observe intermediate residual stream projections...';
+        }
+        document.querySelectorAll('.btn-preset').forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+
+    } else if (data.status === 'loading') {
+        if (dot) dot.className = 'status-dot status-busy';
+        if (text) text.textContent = `Loading Model (${activeModel})...`;
+
+        if (runBtn) { runBtn.disabled = true; }
+        if (runText) { runText.textContent = 'Loading Weights...'; }
+        if (promptInput) {
+            promptInput.disabled = true;
+            promptInput.placeholder = `Loading ${activeModel} weights into VRAM... Please wait until initialization completes.`;
+        }
+        document.querySelectorAll('.btn-preset').forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+        });
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+
+    } else {
+        if (dot) dot.className = 'status-dot status-offline';
+        if (text) text.textContent = 'Backend Offline';
+    }
+
+    if (data.active_model && document.getElementById('nav-model-name')) {
+        document.getElementById('nav-model-name').textContent = data.active_model;
+    }
+    if (data.device && document.getElementById('nav-device-tag')) {
+        document.getElementById('nav-device-tag').textContent = data.device.toUpperCase();
+    }
+
+    // Live Header VRAM display update
+    updateVramHeader(data.vram_usage, data.device);
+}
+
+function updateVramHeader(vramUsage, deviceStr) {
+    const elem = document.getElementById('nav-vram-usage');
+    if (!elem) return;
+
+    if (!vramUsage) {
+        elem.textContent = 'VRAM: 0 MB';
+        return;
+    }
+
+    const isGpu = vramUsage.is_gpu || (deviceStr && deviceStr.toLowerCase().includes('cuda'));
+    const prefix = isGpu ? 'VRAM' : 'RAM';
+
+    const allocMb = vramUsage.allocated_mb !== undefined ? vramUsage.allocated_mb : 0;
+    const totalMb = vramUsage.total_mb !== undefined ? vramUsage.total_mb : 0;
+
+    if (totalMb > 0) {
+        elem.textContent = `${prefix}: ${allocMb.toFixed(1)} MB / ${totalMb.toFixed(0)} MB`;
+    } else if (allocMb > 0) {
+        elem.textContent = `${prefix}: ${allocMb.toFixed(1)} MB`;
+    } else {
+        elem.textContent = `${prefix}: Active`;
     }
 }
 

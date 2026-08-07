@@ -23,7 +23,7 @@ def resolve_device(device_str: str) -> torch.device:
 
 
 def get_vram_usage(device: torch.device) -> Dict[str, Any]:
-    """Returns allocated and reserved VRAM in MB for CUDA devices."""
+    """Returns allocated and reserved VRAM in MB for CUDA devices or process RAM for CPU."""
     if device.type == "cuda" and torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated(device) / (1024 ** 2)
         reserved = torch.cuda.memory_reserved(device) / (1024 ** 2)
@@ -34,13 +34,27 @@ def get_vram_usage(device: torch.device) -> Dict[str, Any]:
             "reserved_mb": round(reserved, 2),
             "total_mb": round(total, 2),
             "free_mb": round(total - reserved, 2),
+            "is_gpu": True,
         }
+    
+    # Process RAM fallback for CPU / MPS
+    ram_used = 0.0
+    ram_total = 0.0
+    try:
+        import psutil
+        process = psutil.Process()
+        ram_used = process.memory_info().rss / (1024 ** 2)
+        ram_total = psutil.virtual_memory().total / (1024 ** 2)
+    except Exception:
+        pass
+
     return {
         "device": str(device),
-        "allocated_mb": 0.0,
-        "reserved_mb": 0.0,
-        "total_mb": 0.0,
-        "free_mb": 0.0,
+        "allocated_mb": round(ram_used, 2),
+        "reserved_mb": round(ram_used, 2),
+        "total_mb": round(ram_total, 2),
+        "free_mb": round(ram_total - ram_used, 2) if ram_total > 0 else 0.0,
+        "is_gpu": False,
     }
 
 

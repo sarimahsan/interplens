@@ -1,7 +1,9 @@
 """FastAPI Router for Model & Hardware Status Endpoints."""
 
+import asyncio
+import time
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 
 from interplens.schema import RunRequest, RunResponse
 from interplens.utils.device import get_optimal_device, get_vram_usage, get_gpu_grid_status, get_detailed_gpu_profiler
@@ -14,6 +16,37 @@ from interplens.server.state import (
 from interplens.analysis.topology import inspect_model_topology
 
 router = APIRouter(tags=["Model"])
+
+
+@router.websocket("/ws/telemetry")
+async def websocket_telemetry(websocket: WebSocket):
+    """Real-time streaming WebSocket endpoint for live VRAM and model telemetry updates."""
+    await websocket.accept()
+    try:
+        while True:
+            device = get_optimal_device()
+            vram = get_vram_usage(device)
+            adapter = state_manager.active_adapter
+            status_info = state_manager.status
+            model_info = get_adapter_model_info(adapter) if adapter else None
+            model_name = model_info.model_name if model_info else status_info.get("model_name", "None")
+
+            data = {
+                "status": status_info.get("status", "idle") if adapter is None else "online",
+                "device": str(device),
+                "active_model": model_name,
+                "vram_usage": vram,
+                "warning": status_info.get("warning"),
+                "error": status_info.get("error"),
+                "sessions_cached": len(global_session_store._sessions),
+                "timestamp": time.time(),
+            }
+            await websocket.send_json(data)
+            await asyncio.sleep(1.0)
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
 
 
 @router.get("/api/health")

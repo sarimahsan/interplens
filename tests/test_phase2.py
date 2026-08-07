@@ -128,6 +128,21 @@ def test_fastapi_endpoints():
     assert len(lens_data["positions"][0]["layers"]) == 5
 
 
+def test_telemetry_websocket():
+    """Test live telemetry WebSocket streaming endpoint."""
+    model = DummyTransformer(vocab_size=50, hidden_dim=16, num_layers=4)
+    tokenizer = DummyTokenizer()
+    adapter = CustomModelAdapter(model=model, tokenizer=tokenizer)
+    set_active_adapter(adapter)
+
+    client = TestClient(app)
+    with client.websocket_connect("/ws/telemetry") as websocket:
+        data = websocket.receive_json()
+        assert data["status"] == "online"
+        assert "vram_usage" in data
+        assert data["vram_usage"]["allocated_mb"] >= 0
+
+
 def test_logit_lens_gpt2_integration():
     """End-to-end integration test with TransformerLens GPT-2."""
     try:
