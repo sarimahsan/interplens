@@ -1,0 +1,234 @@
+"""Server State Manager and Model Loading Helpers for InterpLens FastAPI Server."""
+
+import os
+import time
+import logging
+import threading
+from typing import Optional, Dict, Any, Union
+
+from fastapi import HTTPException
+from interplens.schema import ModelInfo
+from interplens.utils.device import get_optimal_device, free_gpu_memory
+
+logger = logging.getLogger("interplens.server")
+
+
+class ServerStateManager:
+    """Thread-safe container managing active model adapter and loading status."""
+
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._active_adapter: Optional[Any] = None
+        self._status: Dict[str, Any] = {"status": "idle", "model_name": "none", "error": None, "warning": None}
+
+    @property
+    def active_adapter(self) -> Optional[Any]:
+        with self._lock:
+            return self._active_adapter
+
+    @property
+    def status(self) -> Dict[str, Any]:
+        with self._lock:
+            return dict(self._status)
+
+    def set_adapter(self, adapter: Any) -> None:
+        with self._lock:
+            self._active_adapter = adapter
+            self._status["status"] = "online"
+            self._status["model_name"] = getattr(adapter, "model_name", "custom")
+            self._status["error"] = None
+
+    def update_status(self, status: str, model_name: str, error: Optional[str] = None, warning: Optional[str] = None) -> None:
+        with self._lock:
+            self._status["status"] = status
+            self._status["model_name"] = model_name
+            self._status["error"] = error
+            self._status["warning"] = warning
+
+    def clear_adapter(self) -> None:
+        with self._lock:
+            if self._active_adapter is not None:
+                del self._active_adapter
+                self._active_adapter = None
+            free_gpu_memory()
+
+
+state_manager = ServerStateManager()
+
+
+def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token: Optional[str] = None):
+    """Loads target model into GPU VRAM in a thread-safe manner."""
+    if device is None:
+        device = get_optimal_device()
+
+    token = hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    if token:
+        os.environ["HF_TOKEN"] = token
+        os.environ["HUGGING_FACE_HUB_TOKEN"] = token
+
+    current_adapter = state_manager.active_adapter
+    if current_adapter is not None:
+        curr_name = getattr(current_adapter, "model_name", "")
+        if curr_name.lower() == model_name.lower():
+            logger.info(f"Model '{model_name}' is already loaded in VRAM. Skipping reload.")
+            state_manager.update_status("online", model_name)
+            return current_adapter
+        else:
+            logger.info(f"Clearing previous model '{curr_name}' from VRAM...")
+            state_manager.clear_adapter()
+
+    state_manager.update_status("loading", model_name)
+    logger.info(f"Loading model '{model_name}' onto {device}...")
+
+    # Known native TransformerLens models
+    tl_models = ["gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl", "stanford-gpt2-small-a"]
+    is_tl_native = any(m == model_name.lower() or model_name.lower().startswith("pythia") for m in tl_models)
+
+    if is_tl_native:
+        try:
+            from transformer_lens import HookedTransformer
+            from interplens.adapters.inplace import InPlaceModelAdapter
+            model = HookedTransformer.from_pretrained(model_name, device=device)
+            adapter = InPlaceModelAdapter(model, model_name=model_name)
+            state_manager.set_adapter(adapter)
+            logger.info(f"Loaded '{model_name}' via TransformerLens on {device}")
+            return adapter
+        except Exception as e1:
+            logger.warning(f"TransformerLens could not load '{model_name}' ({e1}). Falling back to HuggingFace...")
+
+    # Direct HuggingFace AutoModelForCausalLM loader
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from interplens.adapters.custom import CustomModelAdapter
+
+        token_kwargs = {"token": token} if token else {}
+        tokenizer = None
+        tokenizer_warning = None
+
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
+        except Exception as t_err1:
+            logger.warning(f"Primary tokenizer for '{model_name}' could not be loaded directly: {t_err1}")
+            m_lower = model_name.lower()
+            fallback_repo = None
+            if "llama" in m_lower:
+                fallback_repo = "meta-llama/Llama-3.2-1B"
+            elif "qwen" in m_lower:
+                fallback_repo = "Qwen/Qwen2.5-0.5B"
+            elif "gemma" in m_lower:
+                fallback_repo = "google/gemma-2b"
+            elif "phi" in m_lower:
+                fallback_repo = "microsoft/phi-2"
+
+            if fallback_repo:
+                try:
+                    tokenizer = AutoTokenizer.from_pretrained(fallback_repo, trust_remote_code=True, **token_kwargs)
+                    tokenizer_warning = f"Primary tokenizer unavailable. Automatically resolved compatible tokenizer '{fallback_repo}'."
+                except Exception as t_err2:
+                    logger.warning(f"Fallback tokenizer '{fallback_repo}' also unavailable: {t_err2}")
+
+            if tokenizer is None:
+                try:
+                    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+                    tokenizer_warning = f"Using generic fallback tokenizer for '{model_name}'."
+                except Exception:
+                    tokenizer_warning = f"No tokenizer found for '{model_name}'. Operating with raw token ID indexing."
+
+        target_dev_map = "auto" if str(device).startswith("cuda") else None
+        try:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
+                device_map=target_dev_map,
+                low_cpu_mem_usage=True,
+                trust_remote_code=True,
+                attn_implementation="eager",
+                **token_kwargs
+            )
+        except Exception:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
+                device_map=target_dev_map,
+                low_cpu_mem_usage=True,
+                trust_remote_code=True,
+                **token_kwargs
+            )
+
+        if hasattr(model, "config"):
+            try:
+                model.config.output_attentions = True
+            except Exception:
+                pass
+
+        adapter = CustomModelAdapter(model=model, tokenizer=tokenizer, model_name=model_name)
+        state_manager.set_adapter(adapter)
+        if tokenizer_warning:
+            state_manager.update_status("online", model_name, warning=tokenizer_warning)
+        logger.info(f"Loaded '{model_name}' directly into VRAM!")
+        return adapter
+    except Exception as e2:
+        err_msg = f"Failed to load model '{model_name}': {e2}"
+        state_manager.update_status("error", model_name, error=err_msg)
+        logger.error(err_msg)
+        return None
+
+
+def get_active_adapter():
+    """Returns the loaded model adapter for the server session safely."""
+    adapter = state_manager.active_adapter
+    if adapter is not None:
+        return adapter
+
+    status_dict = state_manager.status
+    if status_dict.get("status") == "loading":
+        model_name = status_dict.get("model_name", "target model")
+        for _ in range(120):
+            time.sleep(0.5)
+            adapter = state_manager.active_adapter
+            if adapter is not None:
+                return adapter
+            if state_manager.status.get("status") == "error":
+                err = state_manager.status.get("error") or "Failed to load model."
+                raise HTTPException(status_code=500, detail=f"Model loading error: {err}")
+
+        raise HTTPException(
+            status_code=503,
+            detail=f"Model '{model_name}' is currently downloading/loading into GPU VRAM. Please wait a few seconds."
+        )
+
+    target_name = status_dict.get("model_name")
+    if not target_name or target_name == "none":
+        target_name = "gpt2"
+
+    adapter = init_model(target_name)
+    if adapter is None:
+        err = state_manager.status.get("error") or "No model loaded."
+        raise HTTPException(status_code=500, detail=f"Model loading error: {err}")
+    return adapter
+
+
+def set_active_adapter(adapter: Any):
+    """Sets a custom loaded model adapter safely."""
+    state_manager.set_adapter(adapter)
+
+
+def get_adapter_model_info(adapter: Any) -> ModelInfo:
+    if hasattr(adapter, "model_info") and isinstance(adapter.model_info, ModelInfo):
+        return adapter.model_info
+    info_dict = adapter.get_model_info()
+    return ModelInfo(
+        model_name=info_dict.get("model_name", "custom"),
+        num_layers=info_dict.get("num_layers", 0),
+        num_heads=info_dict.get("num_heads", 0),
+        hidden_dim=info_dict.get("hidden_dim", 0),
+        vocab_size=info_dict.get("vocab_size", 0),
+        device=str(getattr(adapter, "device", "cpu")),
+        is_custom=info_dict.get("is_custom", False),
+        discovery_confidence=info_dict.get("discovery_confidence", 1.0),
+        static_fingerprint=info_dict.get("static_fingerprint"),
+        runtime_fingerprint=info_dict.get("runtime_fingerprint"),
+        capabilities=info_dict.get("capabilities"),
+        engine_capabilities=info_dict.get("engine_capabilities"),
+    )

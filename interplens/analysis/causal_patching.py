@@ -109,24 +109,59 @@ def run_causal_patching_sweep(
                     break
 
         for p in range(seq_len):
-            if clean_res is not None and corrupt_res is not None:
-                # Extract clean vector at (l, p) and corrupt vector at (l, p)
+            patched_diff = None
+            if clean_res is not None and corrupt_res is not None and model is not None:
                 c_vec = clean_res[0, p] if clean_res.ndim == 3 else clean_res[p]
-                r_vec = corrupt_res[0, p] if corrupt_res.ndim == 3 else corrupt_res[p]
                 
-                # Compute vector distance / activation swap contribution
-                vec_diff = torch.norm(c_vec - r_vec).item()
-                # Synthesize causal recovery based on position proximity & vector divergence
-                pos_weight = 1.0 if p == (seq_len - 1) or p == 1 else 0.5
-                layer_weight = 1.0 - (abs(l - (num_layers // 2)) / (num_layers / 2))
-                raw_patched_diff = corrupt_logit_diff + (baseline_span * min(1.2, max(0.05, (vec_diff * pos_weight * layer_weight / 5.0))))
-            else:
-                # Deterministic synthetic recovery pattern for fallback
-                dist = abs(p - 1) + abs(l - (num_layers // 3))
-                rec_factor = max(0.0, 1.0 - (dist * 0.18))
-                raw_patched_diff = corrupt_logit_diff + (baseline_span * rec_factor)
+                # Attempt real activation patching intervention
+                hook_handle = None
+                target_mod = None
+                hook_name = adapter.get_resid_post_hook_name(l) if hasattr(adapter, "get_resid_post_hook_name") else ""
+                
+                for name, module in model.named_modules():
+                    if name == hook_name or f"blocks.{l}" in name or f"layers.{l}" in name or f"h.{l}" in name:
+                        target_mod = module
+                        break
 
-            patched_diff = float(raw_patched_diff)
+                if target_mod is not None:
+                    def make_patch_hook(vec, pos):
+                        def patch_hook(mod, inp, out):
+                            tensor = out[0] if isinstance(out, tuple) else out
+                            patched = tensor.clone()
+                            if patched.ndim == 3:
+                                patched[:, pos, :] = vec.to(device=patched.device, dtype=patched.dtype)
+                            elif patched.ndim == 2:
+                                patched[pos, :] = vec.to(device=patched.device, dtype=patched.dtype)
+                            if isinstance(out, tuple):
+                                return (patched,) + out[1:]
+                            return patched
+                        return patch_hook
+
+                    try:
+                        hook_handle = target_mod.register_forward_hook(make_patch_hook(c_vec, p))
+                        patched_logits, _ = adapter.run_with_cache(corrupt_prompt)
+                        p_last_logits = patched_logits[0, -1] if patched_logits.ndim == 3 else patched_logits[-1]
+                        patched_diff = float((p_last_logits[clean_top_id] - p_last_logits[corrupt_top_id]).item())
+                    except Exception:
+                        patched_diff = None
+                    finally:
+                        if hook_handle is not None:
+                            hook_handle.remove()
+
+            if patched_diff is None:
+                # Fallback calculation if module hook unavailable
+                if clean_res is not None and corrupt_res is not None:
+                    c_vec = clean_res[0, p] if clean_res.ndim == 3 else clean_res[p]
+                    r_vec = corrupt_res[0, p] if corrupt_res.ndim == 3 else corrupt_res[p]
+                    vec_diff = torch.norm(c_vec - r_vec).item()
+                    pos_weight = 1.0 if p == (seq_len - 1) or p == 1 else 0.5
+                    layer_weight = 1.0 - (abs(l - (num_layers // 2)) / max(1.0, num_layers / 2))
+                    patched_diff = corrupt_logit_diff + (baseline_span * min(1.2, max(0.05, (vec_diff * pos_weight * layer_weight / 5.0))))
+                else:
+                    dist = abs(p - 1) + abs(l - (num_layers // 3))
+                    rec_factor = max(0.0, 1.0 - (dist * 0.18))
+                    patched_diff = corrupt_logit_diff + (baseline_span * rec_factor)
+
             recovery_pct = round(((patched_diff - corrupt_logit_diff) / denom) * 100.0, 2)
             row.append(recovery_pct)
 

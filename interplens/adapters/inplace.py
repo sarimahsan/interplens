@@ -42,7 +42,9 @@ class InPlaceModelAdapter(BaseModelAdapter):
             engine_matrix=self.engine_capabilities,
         )
 
-        print(self.report.format_text_report())
+        from interplens.config import settings
+        if settings.debug:
+            print(self.report.format_text_report())
 
     def _extract_metadata(self):
         """Extracts layer counts, head counts, and dimensions from HookedTransformer metadata."""
@@ -89,7 +91,7 @@ class InPlaceModelAdapter(BaseModelAdapter):
         elif hasattr(self._model_instance, "tokenizer"):
             tokens = self._model_instance.tokenizer.encode(text)
             return [self._model_instance.tokenizer.decode([t]) for t in tokens]
-        return [c for c in text]
+        return text.split() if text else []
 
     def decode(self, token_ids: Union[int, List[int]]) -> str:
         if token_ids is None:

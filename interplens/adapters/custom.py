@@ -1,32 +1,46 @@
 """CustomModelAdapter wrapping HuggingFace and PyTorch nn.Module architectures with HookDiscovery and Strategy Registry."""
 
+import logging
 from typing import List, Dict, Any, Tuple, Optional, Callable, Union
 import torch
 import torch.nn as nn
 
+from interplens.exceptions import UnembeddingNotFoundError
 from interplens.adapters.base import BaseModelAdapter, resolve_tokenizer
 from interplens.adapters.fingerprint import StaticFingerprint, RuntimeFingerprint
 from interplens.adapters.capabilities import evaluate_engine_capabilities
 from interplens.adapters.discovery import HookDiscovery
 from interplens.adapters.report import generate_model_report, ModelReport
 
+logger = logging.getLogger(__name__)
+
 
 class PyTorchAutoHooker:
     """Intercepts activations across submodules using native PyTorch forward hooks."""
 
-    def __init__(self, model: nn.Module):
+    def __init__(self, model: nn.Module, target_module_names: Optional[List[str]] = None):
         self.model = model
+        self.target_module_names = set(target_module_names) if target_module_names else None
         self.captured_activations: Dict[str, torch.Tensor] = {}
         self._hook_handles: List[Any] = []
 
+    def set_target_module_names(self, names: List[str]):
+        """Sets target module names for selective hooking."""
+        self.target_module_names = set(names) if names else None
+
     def attach_hooks(self):
-        """Attaches PyTorch forward hooks to all named modules."""
+        """Attaches PyTorch forward hooks to target submodules or all named submodules."""
         self.captured_activations.clear()
-        
+
         for name, module in self.model.named_modules():
             if name == "":
                 continue
-            
+
+            # If target list is set and non-empty, only hook specified modules
+            if self.target_module_names:
+                if name not in self.target_module_names:
+                    continue
+
             def create_hook(module_name: str):
                 def hook(mod, input_tensor, output_tensor):
                     out = output_tensor[0] if isinstance(output_tensor, tuple) else output_tensor
@@ -64,11 +78,13 @@ class CustomModelAdapter(BaseModelAdapter):
                 model.config.output_attentions = True
             except Exception:
                 pass
-        self.auto_hooker = PyTorchAutoHooker(model)
 
-        # 1. Run automatic Hook Discovery
+        # 1. Run automatic Hook Discovery first
         discovery = HookDiscovery(model, model_name=model_name)
         self.graph, self.capabilities, self.strategy, self.discovery_confidence = discovery.discover()
+
+        # 2. PyTorchAutoHooker hooks named submodules
+        self.auto_hooker = PyTorchAutoHooker(model)
 
         # 2. Extract Structural Fingerprints & Dimensions
         self._extract_fingerprints()
@@ -86,7 +102,9 @@ class CustomModelAdapter(BaseModelAdapter):
             engine_matrix=self.engine_capabilities,
         )
 
-        print(self.report.format_text_report())
+        from interplens.config import settings
+        if settings.debug:
+            logger.debug(self.report.format_text_report())
 
     def _extract_fingerprints(self):
         """Introspects module structure to build fingerprints and geometry metadata."""
@@ -247,7 +265,10 @@ class CustomModelAdapter(BaseModelAdapter):
         unembed = self.strategy.extract_unembedding(self._model_instance)
         if unembed is not None:
             return unembed
-        return torch.randn(self.hidden_dim, self.vocab_size, device=self.device)
+        raise UnembeddingNotFoundError(
+            f"Unembedding matrix W_U could not be extracted from model architecture '{self.model_name}' "
+            f"under strategy '{self.strategy.architecture_id}'."
+        )
 
     def get_resid_post_hook_name(self, layer: int) -> str:
         return self.strategy.get_resid_post_hook_name(layer)
@@ -257,3 +278,4 @@ class CustomModelAdapter(BaseModelAdapter):
 
     def get_mlp_post_hook_name(self, layer: int) -> str:
         return self.strategy.get_mlp_post_hook_name(layer)
+

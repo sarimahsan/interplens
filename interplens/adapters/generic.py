@@ -1,14 +1,18 @@
 """GenericAdapter providing progressive interpretability fallbacks (Levels 0-5) for arbitrary PyTorch nn.Module objects."""
 
+import logging
 from typing import List, Dict, Any, Tuple, Optional, Union
 import torch
 import torch.nn as nn
 
+from interplens.exceptions import UnembeddingNotFoundError
 from interplens.adapters.base import BaseModelAdapter, resolve_tokenizer
 from interplens.adapters.fingerprint import StaticFingerprint, RuntimeFingerprint
 from interplens.adapters.capabilities import evaluate_engine_capabilities, CapabilityLevel
 from interplens.adapters.discovery import HookDiscovery
 from interplens.adapters.report import generate_model_report, ModelReport
+
+logger = logging.getLogger(__name__)
 
 
 class GenericAdapter(BaseModelAdapter):
@@ -45,7 +49,9 @@ class GenericAdapter(BaseModelAdapter):
             engine_matrix=self.engine_capabilities,
         )
 
-        print(self.report.format_text_report())
+        from interplens.config import settings
+        if settings.debug:
+            print(self.report.format_text_report())
 
     def _extract_fingerprints(self):
         """Extracts structural static fingerprint and execution runtime fingerprint."""
@@ -62,8 +68,12 @@ class GenericAdapter(BaseModelAdapter):
                 elif isinstance(mod, nn.Linear):
                     if h_size is None: h_size = mod.in_features
 
-        if h_size is None: h_size = 768
-        if v_size is None: v_size = 50257
+        if h_size is None:
+            h_size = 768
+            logger.warning(f"Could not introspect hidden_dim for '{self.model_name}', falling back to default {h_size}.")
+        if v_size is None:
+            v_size = 50257
+            logger.warning(f"Could not introspect vocab_size for '{self.model_name}', falling back to default {v_size}.")
 
         n_layers = getattr(cfg, "num_hidden_layers", getattr(cfg, "n_layers", getattr(self._model_instance, "num_layers", getattr(self._model_instance, "n_layers", None))))
         if n_layers is None:
@@ -74,6 +84,7 @@ class GenericAdapter(BaseModelAdapter):
                 n_layers = len(self.graph.nodes)
             else:
                 n_layers = 12
+                logger.warning(f"Could not introspect num_layers for '{self.model_name}', falling back to default {n_layers}.")
 
         self.num_layers = n_layers
         self.num_heads = n_heads
@@ -109,9 +120,9 @@ class GenericAdapter(BaseModelAdapter):
             try:
                 ids = self.tokenizer.encode(text)
                 return [self.tokenizer.decode([i]) for i in ids]
-            except Exception:
-                pass
-        return [c for c in text]
+            except Exception as e:
+                logger.debug(f"Tokenizer encoding failed in GenericAdapter: {e}")
+        return text.split() if text else []
 
     def decode(self, token_ids: Union[int, List[int]]) -> str:
         """Decodes token IDs back to human-readable token string."""
@@ -132,15 +143,15 @@ class GenericAdapter(BaseModelAdapter):
                     res = self.tokenizer.decode(ids_list, skip_special_tokens=False)
                     if res:
                         return res
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Tokenizer decoding failed: {e}")
             if hasattr(self.tokenizer, "convert_ids_to_tokens"):
                 try:
                     res = self.tokenizer.convert_ids_to_tokens(t_id)
                     if res:
                         return str(res)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Tokenizer convert_ids_to_tokens failed: {e}")
         return str(t_id)
 
     @torch.inference_mode()
@@ -188,7 +199,10 @@ class GenericAdapter(BaseModelAdapter):
         unembed = self.strategy.extract_unembedding(self._model_instance)
         if unembed is not None:
             return unembed
-        return torch.randn(self.hidden_dim, self.vocab_size, device=self.device)
+        raise UnembeddingNotFoundError(
+            f"Unembedding matrix W_U could not be extracted from model architecture '{self.model_name}' "
+            f"under strategy '{self.strategy.architecture_id}'."
+        )
 
     def get_resid_post_hook_name(self, layer: int) -> str:
         return self.strategy.get_resid_post_hook_name(layer)

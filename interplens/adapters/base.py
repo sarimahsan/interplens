@@ -5,6 +5,11 @@ from typing import List, Dict, Any, Tuple, Optional, Union
 import torch
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def resolve_tokenizer(model: Any = None, model_name: str = "", tokenizer: Any = None) -> Any:
     """Helper to resolve, discover, or load a tokenizer for any PyTorch/HuggingFace model."""
     if tokenizer is not None:
@@ -30,8 +35,8 @@ def resolve_tokenizer(model: Any = None, model_name: str = "", tokenizer: Any = 
         try:
             from transformers import AutoTokenizer
             return AutoTokenizer.from_pretrained(candidate_name, trust_remote_code=True)
-        except Exception:
-            pass
+        except Exception as err:
+            logger.debug(f"Tokenizer resolution skipped for '{candidate_name}': {err}")
 
     return None
 

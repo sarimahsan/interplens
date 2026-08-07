@@ -20,7 +20,7 @@ def main():
     
     args = parser.parse_args()
     
-    if args.command == "launch" or args.command is None:
+    if args.command == "launch":
         device = resolve_device(getattr(args, "device", "auto"))
         host = getattr(args, "host", settings.host)
         port = getattr(args, "port", settings.port)
@@ -50,6 +50,7 @@ def main():
 
         import uvicorn
         uvicorn.run("interplens.server.app:app", host=host, port=port, reload=False)
+    else:
         parser.print_help()
 
 

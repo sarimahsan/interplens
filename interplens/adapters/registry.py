@@ -1,5 +1,6 @@
-"""Plugin-based Architecture Strategy Registry for InterpLens."""
+"""Plugin-based Architecture Strategy & Adapter Registry for InterpLens."""
 
+import logging
 from typing import Dict, List, Optional, Any, Type, Tuple
 import torch.nn as nn
 
@@ -12,6 +13,8 @@ from interplens.adapters.strategy import (
     PhiStrategy,
     GPT2Strategy,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ArchitectureRegistry:
@@ -33,7 +36,7 @@ class ArchitectureRegistry:
     def register(self, strategy: BaseArchitectureStrategy) -> None:
         """Registers a strategy object under its architecture_id."""
         self._strategies[strategy.architecture_id] = strategy
-        print(f"📦 Registered Architecture Strategy: '{strategy.architecture_id}' (family: {strategy.family.value})")
+        logger.debug(f"Registered Architecture Strategy: '{strategy.architecture_id}' (family: {strategy.family.value})")
 
     def get_strategy(self, architecture_id: str) -> Optional[BaseArchitectureStrategy]:
         return self._strategies.get(architecture_id)
@@ -57,8 +60,26 @@ class ArchitectureRegistry:
         return fallback, 0.4
 
 
-# Global architecture strategy registry singleton
+class AdapterRegistry:
+    """Registry mapping string model keys/names to custom BaseModelAdapter subclasses."""
+
+    def __init__(self):
+        self._adapters: Dict[str, Type[Any]] = {}
+
+    def register(self, name: str, adapter_cls: Type[Any]) -> None:
+        """Registers a custom adapter class under a name."""
+        key = name.lower().strip()
+        self._adapters[key] = adapter_cls
+        logger.info(f"Registered custom adapter class '{adapter_cls.__name__}' for '{key}'.")
+
+    def get_adapter_class(self, name: str) -> Optional[Type[Any]]:
+        """Retrieves registered adapter class by name."""
+        return self._adapters.get(name.lower().strip())
+
+
+# Global singletons
 global_architecture_registry = ArchitectureRegistry()
+global_adapter_registry = AdapterRegistry()
 
 
 def register_architecture_strategy(strategy: BaseArchitectureStrategy) -> None:
@@ -69,3 +90,14 @@ def register_architecture_strategy(strategy: BaseArchitectureStrategy) -> None:
 def get_strategy_for_model(model_or_config: Any, model_name: str = "") -> Tuple[BaseArchitectureStrategy, float]:
     """Resolves best matching architecture strategy for model instance/config."""
     return global_architecture_registry.resolve_strategy(model_or_config, model_name)
+
+
+def register_adapter_class(name: str, adapter_cls: Type[Any]) -> None:
+    """Registers a custom adapter class in the global adapter registry."""
+    global_adapter_registry.register(name, adapter_cls)
+
+
+def get_registered_adapter_class(name: str) -> Optional[Type[Any]]:
+    """Fetches a registered adapter class by name if available."""
+    return global_adapter_registry.get_adapter_class(name)
+

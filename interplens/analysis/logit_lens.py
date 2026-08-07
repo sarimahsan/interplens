@@ -9,6 +9,7 @@ import torch
 import torch.nn.functional as F
 
 try:
+    from interplens.exceptions import UnembeddingNotFoundError
     from interplens.adapters.base import BaseModelAdapter
     from interplens.schema import (
         LogitLensToken,
@@ -18,6 +19,7 @@ try:
         LogitLensMatrixResponse,
     )
 except ImportError:
+    from exceptions import UnembeddingNotFoundError
     from adapters.base import BaseModelAdapter
     from schema import (
         LogitLensToken,
@@ -64,6 +66,8 @@ def compute_logit_lens(
     if hasattr(adapter, "get_unembedding_weight"):
         try:
             w_u = adapter.get_unembedding_weight()
+        except UnembeddingNotFoundError:
+            w_u = None
         except Exception:
             w_u = None
 
@@ -98,7 +102,7 @@ def compute_logit_lens(
     embed_hook = None
     for name in cache.keys():
         n_lower = name.lower()
-        if "embed" in n_lower or "wte" in n_lower:
+        if ("embed" in n_lower or "wte" in n_lower) and "unembed" not in n_lower and "lm_head" not in n_lower:
             embed_hook = name
             break
 
@@ -116,8 +120,8 @@ def compute_logit_lens(
         else:
             for k, v in cache.items():
                 k_lower = k.lower()
-                # Exclude attention maps, MLP post-activations, and 4D tensors
-                if "pattern" in k_lower or "attn" in k_lower or "mlp" in k_lower or v.ndim not in (2, 3):
+                # Exclude attention maps, MLP post-activations, unembedding layers, and 4D tensors
+                if "pattern" in k_lower or "attn" in k_lower or "mlp" in k_lower or "unembed" in k_lower or "lm_head" in k_lower or v.ndim not in (2, 3):
                     continue
                 if f"blocks.{layer}" in k_lower or f"layers.{layer}" in k_lower or f"block_{layer}" in k_lower or f"h.{layer}" in k_lower:
                     found_tensor = v
@@ -127,8 +131,11 @@ def compute_logit_lens(
             residual_tensors.append(found_tensor)
             layer_names.append(f"Resid L{layer}")
         elif len(residual_tensors) > 0:
-            residual_tensors.append(residual_tensors[-1])
-            layer_names.append(f"Resid L{layer}")
+            # Avoid duplicate predictions: use zero tensor matching shape of active residual stream
+            ref_tensor = residual_tensors[-1]
+            zero_tensor = torch.zeros_like(ref_tensor)
+            residual_tensors.append(zero_tensor)
+            layer_names.append(f"Resid L{layer} (Missing)")
 
     if not residual_tensors:
         raise ValueError("No residual stream tensors found in activation cache for Logit Lens.")
@@ -150,7 +157,9 @@ def compute_logit_lens(
         if ln_final is not None and apply_ln:
             try:
                 normed_resid = ln_final(resid_stack)
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).debug(f"LayerNorm application in Logit Lens skipped: {e}")
                 normed_resid = resid_stack
         else:
             normed_resid = resid_stack
@@ -162,7 +171,9 @@ def compute_logit_lens(
         elif hasattr(model, "unembed"):
             logits = model.unembed(normed_resid)
         else:
-            raise RuntimeError("Model does not expose unembedding weights W_U or lm_head.")
+            raise UnembeddingNotFoundError(
+                "Model does not expose unembedding weights W_U or lm_head required for Logit Lens analysis."
+            )
 
         return logits
 

@@ -12,19 +12,46 @@ authors = [
 ]
 license = { text = "MIT" }
 requires-python = ">=3.9"
+keywords = ["interpretability", "mechanistic-interpretability", "llm", "transformers", "pytorch", "debugger"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
 dependencies = [
     "torch>=2.0.0",
-    "transformer-lens>=2.0.0",
     "fastapi>=0.100.0",
     "uvicorn>=0.20.0",
     "pydantic>=2.0.0",
     "einops>=0.6.0",
     "jaxtyping>=0.2.0",
-    "scikit-learn>=1.2.0",
     "psutil>=5.9.0"
 ]
 
+[project.urls]
+Homepage = "https://github.com/interplens/interplens"
+Repository = "https://github.com/interplens/interplens.git"
+Documentation = "https://github.com/interplens/interplens#readme"
+
 [project.optional-dependencies]
+tl = [
+    "transformer-lens>=2.0.0"
+]
+analysis = [
+    "scikit-learn>=1.2.0"
+]
+all = [
+    "transformer-lens>=2.0.0",
+    "scikit-learn>=1.2.0"
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0"
@@ -37,7 +64,16 @@ interplens = "interplens.cli:main"
 where = ["."]
 include = ["interplens*"]
 
+[tool.setuptools.package-data]
+interplens = ["py.typed", "ui/**/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 pythonpath = ["."]
+markers = [
+    "remote: tests that require network access or downloading heavy HuggingFace models",
+    "slow: tests that take extended time to run",
+]
+
+

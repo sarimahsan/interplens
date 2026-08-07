@@ -226,8 +226,8 @@ class PhiStrategy(BaseArchitectureStrategy):
 
     def matches(self, model_or_config: Any, model_name: str = "") -> float:
         m_type = getattr(getattr(model_or_config, "config", None), "model_type", "").lower()
-        m_str = model_name.lower()
-        if "phi" in m_type or "phi" in m_str:
+        m_str = model_name.lower().split("/")[-1]
+        if m_type.startswith("phi") or m_str.startswith("phi") or "phi-1" in m_str or "phi-2" in m_str or "phi-3" in m_str:
             return 1.0
         return 0.0
 
