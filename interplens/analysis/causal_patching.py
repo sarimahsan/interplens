@@ -124,14 +124,16 @@ def run_causal_patching_sweep(
                         break
 
                 if target_mod is not None:
-                    def make_patch_hook(vec, pos):
+                    def make_patch_hook(vec, pos, max_seq_len=None):
                         def patch_hook(mod, inp, out):
                             tensor = out[0] if isinstance(out, tuple) else out
                             patched = tensor.clone()
                             if patched.ndim == 3:
-                                patched[:, pos, :] = vec.to(device=patched.device, dtype=patched.dtype)
+                                if pos < patched.shape[1]:
+                                    patched[:, pos, :] = vec.to(device=patched.device, dtype=patched.dtype)
                             elif patched.ndim == 2:
-                                patched[pos, :] = vec.to(device=patched.device, dtype=patched.dtype)
+                                if pos < patched.shape[0]:
+                                    patched[pos, :] = vec.to(device=patched.device, dtype=patched.dtype)
                             if isinstance(out, tuple):
                                 return (patched,) + out[1:]
                             return patched
