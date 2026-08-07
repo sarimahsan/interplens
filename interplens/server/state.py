@@ -206,7 +206,8 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
             m_vocab = getattr(getattr(model, "config", None), "vocab_size", None)
             t_vocab = len(tokenizer) if hasattr(tokenizer, "__len__") else getattr(tokenizer, "vocab_size", None)
 
-            if m_vocab and t_vocab and abs(m_vocab - t_vocab) > 100:
+            # Allow small GPU tensor core padding differences (<5,000 tokens) between model config and base tokenizer
+            if m_vocab and t_vocab and abs(m_vocab - t_vocab) > 5000:
                 tokenizer_warning = (
                     f"⚠️ Mismatched Tokenizer Warning: Model vocabulary size is {m_vocab:,}, "
                     f"but active tokenizer vocabulary size is {t_vocab:,}. "
