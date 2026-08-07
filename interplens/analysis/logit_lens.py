@@ -83,14 +83,14 @@ def compute_logit_lens(
 
     ln_final = None
     if apply_ln and model is not None:
-        if hasattr(model, "ln_final"):
+        if hasattr(model, "model") and hasattr(model.model, "norm"):
+            ln_final = model.model.norm
+        elif hasattr(model, "ln_final"):
             ln_final = model.ln_final
         elif hasattr(model, "final_layernorm"):
             ln_final = model.final_layernorm
         elif hasattr(model, "norm"):
             ln_final = model.norm
-        elif hasattr(model, "model") and hasattr(model.model, "norm"):
-            ln_final = model.model.norm
         elif hasattr(model, "transformer") and hasattr(model.transformer, "ln_f"):
             ln_final = model.transformer.ln_f
 
@@ -164,8 +164,17 @@ def compute_logit_lens(
         else:
             normed_resid = resid_stack
 
-        # Compute logits: (num_layers, pos, d_model) x (d_model, d_vocab) -> (num_layers, pos, d_vocab)
-        if w_u is not None:
+        # Compute logits using model.lm_head or W_U matrix
+        if hasattr(model, "lm_head") and callable(getattr(model, "lm_head")):
+            try:
+                logits = model.lm_head(normed_resid)
+            except Exception:
+                if w_u is not None:
+                    w_u_dev = w_u.to(device=normed_resid.device, dtype=normed_resid.dtype)
+                    logits = torch.matmul(normed_resid, w_u_dev)
+                else:
+                    raise UnembeddingNotFoundError("Unembedding failed.")
+        elif w_u is not None:
             w_u_dev = w_u.to(device=normed_resid.device, dtype=normed_resid.dtype)
             logits = torch.matmul(normed_resid, w_u_dev)
         elif hasattr(model, "unembed"):
