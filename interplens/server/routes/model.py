@@ -94,10 +94,7 @@ def get_model_report_pdf():
     report = getattr(adapter, "report", None)
     if report is not None:
         report_dict = report.to_dict()
-        try:
-            pdf_bytes = generate_model_report_pdf(report_dict)
-        except RuntimeError as err:
-            raise HTTPException(status_code=501, detail=str(err))
+        pdf_bytes = generate_model_report_pdf(report_dict)
         filename = f"InterpLens_Model_Report_{report.model_name}.pdf"
         return Response(
             content=pdf_bytes,

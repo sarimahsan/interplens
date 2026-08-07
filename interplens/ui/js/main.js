@@ -233,6 +233,40 @@ function registerEventListeners() {
         });
     }
 
+    const downloadPdfBtn = document.getElementById('btn-download-pdf-report');
+    if (downloadPdfBtn) {
+        downloadPdfBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const originalHtml = downloadPdfBtn.innerHTML;
+            downloadPdfBtn.style.opacity = '0.7';
+            downloadPdfBtn.style.pointerEvents = 'none';
+
+            try {
+                const res = await fetch('/api/model/report/pdf');
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const activeModelName = document.getElementById('nav-model-name')?.textContent || 'model';
+                    a.download = `InterpLens_Model_Report_${activeModelName.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } else {
+                    openPrintableReportWindow();
+                }
+            } catch (err) {
+                openPrintableReportWindow();
+            } finally {
+                downloadPdfBtn.style.opacity = '1';
+                downloadPdfBtn.style.pointerEvents = 'auto';
+                downloadPdfBtn.innerHTML = originalHtml;
+            }
+        });
+    }
+
     if (reportModal) {
         reportModal.addEventListener('click', (e) => {
             if (e.target === reportModal) reportModal.style.display = 'none';
@@ -577,4 +611,41 @@ function renderModelReportHtml(data) {
         </div>
     `;
     return html;
+}
+
+function openPrintableReportWindow() {
+    const modalBody = document.getElementById('model-report-modal-body');
+    if (!modalBody) return;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>InterpLens Model Discovery Report</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 30px; background: #0f172a; color: #f8fafc; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th, td { border: 1px solid #334155; padding: 8px 12px; text-align: left; }
+                th { background: #1e293b; color: #38bdf8; }
+                @media print {
+                    body { background: #ffffff !important; color: #000000 !important; }
+                    th, td { border-color: #cbd5e1 !important; }
+                    th { background: #f1f5f9 !important; color: #0284c7 !important; }
+                }
+            </style>
+        </head>
+        <body>
+            <h2 style="color: #38bdf8; margin-bottom: 5px;">InterpLens Studio • Model Discovery Report</h2>
+            <hr style="border-color: #334155; margin-bottom: 20px;"/>
+            ${modalBody.innerHTML}
+            <script>
+                setTimeout(() => { window.print(); }, 500);
+            <\/script>
+        </body>
+        </html>
+    `);
+    win.document.close();
 }
