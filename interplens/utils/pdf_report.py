@@ -4,22 +4,27 @@ import io
 import time
 from typing import Dict, Any
 
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-    HRFlowable,
-)
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_RIGHT, TA_CENTER
-
-
 def generate_model_report_pdf(report_data: Dict[str, Any]) -> bytes:
     """Generates a professional, production-grade PDF report from model report data."""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib import colors
+        from reportlab.platypus import (
+            SimpleDocTemplate,
+            Paragraph,
+            Spacer,
+            Table,
+            TableStyle,
+            HRFlowable,
+        )
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_RIGHT, TA_CENTER
+    except ImportError as e:
+        raise RuntimeError(
+            "ReportLab library is required to generate PDF reports. "
+            "Please install it using 'pip install reportlab'."
+        ) from e
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
