@@ -54,10 +54,6 @@
                     <span id="nav-device-tag" class="badge-token">CUDA</span>
                     <span class="dot-divider">•</span>
                     <span id="nav-vram-usage" style="font-size: 11px; font-weight: 600; color: #38bdf8;">VRAM: Live...</span>
-                    <span class="dot-divider" id="ws-indicator-divider">•</span>
-                    <span id="nav-ws-status" title="Live Telemetry WebSocket Connection" style="display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">
-                        <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #10b981; display: inline-block;"></span> WS LIVE
-                    </span>
                 </div>
             </div>
 
@@ -171,15 +167,6 @@
                                 <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
                             <span>Induction Detector</span>
-                        </button>
-
-                        <button class="menu-btn disabled" title="Coming in Phase 7">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                            </svg>
-                            <span>SAE Feature Explorer</span>
-                            <span class="status-tag">Phase 7</span>
                         </button>
                     </nav>
                 </div>
@@ -1243,8 +1230,8 @@
 
     <!-- Model Discovery & Capabilities Report Modal -->
     <div id="model-report-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
-        <div class="modal-card" style="background: var(--bg-card, #1e293b); border: 1px solid var(--border, #334155); border-radius: 12px; width: 100%; max-width: 720px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
-            <div style="padding: 16px 20px; border-bottom: 1px solid var(--border, #334155); display: flex; align-items: center; justify-content: space-between;">
+        <div class="modal-card" style="background: var(--bg-card, #1e293b); border: 1px solid var(--border, #334155); border-radius: 12px; width: 100%; max-width: 820px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div style="padding: 16px 20px; border-bottom: 1px solid var(--border, #334155); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -1254,10 +1241,20 @@
                     </svg>
                     <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: var(--text, #f8fafc);">Automated Model Inspection Discovery Report</h3>
                 </div>
-                <button id="close-model-report-modal" style="background: transparent; border: none; color: var(--text-muted, #94a3b8); cursor: pointer; font-size: 18px;">✕</button>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <a id="btn-download-pdf-report" href="/api/model/report/pdf" download target="_blank" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background: #0284c7; color: #ffffff; text-decoration: none; cursor: pointer; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background 0.15s ease;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <span>Download PDF Report</span>
+                    </a>
+                    <button id="close-model-report-modal" style="background: transparent; border: none; color: var(--text-muted, #94a3b8); cursor: pointer; font-size: 18px; padding: 4px 8px;">✕</button>
+                </div>
             </div>
-            <div id="model-report-modal-body" style="padding: 20px; overflow-y: auto; font-family: var(--font-mono, monospace); font-size: 12px; line-height: 1.6; white-space: pre-wrap; color: var(--text, #f8fafc); background: rgba(15, 23, 42, 0.5);">
-                Loading Model Report...
+            <div id="model-report-modal-body" style="padding: 20px; overflow-y: auto; font-family: var(--font-sans, sans-serif); font-size: 13px; line-height: 1.6; color: var(--text, #f8fafc); background: rgba(15, 23, 42, 0.6);">
+                Loading Model Inspection Report...
             </div>
         </div>
     </div>

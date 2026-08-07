@@ -1064,4 +1064,149 @@ async function executePromptAnalysis() {
     }
 }
 
+// Model Discovery Report Modal Event Listeners
+const reportBtn = document.getElementById('btn-model-report');
+const reportModal = document.getElementById('model-report-modal');
+const closeReportBtn = document.getElementById('close-model-report-modal');
+
+if (reportBtn) {
+    reportBtn.addEventListener('click', async () => {
+        if (reportModal) reportModal.style.display = 'flex';
+        const modalBody = document.getElementById('model-report-modal-body');
+        if (modalBody) modalBody.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">Loading automated model discovery report...</div>';
+        try {
+            const res = await fetch('/api/model/report');
+            if (res.ok) {
+                const data = await res.json();
+                if (modalBody) modalBody.innerHTML = renderModelReportHtml(data);
+            } else {
+                if (modalBody) modalBody.innerHTML = '<div style="padding:20px; color:#ef4444;">Failed to load model discovery report from server.</div>';
+            }
+        } catch (err) {
+            if (modalBody) modalBody.innerHTML = '<div style="padding:20px; color:#ef4444;">Error connecting to model discovery report endpoint.</div>';
+        }
+    });
+}
+
+if (closeReportBtn) {
+    closeReportBtn.addEventListener('click', () => {
+        if (reportModal) reportModal.style.display = 'none';
+    });
+}
+
 window.fetchSystemHealth = fetchSystemHealth;
+
+function renderModelReportHtml(data) {
+    if (!data) return '<div style="padding:20px; color:#ef4444;">No report data available.</div>';
+
+    const sf = data.static_fingerprint || {};
+    const ec = (data.engine_capabilities && data.engine_capabilities.engines) ? data.engine_capabilities.engines : {};
+
+    const confPct = ((data.discovery_confidence || 1.0) * 100).toFixed(1);
+    const capLevel = data.capability_level !== undefined ? data.capability_level : 5;
+    const capName = data.capability_level_name || 'Full Support';
+
+    let html = `
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Key Metrics Bar -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: rgba(15, 23, 42, 0.7); padding: 16px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Confidence</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #38bdf8;">${confPct}%</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Capability Level</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #f8fafc;">Level ${capLevel} (${escapeHtml(capName)})</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Layers Stack</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #f8fafc;">${sf.num_layers || 0} Blocks</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Hidden Dim</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #f8fafc;">${sf.hidden_size || 0}d</div>
+                </div>
+            </div>
+
+            <!-- Static Architecture Geometry -->
+            <div>
+                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600; color: #38bdf8;">📐 Model Architecture & Static Fingerprint</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #334155; border-radius: 6px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: rgba(30, 41, 59, 0.9); color: #94a3b8; text-align: left;">
+                            <th style="padding: 8px 12px; border-bottom: 1px solid #334155;">Parameter</th>
+                            <th style="padding: 8px 12px; border-bottom: 1px solid #334155;">Metric</th>
+                            <th style="padding: 8px 12px; border-bottom: 1px solid #334155;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #1e293b;">
+                            <td style="padding: 8px 12px; font-weight: 600; color: #f8fafc;">Model Identifier</td>
+                            <td style="padding: 8px 12px; color: #38bdf8; font-family: monospace;">${escapeHtml(data.model_name || 'N/A')}</td>
+                            <td style="padding: 8px 12px; color: #94a3b8;">Active registered module name</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #1e293b;">
+                            <td style="padding: 8px 12px; font-weight: 600; color: #f8fafc;">Architecture Strategy</td>
+                            <td style="padding: 8px 12px; color: #f8fafc; font-family: monospace;">${escapeHtml((data.architecture_id || '').toUpperCase())}</td>
+                            <td style="padding: 8px 12px; color: #94a3b8;">Hook discovery adapter strategy</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #1e293b;">
+                            <td style="padding: 8px 12px; font-weight: 600; color: #f8fafc;">Attention Heads (Q / KV)</td>
+                            <td style="padding: 8px 12px; color: #f8fafc;">${sf.num_heads || 0} Q / ${sf.num_kv_heads || sf.num_heads || 0} KV</td>
+                            <td style="padding: 8px 12px; color: #94a3b8;">MHSA Query & Key-Value heads</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #1e293b;">
+                            <td style="padding: 8px 12px; font-weight: 600; color: #f8fafc;">Vocabulary Size</td>
+                            <td style="padding: 8px 12px; color: #f8fafc;">${(sf.vocab_size || 0).toLocaleString()} Tokens</td>
+                            <td style="padding: 8px 12px; color: #94a3b8;">Embedding dictionary dimension</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 12px; font-weight: 600; color: #f8fafc;">Embeddings & MoE</td>
+                            <td style="padding: 8px 12px; color: #f8fafc;">RoPE: ${sf.has_rope ? 'Yes' : 'No'} | MoE: ${sf.is_moe ? 'Yes' : 'No'}</td>
+                            <td style="padding: 8px 12px; color: #94a3b8;">Rotary embeddings & MoE presence</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Engine Capabilities Matrix -->
+            <div>
+                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600; color: #38bdf8;">⚡ Interpretability Engine Audit Matrix</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #334155; border-radius: 6px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: rgba(30, 41, 59, 0.9); color: #94a3b8; text-align: left;">
+                            <th style="padding: 8px 12px; border-bottom: 1px solid #334155;">Engine Name</th>
+                            <th style="padding: 8px 12px; border-bottom: 1px solid #334155;">Audit Status</th>
+                            <th style="padding: 8px 12px; border-bottom: 1px solid #334155;">Audit Notes & Capabilities</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    Object.keys(ec).forEach((engKey) => {
+        const eng = ec[engKey];
+        const status = (eng.status || 'unavailable').toUpperCase();
+        let badge = '<span style="padding: 2px 8px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 600; font-size: 11px;">UNAVAILABLE</span>';
+        if (status === 'SUPPORTED') {
+            badge = '<span style="padding: 2px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; font-size: 11px;">✓ SUPPORTED</span>';
+        } else if (status === 'PARTIAL') {
+            badge = '<span style="padding: 2px 8px; border-radius: 4px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 600; font-size: 11px;">⚠ PARTIAL</span>';
+        }
+
+        html += `
+            <tr style="border-bottom: 1px solid #1e293b;">
+                <td style="padding: 8px 12px; font-weight: 600; color: #f8fafc;">${escapeHtml(eng.engine_name || engKey)}</td>
+                <td style="padding: 8px 12px;">${badge}</td>
+                <td style="padding: 8px 12px; color: #94a3b8;">${escapeHtml(eng.reason || 'N/A')}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    return html;
+}

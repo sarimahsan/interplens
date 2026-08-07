@@ -143,6 +143,21 @@ def test_telemetry_websocket():
         assert data["vram_usage"]["allocated_mb"] >= 0
 
 
+def test_pdf_model_report():
+    """Test PDF model inspection report generation endpoint."""
+    model = DummyTransformer(vocab_size=50, hidden_dim=16, num_layers=4)
+    tokenizer = DummyTokenizer()
+    adapter = CustomModelAdapter(model=model, tokenizer=tokenizer, model_name="dummy_test_model")
+    set_active_adapter(adapter)
+
+    client = TestClient(app)
+    res = client.get("/api/model/report/pdf")
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/pdf"
+    assert len(res.content) > 1000
+    assert res.content[:4] == b"%PDF"
+
+
 def test_logit_lens_gpt2_integration():
     """End-to-end integration test with TransformerLens GPT-2."""
     try:

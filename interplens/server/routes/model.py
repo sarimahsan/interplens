@@ -4,9 +4,11 @@ import asyncio
 import time
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.responses import Response
 
 from interplens.schema import RunRequest, RunResponse
 from interplens.utils.device import get_optimal_device, get_vram_usage, get_gpu_grid_status, get_detailed_gpu_profiler
+from interplens.utils.pdf_report import generate_model_report_pdf
 from interplens.server.session import global_session_store
 from interplens.server.state import (
     state_manager,
@@ -82,6 +84,23 @@ def get_model_report():
         res = report.to_dict()
         res["text_report"] = report.format_text_report()
         return res
+    raise HTTPException(status_code=404, detail="Model discovery report unavailable.")
+
+
+@router.get("/api/model/report/pdf")
+def get_model_report_pdf():
+    """Generates and downloads production-grade PDF inspection report for active model."""
+    adapter = get_active_adapter()
+    report = getattr(adapter, "report", None)
+    if report is not None:
+        report_dict = report.to_dict()
+        pdf_bytes = generate_model_report_pdf(report_dict)
+        filename = f"InterpLens_Model_Report_{report.model_name}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
     raise HTTPException(status_code=404, detail="Model discovery report unavailable.")
 
 
