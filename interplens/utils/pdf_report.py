@@ -59,36 +59,60 @@ def generate_fallback_pure_pdf(report_data: Dict[str, Any]) -> bytes:
     lines.append("ASSURANCE: Verified non-destructive PyTorch tensor hook placement.")
     lines.append("==================================================================================")
 
-    # Format text lines into valid PDF 1.4 stream syntax
-    content_stream = []
-    content_stream.append("BT")
-    content_stream.append("/F1 14 Tf")
-    content_stream.append("36 750 Td")
-    content_stream.append(f"({model_name} - InterpLens Inspection Report) Tj")
-    content_stream.append("ET")
+    # Convert text lines into PDF 1.4 syntax with XRef offsets and Trailer dictionary
+    header = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
+    body = []
+    offsets = []
+    current_offset = len(header)
 
-    content_stream.append("BT")
-    content_stream.append("/F1 8.5 Tf")
-    content_stream.append("36 725 Td")
-    content_stream.append("0 -11.5 Td")
+    def add_object(obj_num: int, content: bytes):
+        nonlocal current_offset
+        offsets.append(current_offset)
+        obj_bytes = f"{obj_num} 0 obj\n".encode("ascii") + content + b"\nendobj\n"
+        body.append(obj_bytes)
+        current_offset += len(obj_bytes)
+
+    # Obj 1: Catalog
+    add_object(1, b"<< /Type /Catalog /Pages 2 0 R >>")
+    # Obj 2: Pages
+    add_object(2, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+    # Obj 3: Page
+    add_object(3, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>")
+
+    # Content stream
+    stream_lines = ["BT", "/F1 12 Tf", "36 750 Td", f"({model_name.replace('(', '\\(').replace(')', '\\)')} - InterpLens Report) Tj", "ET"]
+    stream_lines.append("BT")
+    stream_lines.append("/F1 8.5 Tf")
+    stream_lines.append("36 725 Td")
+    stream_lines.append("0 -11 Td")
 
     for l in lines:
         l_clean = l.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-        content_stream.append(f"({l_clean}) Tj")
-        content_stream.append("0 -11.5 Td")
-    content_stream.append("ET")
+        stream_lines.append(f"({l_clean}) Tj")
+        stream_lines.append("0 -11.5 Td")
+    stream_lines.append("ET")
 
-    stream_bytes = "\n".join(content_stream).encode("latin1", errors="replace")
+    stream_data = "\n".join(stream_lines).encode("latin1", errors="replace")
+    stream_obj = f"<< /Length {len(stream_data)} >>\nstream\n".encode("ascii") + stream_data + b"\nendstream"
+    
+    # Obj 4: Content Stream
+    add_object(4, stream_obj)
+    # Obj 5: Font
+    add_object(5, b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>")
 
-    objects = []
-    objects.append(b"%PDF-1.4\n")
-    objects.append(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
-    objects.append(b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
-    objects.append(b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n")
-    objects.append(f"4 0 obj\n<< /Length {len(stream_bytes)} >>\nstream\n".encode("latin1") + stream_bytes + b"\nendstream\nendobj\n")
-    objects.append(b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n")
+    # Construct XRef table
+    xref_offset = current_offset
+    xref_lines = [
+        f"xref\n0 {len(offsets) + 1}\n".encode("ascii"),
+        b"0000000000 65535 f \n"
+    ]
+    for off in offsets:
+        xref_lines.append(f"{off:010d} 00000 n \n".encode("ascii"))
 
-    return b"".join(objects)
+    xref_data = b"".join(xref_lines)
+    trailer = f"trailer\n<< /Size {len(offsets) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n".encode("ascii")
+
+    return header + b"".join(body) + xref_data + trailer
 
 
 def generate_model_report_pdf(report_data: Dict[str, Any]) -> bytes:
