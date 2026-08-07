@@ -151,24 +151,60 @@ def compute_logit_lens(
     # Stack: (num_layers, pos, d_model)
     stacked_resid = torch.stack(processed_tensors, dim=0)
 
+    import logging as _logging
+    _ll_logger = _logging.getLogger(__name__)
+
     @torch.inference_mode()
     def _project_unembed(resid_stack: torch.Tensor) -> torch.Tensor:
-        # Apply final LayerNorm if requested and available
+        """Projects residual stream activations through final LayerNorm + unembedding to get logits.
+        
+        Handles device/dtype alignment between hook-captured tensors and model modules.
+        Falls back to per-layer processing if batched stacking through norm/lm_head fails.
+        """
+        # Determine target device and dtype from model parameters
+        target_device = resid_stack.device
+        target_dtype = resid_stack.dtype
+        if ln_final is not None:
+            ln_params = list(ln_final.parameters())
+            if ln_params:
+                target_device = ln_params[0].device
+                target_dtype = ln_params[0].dtype
+        elif model is not None:
+            try:
+                p = next(model.parameters())
+                target_device = p.device
+                target_dtype = p.dtype
+            except StopIteration:
+                pass
+
+        # Move stacked residuals to model's device and dtype
+        resid_aligned = resid_stack.to(device=target_device, dtype=target_dtype)
+
+        # Step 1: Apply final LayerNorm/RMSNorm
+        normed_resid = resid_aligned
         if ln_final is not None and apply_ln:
             try:
-                normed_resid = ln_final(resid_stack)
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).debug(f"LayerNorm application in Logit Lens skipped: {e}")
-                normed_resid = resid_stack
-        else:
-            normed_resid = resid_stack
+                # Try batched application: RMSNorm handles arbitrary leading dims
+                normed_resid = ln_final(resid_aligned)
+            except Exception as e_batch:
+                _ll_logger.warning(f"Batched LayerNorm failed ({e_batch}), processing layers individually...")
+                # Process each layer individually through the norm
+                normed_layers = []
+                for layer_idx in range(resid_aligned.shape[0]):
+                    single_layer = resid_aligned[layer_idx].unsqueeze(0)  # (1, pos, d_model)
+                    try:
+                        normed_layers.append(ln_final(single_layer).squeeze(0))
+                    except Exception as e_single:
+                        _ll_logger.warning(f"LayerNorm failed for layer {layer_idx}: {e_single}")
+                        normed_layers.append(resid_aligned[layer_idx])
+                normed_resid = torch.stack(normed_layers, dim=0)
 
-        # Compute logits using model.lm_head or W_U matrix
+        # Step 2: Project through unembedding (lm_head or W_U)
         if hasattr(model, "lm_head") and callable(getattr(model, "lm_head")):
             try:
                 logits = model.lm_head(normed_resid)
-            except Exception:
+            except Exception as e_lm:
+                _ll_logger.warning(f"model.lm_head() failed ({e_lm}), falling back to W_U matmul...")
                 if w_u is not None:
                     w_u_dev = w_u.to(device=normed_resid.device, dtype=normed_resid.dtype)
                     logits = torch.matmul(normed_resid, w_u_dev)
@@ -187,7 +223,7 @@ def compute_logit_lens(
         return logits
 
     logits = _project_unembed(stacked_resid)  # (L_count, P, V)
-    probs = F.softmax(logits, dim=-1)         # (L_count, P, V)
+    probs = F.softmax(logits.float(), dim=-1)  # Cast to float32 for softmax stability
 
     # Cast to float32 for numerical stability (prevents float16 log2(0) NaN/null underflow)
     probs_f32 = probs.to(torch.float32)
