@@ -47,24 +47,31 @@ def compute_attention_metrics(
                 attn_tensor = v
                 break
 
-    # Format tensor into shape (H, N, N)
+    # Format tensor into shape (H, N, N) where N == seq_len
     if attn_tensor is not None:
         t = attn_tensor.detach().cpu().to(torch.float32)
         if t.ndim == 4:
-            t = t[0]  # Remove batch dimension -> (H, N, N)
+            if t.shape[2] == seq_len and t.shape[3] == seq_len:
+                t = t[0]  # (H, N, N)
+            elif t.shape[1] == seq_len and t.shape[2] == seq_len:
+                t = t[0].permute(2, 0, 1)  # (N, N, H) -> (H, N, N)
+            else:
+                t = None
         elif t.ndim == 2:
-            t = t.unsqueeze(0)
-        
-        # Verify shape is valid (H, N, N)
-        if t.ndim == 3:
+            if t.shape[0] == seq_len and t.shape[1] == seq_len:
+                t = t.unsqueeze(0)
+            else:
+                t = None
+
+        if t is not None and t.ndim == 3:
             s0, s1, s2 = t.shape
             if s1 == seq_len and s2 == seq_len:
                 num_heads = s0
                 attn_grid = t
-            elif s0 == seq_len and s1 == seq_len:
-                attn_grid = t.unsqueeze(0)
+            elif s0 == seq_len and s1 == seq_len and s2 == num_heads:
+                attn_grid = t.permute(2, 0, 1)
+                num_heads = attn_grid.shape[0]
             else:
-                # Captured tensor is a hidden state activation (e.g., [1, seq_len, hidden_dim]), not an attention map matrix
                 attn_grid = None
         else:
             attn_grid = None
@@ -110,7 +117,11 @@ def compute_attention_metrics(
             for i in range(seq_len):
                 row = []
                 for j in range(seq_len):
-                    val = float(attn_grid[h, i, j].item())
+                    try:
+                        cell = attn_grid[h, i, j]
+                        val = float(cell.item()) if cell.numel() == 1 else 0.0
+                    except Exception:
+                        val = 0.0
                     row.append(round(max(0.0, min(1.0, val)), 4))
                 head_mat.append(row)
             grid_data.append(head_mat)
