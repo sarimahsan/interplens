@@ -195,9 +195,30 @@ def compute_logit_lens(
     top_probs, top_indices = torch.topk(probs, k=top_k, dim=-1)
     top_logits, _ = torch.topk(logits, k=top_k, dim=-1)
 
+    # Offload tensors to CPU numpy arrays once to eliminate CUDA synchronization overhead inside loops
+    probs_cpu = probs.detach().cpu().numpy()
+    logits_cpu = logits.detach().cpu().numpy()
+    top_probs_cpu = top_probs.detach().cpu().numpy()
+    top_indices_cpu = top_indices.detach().cpu().numpy()
+    top_logits_cpu = top_logits.detach().cpu().numpy()
+    entropy_cpu = entropy_tensor.detach().cpu().numpy()
+    kl_cpu = kl_tensor.detach().cpu().numpy()
+
+    # Pre-collect unique token IDs and batch decode / map to strings
+    unique_token_ids = set(top_indices_cpu.flatten().tolist())
+    token_str_map: Dict[int, str] = {}
+    if hasattr(adapter, "decode"):
+        for uid in unique_token_ids:
+            try:
+                token_str_map[uid] = adapter.decode([uid])
+            except Exception:
+                token_str_map[uid] = str(uid)
+    else:
+        for uid in unique_token_ids:
+            token_str_map[uid] = str(uid)
+
     num_positions = len(tokens)
     positions_data: List[PositionLogitLensData] = []
-
     target_positions = range(num_positions) if position is None else [position]
 
     for p in target_positions:
@@ -207,36 +228,32 @@ def compute_logit_lens(
         token_str = tokens[p]
         layer_results: List[LogitLensLayerResult] = []
 
-        # Target token for rank tracking across layers is the top prediction at the final layer
-        target_token_id = int(top_indices[-1, p, 0].item())
-        target_ranks: List[int] = []
+        # Target token for rank tracking across layers is top prediction at final layer
+        target_token_id = int(top_indices_cpu[-1, p, 0])
+
+        # Vectorized rank calculation across all layers for position p (no CUDA sync loops)
+        target_logits_p = logits_cpu[:, p, target_token_id][:, None]
+        target_ranks_p = (logits_cpu[:, p] > target_logits_p).sum(axis=-1) + 1
+        target_ranks = target_ranks_p.tolist()
 
         # Collect top-5 candidate token IDs at final layer for competition ribbon tracking
-        final_top5_ids = [int(top_indices[-1, p, k].item()) for k in range(min(5, top_k))]
+        final_top5_ids = [int(top_indices_cpu[-1, p, k]) for k in range(min(5, top_k))]
         top5_trajectories_dict: Dict[str, List[float]] = {}
         for candidate_id in final_top5_ids:
-            cand_str = adapter.decode([candidate_id]) if hasattr(adapter, "decode") else str(candidate_id)
-            top5_trajectories_dict[cand_str] = [float(probs[l, p, candidate_id].item() * 100) for l in range(probs.shape[0])]
+            cand_str = token_str_map.get(candidate_id, str(candidate_id))
+            top5_trajectories_dict[cand_str] = (probs_cpu[:, p, candidate_id] * 100.0).tolist()
 
         for idx, l_name in enumerate(layer_names):
             top_tokens_list: List[LogitLensToken] = []
 
-            # Compute rank of target_token_id at layer idx
-            target_logit = logits[idx, p, target_token_id].item()
-            rank_val = int((logits[idx, p] > target_logit).sum().item()) + 1
-            target_ranks.append(rank_val)
-
-            # Shannon entropy & KL divergence at layer idx
-            layer_entropy = round(float(entropy_tensor[idx, p].item()), 3)
-            layer_kl = round(float(kl_tensor[idx, p].item()), 3)
+            layer_entropy = round(float(entropy_cpu[idx, p]), 3)
+            layer_kl = round(float(kl_cpu[idx, p]), 3)
 
             for k_idx in range(top_k):
-                t_id = int(top_indices[idx, p, k_idx].item())
-                prob_val = float(top_probs[idx, p, k_idx].item())
-                logit_val = float(top_logits[idx, p, k_idx].item())
-                
-                # Decode token id to string token
-                t_str = adapter.decode([t_id]) if hasattr(adapter, "decode") else str(t_id)
+                t_id = int(top_indices_cpu[idx, p, k_idx])
+                prob_val = float(top_probs_cpu[idx, p, k_idx])
+                logit_val = float(top_logits_cpu[idx, p, k_idx])
+                t_str = token_str_map.get(t_id, str(t_id))
 
                 top_tokens_list.append(
                     LogitLensToken(

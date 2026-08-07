@@ -80,19 +80,20 @@ def compute_residual_metrics(
 
     # 1. Compute L2 Vector Norms: ||x_{l, p}||
     norms_tensor = torch.norm(stacked, p=2, dim=-1)  # (L_count, P)
+    norms_cpu = norms_tensor.detach().cpu().numpy()
 
     # 2. Compute Cosine Similarity between consecutive layers: cos(x_{l, p}, x_{l+1, p})
-    # Normalize vectors
     normed_stacked = F.normalize(stacked, p=2, dim=-1)  # (L_count, P, D)
     
     layer_cosine_sim = []
     if L_count > 1:
         cos_steps = torch.sum(normed_stacked[1:] * normed_stacked[:-1], dim=-1)  # (L_count-1, P)
+        cos_steps_cpu = cos_steps.detach().cpu().numpy()
         for l_idx in range(L_count - 1):
             layer_cosine_sim.append({
                 "from_layer": layer_labels[l_idx],
                 "to_layer": layer_labels[l_idx + 1],
-                "similarities": [round(float(cos_steps[l_idx, p].item()), 4) for p in range(P_count)],
+                "similarities": [round(float(cos_steps_cpu[l_idx, p]), 4) for p in range(P_count)],
             })
 
     # 3. Position inspection metrics
@@ -109,7 +110,7 @@ def compute_residual_metrics(
 
     pos_vector_history = []
     for l_idx in range(L_count):
-        l_norm = round(float(norms_tensor[l_idx, target_pos].item()), 2)
+        l_norm = round(float(norms_cpu[l_idx, target_pos]), 2)
         pos_vector_history.append({
             "layer_index": l_idx,
             "layer_name": layer_labels[l_idx],
@@ -119,10 +120,11 @@ def compute_residual_metrics(
     # 4. Full Layer-by-Layer Cosine Similarity Matrix for selected position
     pos_vecs = normed_stacked[:, target_pos, :]  # (L_count, D)
     cos_matrix_tensor = torch.matmul(pos_vecs, pos_vecs.T)  # (L_count, L_count)
+    cos_matrix_cpu = cos_matrix_tensor.detach().cpu().numpy()
     
     cos_matrix = []
     for r in range(L_count):
-        row = [round(float(cos_matrix_tensor[r, c].item()), 4) for c in range(L_count)]
+        row = [round(float(cos_matrix_cpu[r, c]), 4) for c in range(L_count)]
         cos_matrix.append(row)
 
     return {
@@ -134,7 +136,7 @@ def compute_residual_metrics(
         "vector_norms": [
             {
                 "layer": layer_labels[l_idx],
-                "norms": [round(float(norms_tensor[l_idx, p].item()), 2) for p in range(P_count)],
+                "norms": [round(float(norms_cpu[l_idx, p]), 2) for p in range(P_count)],
             }
             for l_idx in range(L_count)
         ],
