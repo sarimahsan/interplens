@@ -49,3 +49,26 @@ def test_inspect_model_topology():
     # Verify percentages sum close to 100%
     total_pct = sum(item["percentage"] for item in top["parameter_breakdown"])
     assert 99.0 <= total_pct <= 101.0
+
+
+def test_topology_endpoints():
+    from fastapi.testclient import TestClient
+    from interplens.server.app import app, set_active_adapter
+
+    model = DummyModel()
+    adapter = CustomModelAdapter(model, None, model_name="dummy_test_model")
+    set_active_adapter(adapter)
+
+    client = TestClient(app)
+
+    # Test /api/model/topology
+    res1 = client.get("/api/model/topology")
+    assert res1.status_code == 200
+    data1 = res1.json()
+    assert data1["model_name"] == "dummy_test_model"
+
+    # Test /api/analysis/topology
+    res2 = client.get("/api/analysis/topology")
+    assert res2.status_code == 200
+    data2 = res2.json()
+    assert data2["model_name"] == "dummy_test_model"

@@ -11,6 +11,7 @@ from interplens.server.state import (
     get_active_adapter,
     get_adapter_model_info,
 )
+from interplens.analysis.topology import inspect_model_topology
 
 router = APIRouter(tags=["Model"])
 
@@ -49,6 +50,13 @@ def get_model_report():
         res["text_report"] = report.format_text_report()
         return res
     raise HTTPException(status_code=404, detail="Model discovery report unavailable.")
+
+
+@router.get("/api/model/topology")
+def get_model_topology() -> Dict[str, Any]:
+    """Inspects active model parameters and builds a node diagram specification for the UI."""
+    adapter = get_active_adapter()
+    return inspect_model_topology(adapter)
 
 
 @router.get("/api/hardware/gpu-status")
