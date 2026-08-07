@@ -136,6 +136,9 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
                     tokenizer_warning = f"No tokenizer found for '{model_name}'. Operating with raw token ID indexing."
 
         target_dev_map = "auto" if str(device).startswith("cuda") else None
+        model = None
+
+        # Attempt 1: Load with eager attention implementation
         try:
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
@@ -147,8 +150,34 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
                 **token_kwargs
             )
         except Exception:
+            pass
+
+        # Attempt 2: Load without attn_implementation kwarg
+        if model is None:
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
+                    device_map=target_dev_map,
+                    low_cpu_mem_usage=True,
+                    trust_remote_code=True,
+                    **token_kwargs
+                )
+            except Exception:
+                pass
+
+        # Attempt 3: AutoConfig rope_scaling patch for Phi-3 schema compatibility
+        if model is None:
+            from transformers import AutoConfig
+            cfg = AutoConfig.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
+            if hasattr(cfg, "rope_scaling") and isinstance(cfg.rope_scaling, dict):
+                if "type" not in cfg.rope_scaling and "rope_type" in cfg.rope_scaling:
+                    cfg.rope_scaling["type"] = cfg.rope_scaling["rope_type"]
+                elif "rope_type" not in cfg.rope_scaling and "type" in cfg.rope_scaling:
+                    cfg.rope_scaling["rope_type"] = cfg.rope_scaling["type"]
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
+                config=cfg,
                 torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
                 device_map=target_dev_map,
                 low_cpu_mem_usage=True,

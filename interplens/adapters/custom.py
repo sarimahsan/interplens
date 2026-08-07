@@ -165,21 +165,23 @@ class CustomModelAdapter(BaseModelAdapter):
             return self.tokenize_fn(text)
 
         if self.tokenizer is not None:
+            if hasattr(self.tokenizer, "tokenize"):
+                try:
+                    res = self.tokenizer.tokenize(text)
+                    if res and isinstance(res, list) and len(res) > 0:
+                        return res
+                except Exception:
+                    pass
+
             if hasattr(self.tokenizer, "encode") and hasattr(self.tokenizer, "decode"):
                 try:
-                    ids = self.tokenizer.encode(text, add_special_tokens=False)
+                    ids = self.tokenizer.encode(text)
                     if ids:
                         tokens = []
                         for i in ids:
                             tok_str = self.tokenizer.decode([i])
                             tokens.append(tok_str if tok_str else f"[{i}]")
                         return tokens
-                except Exception:
-                    pass
-
-            if hasattr(self.tokenizer, "tokenize"):
-                try:
-                    return self.tokenizer.tokenize(text)
                 except Exception:
                     pass
 
@@ -223,7 +225,7 @@ class CustomModelAdapter(BaseModelAdapter):
 
             if hasattr(self.tokenizer, "encode"):
                 try:
-                    input_ids = self.tokenizer.encode(prompt_str, add_special_tokens=False)
+                    input_ids = self.tokenizer.encode(prompt_str)
                 except TypeError:
                     input_ids = self.tokenizer.encode(prompt_str)
 
