@@ -17,6 +17,7 @@ def main():
     launch_parser.add_argument("--port", type=int, default=settings.port, help="Port (default: 8501)")
     launch_parser.add_argument("--device", type=str, default="auto", help="Device (cpu, cuda, mps, auto)")
     launch_parser.add_argument("--hf-token", "--token", type=str, default=None, help="HuggingFace access token for gated models")
+    launch_parser.add_argument("--tokenizer", type=str, default=None, help="Custom tokenizer HF repo ID or local directory path")
     
     args = parser.parse_args()
     

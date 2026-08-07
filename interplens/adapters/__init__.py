@@ -60,7 +60,12 @@ def get_adapter_for_model(
         try:
             from transformers import AutoModelForCausalLM, AutoTokenizer
             import torch
-            tok = AutoTokenizer.from_pretrained(model_or_name, trust_remote_code=True)
+            if isinstance(tokenizer, str):
+                tok = AutoTokenizer.from_pretrained(tokenizer, trust_remote_code=True)
+            elif tokenizer is not None:
+                tok = tokenizer
+            else:
+                tok = AutoTokenizer.from_pretrained(model_or_name, trust_remote_code=True)
             mod = AutoModelForCausalLM.from_pretrained(
                 model_or_name,
                 torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,

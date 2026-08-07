@@ -61,7 +61,7 @@ def launch(
     if model is not None:
         adapter = get_adapter_for_model(model, device=str(target_device), auto_hook=auto_hook, tokenizer=tokenizer)
     else:
-        adapter = get_adapter_for_model(model_name, device=str(target_device))
+        adapter = get_adapter_for_model(model_name, device=str(target_device), tokenizer=tokenizer)
 
     if hasattr(adapter, "load"):
         try:
