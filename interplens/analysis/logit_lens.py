@@ -6,6 +6,7 @@ layers to uncover internal model token predictions layer-by-layer.
 
 from typing import List, Optional, Dict, Any
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 try:
@@ -181,38 +182,40 @@ def compute_logit_lens(
         resid_aligned = resid_stack.to(device=target_device, dtype=target_dtype)
 
         # Step 1: Apply final LayerNorm/RMSNorm
+        # resid_aligned is (L_count, P, D) but LN/RMSNorm expect (batch, seq, D) or (seq, D).
+        # Process each layer individually to avoid shape mismatches from norms that don't
+        # broadcast over arbitrary leading dims.
         normed_resid = resid_aligned
         if ln_final is not None and apply_ln:
-            try:
-                # Try batched application: RMSNorm handles arbitrary leading dims
-                normed_resid = ln_final(resid_aligned)
-            except Exception as e_batch:
-                _ll_logger.warning(f"Batched LayerNorm failed ({e_batch}), processing layers individually...")
-                # Process each layer individually through the norm
-                normed_layers = []
-                for layer_idx in range(resid_aligned.shape[0]):
-                    single_layer = resid_aligned[layer_idx].unsqueeze(0)  # (1, pos, d_model)
-                    try:
-                        normed_layers.append(ln_final(single_layer).squeeze(0))
-                    except Exception as e_single:
-                        _ll_logger.warning(f"LayerNorm failed for layer {layer_idx}: {e_single}")
-                        normed_layers.append(resid_aligned[layer_idx])
-                normed_resid = torch.stack(normed_layers, dim=0)
+            normed_layers = []
+            for layer_idx in range(resid_aligned.shape[0]):
+                single_layer = resid_aligned[layer_idx].unsqueeze(0)  # (1, pos, d_model)
+                try:
+                    normed_layers.append(ln_final(single_layer).squeeze(0))
+                except Exception as e_single:
+                    _ll_logger.warning(f"LayerNorm failed for layer {layer_idx}: {e_single}")
+                    normed_layers.append(resid_aligned[layer_idx])
+            normed_resid = torch.stack(normed_layers, dim=0)
 
-        # Step 2: Project through unembedding (lm_head or W_U)
-        if hasattr(model, "lm_head") and callable(getattr(model, "lm_head")):
-            try:
-                logits = model.lm_head(normed_resid)
-            except Exception as e_lm:
-                _ll_logger.warning(f"model.lm_head() failed ({e_lm}), falling back to W_U matmul...")
-                if w_u is not None:
-                    w_u_dev = w_u.to(device=normed_resid.device, dtype=normed_resid.dtype)
-                    logits = torch.matmul(normed_resid, w_u_dev)
-                else:
-                    raise UnembeddingNotFoundError("Unembedding failed.")
-        elif w_u is not None:
+        # Step 2: Project through unembedding
+        # Prefer explicit W_U matmul — it's architecture-agnostic and avoids
+        # nn.Linear bias / weight-tying surprises from model.lm_head.
+        if w_u is not None:
             w_u_dev = w_u.to(device=normed_resid.device, dtype=normed_resid.dtype)
             logits = torch.matmul(normed_resid, w_u_dev)
+        elif hasattr(model, "lm_head") and isinstance(getattr(model, "lm_head"), nn.Module):
+            # lm_head is nn.Linear: flatten (L, P, D) -> (L*P, D), project, reshape back
+            L, P, D = normed_resid.shape
+            flat = normed_resid.reshape(L * P, D)
+            try:
+                logits = model.lm_head(flat).reshape(L, P, -1)
+            except Exception as e_lm:
+                _ll_logger.warning(f"model.lm_head() failed ({e_lm}), trying weight matmul...")
+                lm_w = getattr(model.lm_head, "weight", None)
+                if lm_w is not None:
+                    logits = torch.matmul(normed_resid, lm_w.T.to(device=normed_resid.device, dtype=normed_resid.dtype))
+                else:
+                    raise UnembeddingNotFoundError("lm_head failed and has no extractable weight.")
         elif hasattr(model, "unembed"):
             logits = model.unembed(normed_resid)
         else:
@@ -250,17 +253,57 @@ def compute_logit_lens(
     kl_cpu = kl_tensor.detach().cpu().numpy()
 
     # Pre-collect unique token IDs and batch decode / map to strings
+    # Use a robust decode chain: convert_ids_to_tokens (cleanest) → decode → str(id)
     unique_token_ids = set(top_indices_cpu.flatten().tolist())
     token_str_map: Dict[int, str] = {}
-    if hasattr(adapter, "decode"):
-        for uid in unique_token_ids:
+
+    # Resolve the underlying tokenizer object for direct access
+    _tokenizer = getattr(adapter, "tokenizer", None)
+    if _tokenizer is None:
+        _model_inst = getattr(adapter, "_model_instance", None)
+        if _model_inst is not None:
+            _tokenizer = getattr(_model_inst, "tokenizer", None)
+
+    def _decode_token_id(tid: int) -> str:
+        """Robust single-token-ID → string decoder with multi-backend fallback chain."""
+        # 1. convert_ids_to_tokens: returns the raw vocab entry (e.g. "▁Paris", "Ġthe")
+        #    without whitespace artifacts that decode() adds
+        if _tokenizer is not None and hasattr(_tokenizer, "convert_ids_to_tokens"):
             try:
-                token_str_map[uid] = adapter.decode([uid])
+                tok_str = _tokenizer.convert_ids_to_tokens(tid)
+                if tok_str is not None and tok_str != "" and not isinstance(tok_str, list):
+                    return str(tok_str)
             except Exception:
-                token_str_map[uid] = str(uid)
-    else:
-        for uid in unique_token_ids:
-            token_str_map[uid] = str(uid)
+                pass
+        # 2. tokenizer.decode([id]) — strip leading/trailing whitespace artifacts
+        if _tokenizer is not None and hasattr(_tokenizer, "decode"):
+            try:
+                decoded = _tokenizer.decode([tid], skip_special_tokens=False)
+                if decoded is not None and decoded.strip() != "":
+                    return decoded.strip()
+            except Exception:
+                pass
+        # 3. TransformerLens to_single_str_token
+        _model_inst = getattr(adapter, "_model_instance", None)
+        if _model_inst is not None and hasattr(_model_inst, "to_single_str_token"):
+            try:
+                res = _model_inst.to_single_str_token(tid)
+                if res:
+                    return res
+            except Exception:
+                pass
+        # 4. adapter.decode() as last resort before raw int
+        if hasattr(adapter, "decode"):
+            try:
+                res = adapter.decode([tid])
+                if res and res != str(tid):
+                    return res.strip()
+            except Exception:
+                pass
+        return str(tid)
+
+    for uid in unique_token_ids:
+        token_str_map[uid] = _decode_token_id(uid)
 
     num_positions = len(tokens)
     positions_data: List[PositionLogitLensData] = []

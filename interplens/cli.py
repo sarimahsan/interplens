@@ -38,13 +38,17 @@ def main():
         if vram["total_mb"] > 0:
             print(f"💾 VRAM Allocated: {vram['allocated_mb']}MB / {vram['total_mb']}MB")
             
+        tokenizer_override = getattr(args, "tokenizer", None)
+        if tokenizer_override:
+            print(f"🔤 Custom Tokenizer: {tokenizer_override}")
+
         import threading
         from .server.app import init_model
 
         # Start model loading in background thread so web server opens instantly
         loader_thread = threading.Thread(
             target=init_model,
-            args=(model_name, device, hf_token),
+            args=(model_name, device, hf_token, tokenizer_override),
             daemon=True
         )
         loader_thread.start()

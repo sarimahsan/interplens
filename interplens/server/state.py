@@ -56,7 +56,7 @@ class ServerStateManager:
 state_manager = ServerStateManager()
 
 
-def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token: Optional[str] = None):
+def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token: Optional[str] = None, tokenizer_name_or_path: Optional[str] = None):
     """Loads target model into GPU VRAM in a thread-safe manner."""
     if device is None:
         device = get_optimal_device()
@@ -106,35 +106,45 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
         tokenizer = None
         tokenizer_warning = None
 
-        try:
-            tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
-        except Exception as t_err1:
-            logger.warning(f"Primary tokenizer for '{model_name}' could not be loaded directly: {t_err1}")
-            m_lower = model_name.lower()
-            fallback_repos = []
-            if "qwen" in m_lower:
-                fallback_repos = ["Qwen/Qwen2.5-0.5B", "Qwen/Qwen1.5-0.5B"]
-            elif "llama" in m_lower:
-                fallback_repos = ["huggyllama/llama-7b", "meta-llama/Llama-3.2-1B"]
-            elif "gemma" in m_lower:
-                fallback_repos = ["google/gemma-2b", "fxmarty/gemma-2b-tokenizer"]
-            elif "phi" in m_lower:
-                fallback_repos = ["microsoft/phi-2", "microsoft/Phi-3-mini-4k-instruct"]
+        # If user provided explicit tokenizer override via --tokenizer, use it first
+        if tokenizer_name_or_path:
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path, trust_remote_code=True, **token_kwargs)
+                logger.info(f"Loaded custom tokenizer from '{tokenizer_name_or_path}'")
+            except Exception as t_override_err:
+                logger.warning(f"Custom tokenizer '{tokenizer_name_or_path}' could not be loaded: {t_override_err}")
+                tokenizer_warning = f"⚠️ Custom tokenizer '{tokenizer_name_or_path}' failed to load: {t_override_err}. Falling back to auto-detection."
 
-            for repo in fallback_repos:
-                try:
-                    tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True, **token_kwargs)
-                    tokenizer_warning = f"Primary tokenizer for '{model_name}' was unavailable. Resolved compatible architecture tokenizer '{repo}'."
-                    break
-                except Exception as t_err2:
-                    logger.warning(f"Fallback tokenizer '{repo}' unavailable: {t_err2}")
+        if tokenizer is None:
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
+            except Exception as t_err1:
+                logger.warning(f"Primary tokenizer for '{model_name}' could not be loaded directly: {t_err1}")
+                m_lower = model_name.lower()
+                fallback_repos = []
+                if "qwen" in m_lower:
+                    fallback_repos = ["Qwen/Qwen2.5-0.5B", "Qwen/Qwen1.5-0.5B"]
+                elif "llama" in m_lower:
+                    fallback_repos = ["huggyllama/llama-7b", "meta-llama/Llama-3.2-1B"]
+                elif "gemma" in m_lower:
+                    fallback_repos = ["google/gemma-2b", "fxmarty/gemma-2b-tokenizer"]
+                elif "phi" in m_lower:
+                    fallback_repos = ["microsoft/phi-2", "microsoft/Phi-3-mini-4k-instruct"]
 
-            if tokenizer is None:
-                try:
-                    tokenizer = AutoTokenizer.from_pretrained("gpt2")
-                    tokenizer_warning = f"⚠️ Tokenizer Warning: Could not load matching tokenizer for '{model_name}'. Using generic fallback tokenizer (predictions may be inaccurate). Please load matching tokenizer using --tokenizer <repo_id>."
-                except Exception:
-                    tokenizer_warning = f"No tokenizer found for '{model_name}'. Operating with raw token ID indexing."
+                for repo in fallback_repos:
+                    try:
+                        tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True, **token_kwargs)
+                        tokenizer_warning = f"Primary tokenizer for '{model_name}' was unavailable. Resolved compatible architecture tokenizer '{repo}'."
+                        break
+                    except Exception as t_err2:
+                        logger.warning(f"Fallback tokenizer '{repo}' unavailable: {t_err2}")
+
+                if tokenizer is None:
+                    try:
+                        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+                        tokenizer_warning = f"⚠️ Tokenizer Warning: Could not load matching tokenizer for '{model_name}'. Using generic fallback tokenizer (predictions may be inaccurate). Please load matching tokenizer using --tokenizer <repo_id>."
+                    except Exception:
+                        tokenizer_warning = f"No tokenizer found for '{model_name}'. Operating with raw token ID indexing."
 
         target_dev_map = "auto" if str(device).startswith("cuda") else None
         model = None
