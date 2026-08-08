@@ -54,7 +54,7 @@ def main():
         loader_thread.start()
 
         import uvicorn
-        uvicorn.run("interplens.server.app:app", host=host, port=port, reload=False)
+        uvicorn.run("interplens.server.app:app", host=host, port=port, reload=False, lifespan="off")
     else:
         parser.print_help()
 
