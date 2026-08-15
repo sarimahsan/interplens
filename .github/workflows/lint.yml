@@ -1,0 +1,41 @@
+name: Code Quality & PEP 561 Typings
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  lint-and-types:
+    name: Lint, Syntax & Type Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies & Linters
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff build twine
+          pip install -e .[all,dev]
+
+      - name: Syntax Compilation Verification
+        run: |
+          python -m compileall interplens/ tests/
+
+      - name: Verify PEP 561 Type Marker
+        run: |
+          python -c "import os; assert os.path.exists('interplens/py.typed'), 'py.typed marker is missing!'"
+
+      - name: Dry-Run Package Build Validation
+        run: |
+          python -m build
+          twine check dist/*

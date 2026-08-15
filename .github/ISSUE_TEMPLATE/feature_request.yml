@@ -1,0 +1,37 @@
+name: 💡 Feature or Model Architecture Request
+description: Propose a new interpretability engine, UI feature, or transformer model hook strategy
+labels: [ "enhancement", "feature-request" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome proposals for new mechanistic interpretability tools, visualizations, or new model strategies!
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature / Architecture Proposal
+      description: Describe the feature or model architecture you would like InterpLens to support.
+      placeholder: "e.g. Add native hooking strategy for Mamba-2 state-space models..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Research / Interpretability Use Case
+      description: How will this feature help researchers or students understand model internals?
+      placeholder: Describe the interpretability workflow or causal experiment.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-api
+    attributes:
+      label: Proposed API or Visual Design (Optional)
+      description: Example code or UI mockup illustrating how the feature would be used.
+      placeholder: |
+        ```python
+        il.analysis.my_new_tool(model, ...)
+        ```
+      render: python
