@@ -51,14 +51,21 @@ class GenericAdapter(BaseModelAdapter):
 
         from interplens.config import settings
         if settings.debug:
-            print(self.report.format_text_report())
+            logger.debug(self.report.format_text_report())
 
     def _extract_fingerprints(self):
         """Extracts structural static fingerprint and execution runtime fingerprint."""
         cfg = getattr(self._model_instance, "config", None)
-        h_size = getattr(cfg, "hidden_size", getattr(cfg, "d_model", getattr(self._model_instance, "hidden_dim", getattr(self._model_instance, "d_model", None))))
-        v_size = getattr(cfg, "vocab_size", getattr(cfg, "d_vocab", getattr(self._model_instance, "vocab_size", getattr(self._model_instance, "d_vocab", None))))
-        n_heads = getattr(cfg, "num_attention_heads", getattr(cfg, "n_heads", getattr(self._model_instance, "num_heads", getattr(self._model_instance, "n_heads", 12))))
+        if cfg is not None:
+            h_size = getattr(cfg, "hidden_size", getattr(cfg, "d_model", getattr(cfg, "n_embd", None)))
+            v_size = getattr(cfg, "vocab_size", getattr(cfg, "d_vocab", None))
+            n_heads = getattr(cfg, "num_attention_heads", getattr(cfg, "n_heads", getattr(cfg, "num_heads", None)))
+            n_layers = getattr(cfg, "num_hidden_layers", getattr(cfg, "n_layers", getattr(cfg, "num_layers", None)))
+        else:
+            h_size = getattr(self._model_instance, "hidden_dim", getattr(self._model_instance, "d_model", getattr(self._model_instance, "hidden_size", None)))
+            v_size = getattr(self._model_instance, "vocab_size", getattr(self._model_instance, "d_vocab", None))
+            n_heads = getattr(self._model_instance, "num_heads", getattr(self._model_instance, "n_heads", getattr(self._model_instance, "num_attention_heads", None)))
+            n_layers = getattr(self._model_instance, "num_layers", getattr(self._model_instance, "n_layers", None))
 
         if h_size is None or v_size is None:
             for mod in self._model_instance.modules():
@@ -74,8 +81,9 @@ class GenericAdapter(BaseModelAdapter):
         if v_size is None:
             v_size = 50257
             logger.warning(f"Could not introspect vocab_size for '{self.model_name}', falling back to default {v_size}.")
+        if n_heads is None:
+            n_heads = 12
 
-        n_layers = getattr(cfg, "num_hidden_layers", getattr(cfg, "n_layers", getattr(self._model_instance, "num_layers", getattr(self._model_instance, "n_layers", None))))
         if n_layers is None:
             blocks = getattr(self._model_instance, "blocks", getattr(self._model_instance, "layers", getattr(self._model_instance, "h", None)))
             if blocks is not None and hasattr(blocks, "__len__"):

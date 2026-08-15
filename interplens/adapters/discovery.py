@@ -35,14 +35,17 @@ class HookDiscovery:
         """Heuristic graph discovery walking named_modules() and parameter shapes."""
         graph = ModelGraph(root_node_id="model", overall_confidence=0.6)
 
+        if not hasattr(self.model, "named_modules"):
+            return graph
+
         layer_candidates = {}
         for name, mod in self.model.named_modules():
             if name == "":
                 continue
 
             n_lower = name.lower()
-            params = list(mod.parameters(recurse=False))
-            p_count = sum(p.numel() for p in params)
+            params = list(mod.parameters(recurse=False)) if hasattr(mod, "parameters") else []
+            p_count = sum(p.numel() for p in params if hasattr(p, "numel"))
 
             # Detect Embeddings
             if isinstance(mod, nn.Embedding) or "embed" in n_lower:

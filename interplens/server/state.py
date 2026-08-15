@@ -82,7 +82,8 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
 
     # Known native TransformerLens models
     tl_models = ["gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl", "stanford-gpt2-small-a"]
-    is_tl_native = any(m == model_name.lower() or model_name.lower().startswith("pythia") for m in tl_models)
+    m_lower = model_name.lower()
+    is_tl_native = (m_lower in tl_models) or m_lower.startswith("pythia")
 
     if is_tl_native:
         try:
@@ -120,7 +121,6 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
                 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
             except Exception as t_err1:
                 logger.warning(f"Primary tokenizer for '{model_name}' could not be loaded directly: {t_err1}")
-                m_lower = model_name.lower()
                 fallback_repos = []
                 if "qwen" in m_lower:
                     fallback_repos = ["Qwen/Qwen2.5-0.5B", "Qwen/Qwen1.5-0.5B"]
@@ -148,6 +148,7 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
 
         target_dev_map = "auto" if str(device).startswith("cuda") else None
         model = None
+        attempt_errors = []
 
         # Attempt 1: Load with eager attention implementation
         try:
@@ -160,8 +161,8 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
                 attn_implementation="eager",
                 **token_kwargs
             )
-        except Exception:
-            pass
+        except Exception as err1:
+            attempt_errors.append(f"Attempt 1 (eager attn): {err1}")
 
         # Attempt 2: Load without attn_implementation kwarg
         if model is None:
@@ -174,27 +175,34 @@ def init_model(model_name: str = "gpt2", device: Optional[Any] = None, hf_token:
                     trust_remote_code=True,
                     **token_kwargs
                 )
-            except Exception:
-                pass
+            except Exception as err2:
+                attempt_errors.append(f"Attempt 2 (standard): {err2}")
 
         # Attempt 3: AutoConfig rope_scaling patch for Phi-3 schema compatibility
         if model is None:
-            from transformers import AutoConfig
-            cfg = AutoConfig.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
-            if hasattr(cfg, "rope_scaling") and isinstance(cfg.rope_scaling, dict):
-                if "type" not in cfg.rope_scaling and "rope_type" in cfg.rope_scaling:
-                    cfg.rope_scaling["type"] = cfg.rope_scaling["rope_type"]
-                elif "rope_type" not in cfg.rope_scaling and "type" in cfg.rope_scaling:
-                    cfg.rope_scaling["rope_type"] = cfg.rope_scaling["type"]
-            model = AutoModelForCausalLM.from_pretrained(
-                model_name,
-                config=cfg,
-                torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
-                device_map=target_dev_map,
-                low_cpu_mem_usage=True,
-                trust_remote_code=True,
-                **token_kwargs
-            )
+            try:
+                from transformers import AutoConfig
+                cfg = AutoConfig.from_pretrained(model_name, trust_remote_code=True, **token_kwargs)
+                if hasattr(cfg, "rope_scaling") and isinstance(cfg.rope_scaling, dict):
+                    if "type" not in cfg.rope_scaling and "rope_type" in cfg.rope_scaling:
+                        cfg.rope_scaling["type"] = cfg.rope_scaling["rope_type"]
+                    elif "rope_type" not in cfg.rope_scaling and "type" in cfg.rope_scaling:
+                        cfg.rope_scaling["rope_type"] = cfg.rope_scaling["type"]
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    config=cfg,
+                    torch_dtype=torch.float16 if str(device).startswith("cuda") else torch.float32,
+                    device_map=target_dev_map,
+                    low_cpu_mem_usage=True,
+                    trust_remote_code=True,
+                    **token_kwargs
+                )
+            except Exception as err3:
+                attempt_errors.append(f"Attempt 3 (patched config): {err3}")
+
+        if model is None:
+            err_details = "; ".join(attempt_errors) if attempt_errors else "Unknown model load failure"
+            raise RuntimeError(f"Could not load model '{model_name}'. {err_details}")
 
         if hasattr(model, "config"):
             try:

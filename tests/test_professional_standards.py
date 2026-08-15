@@ -83,8 +83,11 @@ def test_dynamic_register_adapter():
     assert adapter.model_name == "custom-mock-architecture"
 
 
+from unittest.mock import patch
+
 def test_model_load_error_on_invalid_hf_string():
-    with pytest.raises(ModelLoadError) as exc_info:
-        get_adapter_for_model("nonexistent-invalid-hf-model-xyz-123456789")
-    
-    assert "Failed to load model" in str(exc_info.value)
+    with patch.dict("sys.modules", {"transformers": None}):
+        with pytest.raises(ModelLoadError) as exc_info:
+            get_adapter_for_model("nonexistent-invalid-hf-model-xyz-123456789")
+        
+        assert "Failed to load model" in str(exc_info.value)

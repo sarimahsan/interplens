@@ -2,13 +2,6 @@
 
 from typing import List, Dict, Any, Tuple, Union
 import torch
-try:
-    from transformer_lens import HookedTransformer
-    HAS_TRANSFORMER_LENS = True
-except ImportError:
-    HookedTransformer = Any
-    HAS_TRANSFORMER_LENS = False
-
 from interplens.adapters.base import BaseModelAdapter
 
 
@@ -23,7 +16,9 @@ class GPT2Adapter(BaseModelAdapter):
 
     def load(self) -> None:
         """Loads HookedTransformer model weights into specified device."""
-        if not HAS_TRANSFORMER_LENS:
+        try:
+            from transformer_lens import HookedTransformer
+        except ImportError:
             raise ImportError(
                 "transformer_lens package is required to load pretrained TransformerLens models. "
                 "Install it via `pip install transformer-lens`."

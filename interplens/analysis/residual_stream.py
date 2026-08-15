@@ -5,12 +5,8 @@ from typing import Dict, Any, List, Optional, Tuple
 import torch
 import torch.nn.functional as F
 
-try:
-    from ..adapters.base import BaseModelAdapter
-    from ..schema import ModelInfo
-except ImportError:
-    from interplens.adapters.base import BaseModelAdapter
-    from interplens.schema import ModelInfo
+from interplens.adapters.base import BaseModelAdapter
+from interplens.schema import ModelInfo
 
 
 def compute_residual_metrics(

@@ -40,7 +40,7 @@ async def websocket_telemetry(websocket: WebSocket):
                 "vram_usage": vram,
                 "warning": status_info.get("warning"),
                 "error": status_info.get("error"),
-                "sessions_cached": len(global_session_store._sessions),
+                "sessions_cached": global_session_store.session_count,
                 "timestamp": time.time(),
             }
             await websocket.send_json(data)
@@ -69,7 +69,7 @@ def get_health() -> Dict[str, Any]:
         "vram_usage": vram,
         "warning": status_info.get("warning"),
         "error": status_info.get("error"),
-        "sessions_cached": len(global_session_store._sessions),
+        "sessions_cached": global_session_store.session_count,
         "engine_capabilities": model_info.engine_capabilities if model_info else None,
         "discovery_confidence": model_info.discovery_confidence if model_info else 1.0,
     }

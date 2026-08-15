@@ -1,12 +1,16 @@
 """InPlaceModelAdapter for wrapping pre-loaded GPU TransformerLens model instances."""
 
+import logging
 from typing import List, Dict, Any, Tuple, Union
 import torch
+from interplens.exceptions import UnembeddingNotFoundError
 from interplens.adapters.base import BaseModelAdapter, resolve_tokenizer
 from interplens.adapters.fingerprint import StaticFingerprint, RuntimeFingerprint
 from interplens.adapters.capabilities import evaluate_engine_capabilities, ModelCapability, CapabilityLevel
 from interplens.adapters.discovery import HookDiscovery
 from interplens.adapters.report import generate_model_report, ModelReport
+
+logger = logging.getLogger(__name__)
 
 
 class InPlaceModelAdapter(BaseModelAdapter):
@@ -44,7 +48,7 @@ class InPlaceModelAdapter(BaseModelAdapter):
 
         from interplens.config import settings
         if settings.debug:
-            print(self.report.format_text_report())
+            logger.debug(self.report.format_text_report())
 
     def _extract_metadata(self):
         """Extracts layer counts, head counts, and dimensions from HookedTransformer metadata."""
@@ -140,7 +144,10 @@ class InPlaceModelAdapter(BaseModelAdapter):
             return unembed
         if hasattr(self._model_instance, "W_U"):
             return self._model_instance.W_U
-        raise AttributeError("Unembedding weight W_U not found on model instance.")
+        raise UnembeddingNotFoundError(
+            f"Unembedding matrix W_U could not be extracted from model instance '{self.model_name}' "
+            f"under strategy '{self.strategy.architecture_id}'."
+        )
 
     def get_resid_post_hook_name(self, layer: int) -> str:
         return self.strategy.get_resid_post_hook_name(layer)

@@ -52,9 +52,12 @@ def get_adapter_for_model(
         if reg_cls is not None:
             return reg_cls(model_name=model_or_name, device=device)
 
-        # 2. Built-in GPT2 shortcut
+        # 2. Built-in GPT2 shortcut (if transformer_lens is installed)
         if model_or_name.lower().startswith("gpt2"):
-            return GPT2Adapter(model_name=model_or_name, device=device)
+            import importlib.util
+            if importlib.util.find_spec("transformer_lens") is not None:
+                return GPT2Adapter(model_name=model_or_name, device=device)
+            # Fall back to HuggingFace AutoModel loading below
 
         # 3. Attempt HuggingFace AutoModel loading
         try:

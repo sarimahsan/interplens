@@ -7,12 +7,8 @@ and generates query-key arc link connection payloads.
 from typing import Dict, Any, List, Optional
 import torch
 
-try:
-    from interplens.adapters.base import BaseModelAdapter
-    from interplens.schema import AttentionHeadResponse, AttentionLink
-except ImportError:
-    from ..adapters.base import BaseModelAdapter
-    from ..schema import AttentionHeadResponse, AttentionLink
+from interplens.adapters.base import BaseModelAdapter
+from interplens.schema import AttentionHeadResponse, AttentionLink
 
 
 def compute_attention_metrics(
@@ -91,16 +87,16 @@ def compute_attention_metrics(
                         mod_type = h % 4
                         if mod_type == 0:
                             # Self-focus head (diagonal heavy)
-                            w = 3.0 if i == j else 0.2 / (i - j)
+                            w = 3.0 if i == j else 0.2 / max(1, i - j)
                         elif mod_type == 1:
                             # Previous token focus head (sub-diagonal heavy)
-                            w = 3.0 if j == i - 1 else (0.4 if i == j else 0.1 / (i - j + 1))
+                            w = 3.0 if j == i - 1 else (0.4 if i == j else 0.1 / max(1, i - j + 1))
                         elif mod_type == 2:
                             # Initial BOS token focus head (column 0 heavy)
                             w = 3.0 if j == 0 else (0.5 if i == j else 0.1)
                         else:
                             # Causal decay attention head
-                            w = 1.0 / (i - j + 1)
+                            w = 1.0 / max(1, i - j + 1)
                             if i == j:
                                 w *= 1.5
                     else:

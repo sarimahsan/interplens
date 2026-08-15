@@ -8,12 +8,8 @@ and map internal causal circuits.
 from typing import Dict, Any, List, Optional, Tuple
 import torch
 
-try:
-    from interplens.adapters.base import BaseModelAdapter
-    from interplens.schema import CausalTracingResponse, CausalTracingCell
-except ImportError:
-    from ..adapters.base import BaseModelAdapter
-    from ..schema import CausalTracingResponse, CausalTracingCell
+from interplens.adapters.base import BaseModelAdapter
+from interplens.schema import CausalTracingResponse, CausalTracingCell
 
 
 def run_causal_patching_sweep(
@@ -55,7 +51,20 @@ def run_causal_patching_sweep(
         clean_top_id = int(top2[1].item())
 
     # Decode target token string representation
-    target_token_name = adapter.tokenizer.decode([clean_top_id]) if hasattr(adapter, "tokenizer") and adapter.tokenizer else target_token_str or f"Token #{clean_top_id}"
+    target_token_name = None
+    if hasattr(adapter, "decode"):
+        try:
+            target_token_name = adapter.decode([clean_top_id])
+        except Exception:
+            pass
+    if not target_token_name and hasattr(adapter, "tokenizer") and adapter.tokenizer is not None:
+        if hasattr(adapter.tokenizer, "decode"):
+            try:
+                target_token_name = adapter.tokenizer.decode([clean_top_id])
+            except Exception:
+                pass
+    if not target_token_name:
+        target_token_name = target_token_str or f"Token #{clean_top_id}"
 
     # Calculate baseline logit differences
     clean_logit_diff = float((clean_last_logits[clean_top_id] - clean_last_logits[corrupt_top_id]).item())
@@ -155,7 +164,7 @@ def run_causal_patching_sweep(
                 if clean_res is not None and corrupt_res is not None:
                     c_vec = clean_res[0, p] if clean_res.ndim == 3 else clean_res[p]
                     r_vec = corrupt_res[0, p] if corrupt_res.ndim == 3 else corrupt_res[p]
-                    vec_diff = torch.norm(c_vec - r_vec).item()
+                    vec_diff = torch.norm(c_vec.detach().cpu() - r_vec.detach().cpu()).item()
                     pos_weight = 1.0 if p == (seq_len - 1) or p == 1 else 0.5
                     layer_weight = 1.0 - (abs(l - (num_layers // 2)) / max(1.0, num_layers / 2))
                     patched_diff = corrupt_logit_diff + (baseline_span * min(1.2, max(0.05, (vec_diff * pos_weight * layer_weight / 5.0))))

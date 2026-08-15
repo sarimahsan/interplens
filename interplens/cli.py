@@ -14,7 +14,7 @@ def main():
     launch_parser = subparsers.add_parser("launch", help="Launch InterpLens debugger Web UI")
     launch_parser.add_argument("--model", type=str, default="gpt2", help="Model name or path (default: gpt2)")
     launch_parser.add_argument("--host", type=str, default=settings.host, help="Host address (default: 127.0.0.1)")
-    launch_parser.add_argument("--port", type=int, default=settings.port, help="Port (default: 8501)")
+    launch_parser.add_argument("--port", type=int, default=settings.port, help=f"Port (default: {settings.port})")
     launch_parser.add_argument("--device", type=str, default="auto", help="Device (cpu, cuda, mps, auto)")
     launch_parser.add_argument("--hf-token", "--token", type=str, default=None, help="HuggingFace access token for gated models")
     launch_parser.add_argument("--tokenizer", type=str, default=None, help="Custom tokenizer HF repo ID or local directory path")
@@ -48,7 +48,7 @@ def main():
         # Start model loading in background thread so web server opens instantly
         loader_thread = threading.Thread(
             target=init_model,
-            args=(model_name, device, hf_token, tokenizer_override),
+            args=(model_name, str(device), hf_token, tokenizer_override),
             daemon=True
         )
         loader_thread.start()

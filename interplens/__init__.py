@@ -18,6 +18,7 @@ from .adapters import (
     BaseModelAdapter,
     InPlaceModelAdapter,
     CustomModelAdapter,
+    GenericAdapter,
     PyTorchAutoHooker,
     GPT2Adapter,
     get_adapter_for_model,
@@ -37,8 +38,8 @@ _uvicorn_server = None
 def launch(
     model: Optional[Any] = None,
     model_name: str = "gpt2",
-    port: int = 8000,
-    host: str = "127.0.0.1",
+    port: int = settings.port,
+    host: str = settings.host,
     device: str = "auto",
     auto_hook: bool = False,
     tokenizer: Optional[Any] = None,
@@ -49,8 +50,8 @@ def launch(
     Args:
         model: Optional pre-loaded model object (HookedTransformer or PyTorch nn.Module).
         model_name: String name of model if loading from pretrained (e.g. 'gpt2').
-        port: HTTP port for local Web UI server (default: 8000).
-        host: Host binding IP address.
+        port: HTTP port for local Web UI server (default: settings.port / 8000).
+        host: Host binding IP address (default: settings.host / 127.0.0.1).
         device: Target compute device ('cuda', 'cpu', 'mps', 'auto').
         auto_hook: If True, uses PyTorchAutoHooker for novel nn.Module models.
         tokenizer: Optional tokenizer for custom PyTorch models.
@@ -68,6 +69,8 @@ def launch(
             adapter.load()
         except Exception as e:
             logger.warning(f"Notice during model load: {e}")
+            if getattr(adapter, "_model_instance", None) is None:
+                raise ModelLoadError(f"Failed to load model into memory: {e}") from e
         
     from .server.app import set_active_adapter, app
     set_active_adapter(adapter)
@@ -142,6 +145,7 @@ __all__ = [
     "BaseModelAdapter",
     "InPlaceModelAdapter",
     "CustomModelAdapter",
+    "GenericAdapter",
     "PyTorchAutoHooker",
     "GPT2Adapter",
     "SessionStore",
@@ -152,4 +156,5 @@ __all__ = [
     "free_gpu_memory",
     "get_vram_usage",
 ]
+
 

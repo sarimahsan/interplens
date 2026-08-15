@@ -9,26 +9,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-try:
-    from interplens.exceptions import UnembeddingNotFoundError
-    from interplens.adapters.base import BaseModelAdapter
-    from interplens.schema import (
-        LogitLensToken,
-        LogitLensLayerResult,
-        LogitLensResponse,
-        PositionLogitLensData,
-        LogitLensMatrixResponse,
-    )
-except ImportError:
-    from exceptions import UnembeddingNotFoundError
-    from adapters.base import BaseModelAdapter
-    from schema import (
-        LogitLensToken,
-        LogitLensLayerResult,
-        LogitLensResponse,
-        PositionLogitLensData,
-        LogitLensMatrixResponse,
-    )
+from interplens.exceptions import UnembeddingNotFoundError
+from interplens.adapters.base import BaseModelAdapter
+from interplens.schema import (
+    LogitLensToken,
+    LogitLensLayerResult,
+    LogitLensResponse,
+    PositionLogitLensData,
+    LogitLensMatrixResponse,
+)
 
 
 def compute_logit_lens(

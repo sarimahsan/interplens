@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "An interactive mechanistic interpretability toolkit and visual debugger for LLM internals."
 readme = "README.md"
 authors = [
-    { name = "InterpLens Team" }
+    { name = "Syed Sarim Ahsan (Undergrad AI Researcher)" }
 ]
 license = { text = "MIT" }
 requires-python = ">=3.9"
@@ -24,6 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
 ]
 dependencies = [

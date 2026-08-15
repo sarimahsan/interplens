@@ -7,12 +7,8 @@ and computes prompt text lighting strip activation scores for target single neur
 from typing import Dict, Any, List, Optional
 import torch
 
-try:
-    from interplens.adapters.base import BaseModelAdapter
-    from interplens.schema import NeuronAnalysisResponse, NeuronInfo, NeuronLightingToken
-except ImportError:
-    from ..adapters.base import BaseModelAdapter
-    from ..schema import NeuronAnalysisResponse, NeuronInfo, NeuronLightingToken
+from interplens.adapters.base import BaseModelAdapter
+from interplens.schema import NeuronAnalysisResponse, NeuronInfo, NeuronLightingToken
 
 
 def compute_neuron_activations(

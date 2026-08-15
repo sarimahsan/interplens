@@ -295,7 +295,7 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
             cat_breakdown[k_cat] = round(cat_breakdown[k_cat], 2)
 
         # KV Cache Growth Trajectory ($1..N$ tokens)
-        info = adapter.get_model_info() if hasattr(adapter, "get_model_info") else {}
+        info = adapter.get_model_info() if (adapter is not None and hasattr(adapter, "get_model_info")) else {}
         num_l = info.get("num_layers", 12)
         h_dim = info.get("hidden_dim", 768)
         

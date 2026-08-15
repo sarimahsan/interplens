@@ -86,10 +86,10 @@ class CustomModelAdapter(BaseModelAdapter):
         # 2. PyTorchAutoHooker hooks named submodules
         self.auto_hooker = PyTorchAutoHooker(model)
 
-        # 2. Extract Structural Fingerprints & Dimensions
+        # 3. Extract Structural Fingerprints & Dimensions
         self._extract_fingerprints()
 
-        # 3. Evaluate Engine Capability Matrix & Build Report
+        # 4. Evaluate Engine Capability Matrix & Build Report
         self.engine_capabilities = evaluate_engine_capabilities(self.capabilities, self.runtime_fingerprint, self.discovery_confidence)
         self.report = generate_model_report(
             model_name=self.model_name,
@@ -116,9 +116,21 @@ class CustomModelAdapter(BaseModelAdapter):
             v_size = getattr(cfg, "vocab_size", getattr(cfg, "d_vocab", 151936))
         else:
             # Fallback dynamic introspection for custom models without HuggingFace config
-            h_size = getattr(self._model_instance, "hidden_dim", getattr(self._model_instance, "d_model", getattr(self._model_instance, "hidden_size", 768)))
-            v_size = getattr(self._model_instance, "vocab_size", getattr(self._model_instance, "d_vocab", 50257))
-            n_heads = getattr(self._model_instance, "num_heads", getattr(self._model_instance, "n_heads", getattr(self._model_instance, "num_attention_heads", 12)))
+            h_size = getattr(self._model_instance, "hidden_dim", getattr(self._model_instance, "d_model", getattr(self._model_instance, "hidden_size", None)))
+            v_size = getattr(self._model_instance, "vocab_size", getattr(self._model_instance, "d_vocab", None))
+            n_heads = getattr(self._model_instance, "num_heads", getattr(self._model_instance, "n_heads", getattr(self._model_instance, "num_attention_heads", None)))
+
+            if h_size is None or v_size is None:
+                for mod in self._model_instance.modules():
+                    if isinstance(mod, nn.Embedding):
+                        if h_size is None and hasattr(mod, "embedding_dim"): h_size = mod.embedding_dim
+                        if v_size is None and hasattr(mod, "num_embeddings"): v_size = mod.num_embeddings
+                    elif isinstance(mod, nn.Linear):
+                        if h_size is None and hasattr(mod, "in_features"): h_size = mod.in_features
+
+            if h_size is None: h_size = 768
+            if v_size is None: v_size = 50257
+            if n_heads is None: n_heads = 12
             
             # Count actual layer blocks or inspect num_layers attribute
             n_layers = getattr(self._model_instance, "num_layers", getattr(self._model_instance, "n_layers", None))
@@ -221,27 +233,63 @@ class CustomModelAdapter(BaseModelAdapter):
         """Runs forward pass with PyTorchAutoHooker active and collects activations."""
         self.auto_hooker.attach_hooks()
         try:
-            prompt_str = inputs if isinstance(inputs, str) else (inputs.get("prompt", "") if isinstance(inputs, dict) else str(inputs))
-
-            if hasattr(self.tokenizer, "encode"):
+            if isinstance(inputs, torch.Tensor):
+                out_tensor = inputs.to(self.device)
                 try:
-                    input_ids = self.tokenizer.encode(prompt_str)
-                except TypeError:
-                    input_ids = self.tokenizer.encode(prompt_str)
-
-                if not isinstance(input_ids, torch.Tensor):
-                    input_ids = torch.tensor([input_ids], device=self.device)
-                elif input_ids.ndim == 1:
-                    input_ids = input_ids.unsqueeze(0).to(self.device)
-                try:
-                    out = self._model_instance(input_ids, output_attentions=True)
+                    out = self._model_instance(out_tensor, output_attentions=True)
                 except Exception:
-                    out = self._model_instance(input_ids)
+                    out = self._model_instance(out_tensor)
+            elif isinstance(inputs, dict):
+                try:
+                    out = self._model_instance(**inputs, output_attentions=True)
+                except Exception:
+                    out = self._model_instance(**inputs)
             else:
-                try:
-                    out = self._model_instance(prompt_str, output_attentions=True)
-                except Exception:
-                    out = self._model_instance(prompt_str)
+                prompt_str = inputs if isinstance(inputs, str) else str(inputs)
+
+                if self.tokenizer is not None and hasattr(self.tokenizer, "encode"):
+                    try:
+                        input_ids = self.tokenizer.encode(prompt_str)
+                    except Exception as tok_err:
+                        logger.debug(f"Tokenizer encode fallback: {tok_err}")
+                        input_ids = prompt_str
+
+                    if isinstance(input_ids, torch.Tensor):
+                        if input_ids.ndim == 1:
+                            input_ids = input_ids.unsqueeze(0).to(self.device)
+                        else:
+                            input_ids = input_ids.to(self.device)
+                    elif isinstance(input_ids, (list, tuple)):
+                        input_ids = torch.tensor([input_ids], device=self.device)
+                    
+                    try:
+                        out = self._model_instance(input_ids, output_attentions=True)
+                    except Exception:
+                        out = self._model_instance(input_ids)
+                else:
+                    try:
+                        out = self._model_instance(prompt_str, output_attentions=True)
+                    except Exception:
+                        try:
+                            out = self._model_instance(prompt_str)
+                        except Exception:
+                            # Fallback if model expects tensor input (e.g. integer token IDs)
+                            raw_ids = [ord(ch) % max(1, self.vocab_size) for ch in prompt_str]
+                            if not raw_ids:
+                                raw_ids = [0]
+                            tensor_input = torch.tensor([raw_ids], device=self.device)
+                            try:
+                                out = self._model_instance(tensor_input, output_attentions=True)
+                            except Exception:
+                                try:
+                                    out = self._model_instance(tensor_input)
+                                except Exception:
+                                    # Fallback for models whose first layer is Linear rather than Embedding
+                                    tensor_float = tensor_input.to(torch.float32)
+                                    try:
+                                        out = self._model_instance(tensor_float, output_attentions=True)
+                                    except Exception:
+                                        out = self._model_instance(tensor_float)
                 
             if hasattr(out, "logits"):
                 logits = out.logits

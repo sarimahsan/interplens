@@ -7,12 +7,8 @@ to quantify input token influence on model predictions.
 from typing import Dict, Any, List, Optional
 import torch
 
-try:
-    from interplens.adapters.base import BaseModelAdapter
-    from interplens.schema import TokenAttributionResponse, TokenAttributionScore
-except ImportError:
-    from ..adapters.base import BaseModelAdapter
-    from ..schema import TokenAttributionResponse, TokenAttributionScore
+from interplens.adapters.base import BaseModelAdapter
+from interplens.schema import TokenAttributionResponse, TokenAttributionScore
 
 
 def compute_token_attributions(

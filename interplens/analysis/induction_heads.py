@@ -8,12 +8,8 @@ from typing import Dict, Any, List, Optional
 import torch
 import torch.nn.functional as F
 
-try:
-    from interplens.adapters.base import BaseModelAdapter
-    from interplens.schema import InductionHeadScore, InductionDetectorResponse
-except ImportError:
-    from ..adapters.base import BaseModelAdapter
-    from ..schema import InductionHeadScore, InductionDetectorResponse
+from interplens.adapters.base import BaseModelAdapter
+from interplens.schema import InductionHeadScore, InductionDetectorResponse
 
 # Standard random word pool for constructing clean repeated sequences S_1 S_2
 DEFAULT_WORD_POOL = [

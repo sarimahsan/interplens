@@ -58,6 +58,14 @@ interplens launch --model gpt2 --device cuda
 
 ---
 
+## 👤 Author
+
+**Syed Sarim Ahsan**  
+*Undergrad AI Researcher*
+
+---
+
 ## 📜 License
 
 MIT License.
+

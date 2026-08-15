@@ -4,10 +4,7 @@ import math
 from typing import Dict, Any, List, Optional
 import torch
 
-try:
-    from ..adapters.base import BaseModelAdapter
-except ImportError:
-    from interplens.adapters.base import BaseModelAdapter
+from interplens.adapters.base import BaseModelAdapter
 
 
 def inspect_model_topology(adapter: BaseModelAdapter) -> Dict[str, Any]:

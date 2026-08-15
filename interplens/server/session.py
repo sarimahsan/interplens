@@ -89,6 +89,15 @@ class SessionStore:
             kv_mb = kv_bytes / (1024 ** 2)
         return round(kv_mb, 2)
 
+    @property
+    def session_count(self) -> int:
+        """Thread-safe count of currently cached sessions."""
+        with self._lock:
+            return len(self._sessions)
+
+    def __len__(self) -> int:
+        return self.session_count
+
     def create_session(
         self,
         adapter: BaseModelAdapter,
@@ -96,16 +105,16 @@ class SessionStore:
         corrupted_prompt: Optional[str] = None,
     ) -> ActivationSession:
         """Executes model forward pass, caches activations, and returns new ActivationSession."""
+        # 1. Tokenize and execute model first outside critical eviction section
+        tokens = adapter.tokenize(prompt)
+        logits, cache = adapter.run_with_cache(prompt)
+
         with self._lock:
-            # Evict oldest session if at capacity
+            # 2. Evict oldest session only after successful forward pass
             while len(self._sessions) >= self.max_sessions and len(self._sessions) > 0:
                 oldest_id, oldest_session = self._sessions.popitem(last=False)
                 oldest_session.clear()
                 free_gpu_memory()
-
-            # Tokenize and execute model
-            tokens = adapter.tokenize(prompt)
-            logits, cache = adapter.run_with_cache(prompt)
 
             session_id = str(uuid.uuid4())[:8]
             session = ActivationSession(
