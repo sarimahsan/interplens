@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTabSwitchers();
     initScrollSpy();
     initCommandPalette();
+    initMobileDrawer();
     initMathRendering();
 });
 
@@ -111,29 +112,42 @@ function initTabSwitchers() {
     });
 }
 
-// --- ScrollSpy Active Link Highlighter ---
+// --- ScrollSpy Active Link Highlighter (60fps requestAnimationFrame Optimized) ---
 function initScrollSpy() {
-    const sections = document.querySelectorAll('section[id], div[id^="engine-"], div[id^="snippet-"]');
-    const navLinks = document.querySelectorAll('.sidebar-nav-link');
+    const sections = Array.from(document.querySelectorAll('section[id], div[id^="engine-"], div[id^="snippet-"]'));
+    const navLinks = Array.from(document.querySelectorAll('.sidebar-nav-link, .right-toc-link'));
+    let ticking = false;
 
-    window.addEventListener('scroll', () => {
+    function updateActiveLink() {
         let currentSectionId = '';
+        const scrollY = window.scrollY;
 
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop - 130;
+        for (let i = 0; i < sections.length; i++) {
+            const section = sections[i];
+            const sectionTop = section.offsetTop - 110;
             const sectionHeight = section.offsetHeight;
-            if (window.scrollY >= sectionTop && window.scrollY < sectionTop + sectionHeight) {
+            if (scrollY >= sectionTop && scrollY < sectionTop + sectionHeight) {
                 currentSectionId = section.getAttribute('id');
             }
-        });
+        }
 
         if (currentSectionId) {
-            navLinks.forEach(link => {
-                link.classList.remove('active');
+            for (let j = 0; j < navLinks.length; j++) {
+                const link = navLinks[j];
                 if (link.getAttribute('href') === `#${currentSectionId}`) {
                     link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
                 }
-            });
+            }
+        }
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(updateActiveLink);
+            ticking = true;
         }
     }, { passive: true });
 }
@@ -256,5 +270,36 @@ function initCommandPalette() {
             item.category.toLowerCase().includes(query)
         );
         renderResults(filtered);
+    });
+}
+
+// --- Mobile Navigation Drawer ---
+function initMobileDrawer() {
+    const drawer = document.getElementById('mobile-drawer');
+    const openBtn = document.getElementById('mobile-menu-btn');
+    const closeBtn = document.getElementById('mobile-drawer-close-btn');
+    const links = document.querySelectorAll('.mobile-nav-link');
+
+    if (!drawer || !openBtn) return;
+
+    function openDrawer() {
+        drawer.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+        drawer.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    openBtn.addEventListener('click', openDrawer);
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+
+    drawer.addEventListener('click', (e) => {
+        if (e.target === drawer) closeDrawer();
+    });
+
+    links.forEach(link => {
+        link.addEventListener('click', () => closeDrawer());
     });
 }

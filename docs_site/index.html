@@ -70,6 +70,10 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
                 <span>GitHub</span>
             </a>
+
+            <button id="mobile-menu-btn" class="pill-action-btn mobile-only-btn" title="Open Navigation Menu" aria-label="Toggle mobile menu">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
         </div>
     </nav>
 
@@ -931,63 +935,108 @@ print("Report PDF generated successfully!")</code></pre>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><strong>🦙 Meta Llama 3 / 3.2</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                            <strong>Meta Llama 3 / 3.2</strong>
+                                        </div>
+                                    </td>
                                     <td><code>Llama-3.2-1B</code>, <code>Llama-3.2-3B</code>, <code>Llama-3-8B</code>, <code>Llama-3-70B</code>, <code>Llama-2-7B</code></td>
                                     <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
                                     <td><code>LlamaStrategy</code> (<code>model.layers[i]</code>)</td>
                                     <td><code>interplens launch --model meta-llama/Llama-3.2-1B --hf-token "hf_..."</code></td>
                                 </tr>
                                 <tr>
-                                    <td><strong>⚡ Alibaba Qwen 2.5</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                                            <strong>Alibaba Qwen 2.5</strong>
+                                        </div>
+                                    </td>
                                     <td><code>Qwen2.5-0.5B</code>, <code>1.5B</code>, <code>3B</code>, <code>7B</code>, <code>14B</code>, <code>32B</code>, <code>Qwen2.5-Coder-7B</code></td>
                                     <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
                                     <td><code>QwenStrategy</code> (<code>model.layers[i]</code>)</td>
                                     <td><code>interplens launch --model Qwen/Qwen2.5-0.5B --device cuda</code></td>
                                 </tr>
                                 <tr>
-                                    <td><strong>🌪️ Mistral & Mixtral</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EC4899" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
+                                            <strong>Mistral & Mixtral MoE</strong>
+                                        </div>
+                                    </td>
                                     <td><code>Mistral-7B-v0.1</code>, <code>Mistral-7B-v0.3</code>, <code>Mistral-7B-Instruct</code>, <code>Mixtral-8x7B</code></td>
                                     <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
                                     <td><code>MistralStrategy</code> (<code>model.layers[i]</code>)</td>
                                     <td><code>interplens launch --model mistralai/Mistral-7B-v0.1</code></td>
                                 </tr>
                                 <tr>
-                                    <td><strong>💎 Google Gemma / Gemma 2</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2"><polygon points="6 2 18 2 22 8 12 22 2 8 6 2"></polygon></svg>
+                                            <strong>Google Gemma & Gemma 2</strong>
+                                        </div>
+                                    </td>
                                     <td><code>gemma-2b</code>, <code>gemma-7b</code>, <code>gemma-2-2b</code>, <code>gemma-2-9b</code>, <code>gemma-2-27b</code></td>
                                     <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
                                     <td><code>GemmaStrategy</code> (<code>model.model.layers[i]</code>)</td>
                                     <td><code>interplens launch --model google/gemma-2b</code></td>
                                 </tr>
                                 <tr>
-                                    <td><strong>🧬 OpenAI GPT-2</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                            <strong>OpenAI GPT-2 Family</strong>
+                                        </div>
+                                    </td>
                                     <td><code>gpt2</code> (124M), <code>gpt2-medium</code> (355M), <code>gpt2-large</code> (774M), <code>gpt2-xl</code> (1.5B)</td>
                                     <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
                                     <td><code>GPT2Strategy</code> / <code>HookedTransformer</code></td>
                                     <td><code>interplens launch --model gpt2 --device cuda</code></td>
                                 </tr>
                                 <tr>
-                                    <td><strong>🔬 EleutherAI Pythia & NeoX</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                                            <strong>EleutherAI Pythia & NeoX</strong>
+                                        </div>
+                                    </td>
                                     <td><code>pythia-70m</code>, <code>160m</code>, <code>410m</code>, <code>1b</code>, <code>1.4b</code>, <code>2.8b</code>, <code>6.9b</code>, <code>12b</code></td>
                                     <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
                                     <td><code>PythiaStrategy</code> (<code>gpt_neox.layers[i]</code>)</td>
                                     <td><code>interplens launch --model EleutherAI/pythia-70m</code></td>
                                 </tr>
                                 <tr>
-                                    <td><strong>🚀 SmolLM & TinyLlama</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                                            <strong>SmolLM & TinyLlama</strong>
+                                        </div>
+                                    </td>
                                     <td><code>SmolLM-135M</code>, <code>SmolLM-360M</code>, <code>SmolLM-1.7B</code>, <code>TinyLlama-1.1B</code></td>
                                     <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
                                     <td><code>LlamaStrategy</code> (<code>model.layers[i]</code>)</td>
                                     <td><code>interplens launch --model HuggingFaceTB/SmolLM-135M</code></td>
                                 </tr>
                                 <tr>
-                                    <td><strong>🧩 DeepSeek Family</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                                            <strong>DeepSeek LLM & Coder</strong>
+                                        </div>
+                                    </td>
                                     <td><code>deepseek-llm-7b-base</code>, <code>deepseek-coder-1.3b</code>, <code>deepseek-coder-6.7b</code></td>
                                     <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
                                     <td><code>LlamaStrategy</code> / <code>GenericAdapter</code></td>
                                     <td><code>interplens launch --model deepseek-ai/deepseek-llm-7b-base</code></td>
                                 </tr>
                                 <tr>
-                                    <td><strong>🛠️ Custom PyTorch Modules</strong></td>
+                                    <td>
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                                            <strong>Custom PyTorch Models</strong>
+                                        </div>
+                                    </td>
                                     <td>Any custom <code>nn.Module</code>, research transformer, or proprietary architecture</td>
                                     <td><strong style="color: var(--brand-primary);">L3–L4</strong></td>
                                     <td><code>PyTorchAutoHooker</code> (<code>auto_hook=True</code>)</td>
@@ -1403,6 +1452,48 @@ except UnembeddingNotFoundError as e:
                 <p style="margin-top: 6px; font-size: 0.8rem; color: var(--text-dim);">An Interactive Mechanistic Interpretability Toolkit for PyTorch & TransformerLens • MIT Licensed.</p>
             </footer>
         </main>
+
+        <!-- RIGHT STICKY SIDEBAR: ON THIS PAGE & QUICK ACTIONS -->
+        <aside class="spread-right-sidebar">
+            <div class="right-sidebar-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
+                <span>On This Page</span>
+            </div>
+            <nav class="right-toc-list">
+                <a href="#section-quickstart" class="right-toc-link">1. Quickstart & Pip</a>
+                <a href="#section-env-vars" class="right-toc-link">2. Environment Config</a>
+                <a href="#section-code-snippets" class="right-toc-link">3. 10 Code Recipes</a>
+                <a href="#section-fallbacks" class="right-toc-link">4. Fail-Safe Matrix</a>
+                <a href="#section-capabilities" class="right-toc-link">5. Capability Levels</a>
+                <a href="#section-supported-models" class="right-toc-link">6. Supported Models</a>
+                <a href="#section-engines" class="right-toc-link">7. Core Engines</a>
+                <a href="#section-api-python" class="right-toc-link">8. Python API</a>
+                <a href="#section-api-rest" class="right-toc-link">9. REST Endpoints</a>
+                <a href="#section-cli-options" class="right-toc-link">10. CLI Flags</a>
+                <a href="#section-exceptions" class="right-toc-link">11. Exception Tree</a>
+            </nav>
+
+            <div class="right-sidebar-divider"></div>
+
+            <div class="right-card-mini">
+                <div class="mini-card-title">
+                    <span>Package Info</span>
+                    <span style="font-size: 0.65rem; color: var(--accent-emerald);">● Ready</span>
+                </div>
+                <div class="mini-card-desc">Python 3.9 – 3.13 • Zero-Copy GPU • Fast-Failover</div>
+                <a href="https://github.com/sarimahsan/interplens" target="_blank" class="mini-card-link">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    <span>View Repository</span>
+                </a>
+            </div>
+
+            <div class="right-card-mini" style="margin-top: auto;">
+                <div class="mini-card-title">
+                    <span>Syed Sarim Ahsan</span>
+                </div>
+                <div class="mini-card-desc">Undergrad AI Researcher • Open-Source AI Safety</div>
+            </div>
+        </aside>
     </div>
 
     <!-- COMMAND PALETTE SEARCH MODAL (CMD+K) -->
@@ -1419,6 +1510,52 @@ except UnembeddingNotFoundError as e:
             <div class="search-modal-footer">
                 <div>Navigation: <span class="kbd-shortcut">↑</span> <span class="kbd-shortcut">↓</span> to select, <span class="kbd-shortcut">↵</span> to open</div>
                 <div>InterpLens Docs</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOBILE NAVIGATION DRAWER -->
+    <div class="mobile-drawer-backdrop" id="mobile-drawer">
+        <div class="mobile-drawer-box">
+            <div class="mobile-drawer-header">
+                <div class="pill-brand">
+                    <div class="pill-logo-box">
+                        <img src="favicon.svg" width="20" height="20" alt="Logo">
+                    </div>
+                    <span>InterpLens Docs</span>
+                </div>
+                <button class="mobile-drawer-close" id="mobile-drawer-close-btn" aria-label="Close menu">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="mobile-drawer-content">
+                <div class="sidebar-section-title">Getting Started</div>
+                <a href="#section-quickstart" class="mobile-nav-link">Quickstart & Installation</a>
+                <a href="#section-env-vars" class="mobile-nav-link">Environment Variables</a>
+
+                <div class="sidebar-section-title" style="margin-top: 14px;">All 10 Code Recipes</div>
+                <a href="#snippet-gpu-attach" class="mobile-nav-link">1. Zero-Copy GPU Attach</a>
+                <a href="#snippet-hf-pretrained" class="mobile-nav-link">2. HuggingFace Pretrained</a>
+                <a href="#snippet-gated-models" class="mobile-nav-link">3. Gated Models (Llama 3)</a>
+                <a href="#snippet-custom-pytorch" class="mobile-nav-link">4. Custom PyTorch Modules</a>
+                <a href="#snippet-colab-notebook" class="mobile-nav-link">5. Google Colab Notebooks</a>
+                <a href="#snippet-steering" class="mobile-nav-link">6. Activation Steering</a>
+                <a href="#snippet-causal-sweep" class="mobile-nav-link">7. Causal ROME Sweeps</a>
+                <a href="#snippet-induction-sweep" class="mobile-nav-link">8. Induction Head Detector</a>
+                <a href="#snippet-custom-plugin" class="mobile-nav-link">9. Custom Plugin Strategy</a>
+                <a href="#snippet-pdf-export" class="mobile-nav-link">10. Automated PDF Report</a>
+
+                <div class="sidebar-section-title" style="margin-top: 14px;">Robustness & Models</div>
+                <a href="#section-fallbacks" class="mobile-nav-link">Fail-Safe Fallback Matrix</a>
+                <a href="#section-capabilities" class="mobile-nav-link">Capability Matrix (L0-L4)</a>
+                <a href="#section-supported-models" class="mobile-nav-link">Major Supported Models</a>
+
+                <div class="sidebar-section-title" style="margin-top: 14px;">Engines & APIs</div>
+                <a href="#section-engines" class="mobile-nav-link">Core Interpretability Engines</a>
+                <a href="#section-api-python" class="mobile-nav-link">Python API Reference</a>
+                <a href="#section-api-rest" class="mobile-nav-link">REST & WebSocket API</a>
+                <a href="#section-cli-options" class="mobile-nav-link">CLI Flags Reference</a>
+                <a href="#section-exceptions" class="mobile-nav-link">Exception Hierarchy</a>
             </div>
         </div>
     </div>
