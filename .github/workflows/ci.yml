@@ -30,7 +30,8 @@ jobs:
       - name: Install Build & Test Dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install -e .[all,dev] pytest-cov
+          pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --no-cache-dir -e .[all,dev] pytest-cov
 
       - name: Verify Package Metadata & Imports
         run: |
