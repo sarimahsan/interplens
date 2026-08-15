@@ -80,7 +80,8 @@ def generate_fallback_pure_pdf(report_data: Dict[str, Any]) -> bytes:
     add_object(3, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>")
 
     # Content stream
-    stream_lines = ["BT", "/F1 12 Tf", "36 750 Td", f"({model_name.replace('(', '\\(').replace(')', '\\)')} - InterpLens Report) Tj", "ET"]
+    clean_model_title = model_name.replace("(", "\\(").replace(")", "\\)")
+    stream_lines = ["BT", "/F1 12 Tf", "36 750 Td", f"({clean_model_title} - InterpLens Report) Tj", "ET"]
     stream_lines.append("BT")
     stream_lines.append("/F1 8.5 Tf")
     stream_lines.append("36 725 Td")
