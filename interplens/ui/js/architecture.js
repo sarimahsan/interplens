@@ -88,9 +88,158 @@ function renderParameterBreakdown(top) {
     container.innerHTML = barHtml + tableHtml;
 }
 
-function renderModelTopologyDiagram(top) {
+let _mermaidInitialized = false;
+let _currentMermaidSource = '';
+let _currentMermaidScale = 1.0;
+
+function _ensureMermaidInit() {
+    if (_mermaidInitialized || typeof window.mermaid === 'undefined') return;
+    window.mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        securityLevel: 'loose',
+        flowchart: {
+            useMaxWidth: false,
+            htmlLabels: true,
+            curve: 'basis',
+            padding: 16,
+            nodeSpacing: 40,
+            rankSpacing: 45,
+        },
+        themeVariables: {
+            background: '#0f172a',
+            primaryColor: '#1e293b',
+            primaryTextColor: '#f8fafc',
+            lineColor: '#64748b',
+            clusterBkg: 'rgba(30, 41, 59, 0.45)',
+            clusterBorder: '#38bdf8',
+            fontFamily: 'Inter, system-ui, sans-serif',
+        },
+    });
+    _mermaidInitialized = true;
+}
+
+function _applyMermaidZoom() {
+    const stage = document.getElementById('mermaid-diagram-stage');
+    if (stage) {
+        stage.style.transform = `scale(${_currentMermaidScale})`;
+        stage.style.transformOrigin = 'top center';
+    }
+    const resetBtn = document.getElementById('btn-mermaid-zoom-reset');
+    if (resetBtn) resetBtn.textContent = `${Math.round(_currentMermaidScale * 100)}%`;
+}
+
+function _bindMermaidToolbar() {
+    const zoomIn = document.getElementById('btn-mermaid-zoom-in');
+    const zoomOut = document.getElementById('btn-mermaid-zoom-out');
+    const zoomReset = document.getElementById('btn-mermaid-zoom-reset');
+    const toggleSrc = document.getElementById('btn-mermaid-toggle-src');
+    const copyBtn = document.getElementById('btn-mermaid-copy');
+    const svgBtn = document.getElementById('btn-mermaid-svg');
+    const srcPre = document.getElementById('topology-mermaid-source');
+
+    if (zoomIn && !zoomIn.dataset.bound) {
+        zoomIn.dataset.bound = '1';
+        zoomIn.addEventListener('click', () => {
+            _currentMermaidScale = Math.min(2.0, Number((_currentMermaidScale + 0.15).toFixed(2)));
+            _applyMermaidZoom();
+        });
+    }
+    if (zoomOut && !zoomOut.dataset.bound) {
+        zoomOut.dataset.bound = '1';
+        zoomOut.addEventListener('click', () => {
+            _currentMermaidScale = Math.max(0.5, Number((_currentMermaidScale - 0.15).toFixed(2)));
+            _applyMermaidZoom();
+        });
+    }
+    if (zoomReset && !zoomReset.dataset.bound) {
+        zoomReset.dataset.bound = '1';
+        zoomReset.addEventListener('click', () => {
+            _currentMermaidScale = 1.0;
+            _applyMermaidZoom();
+        });
+    }
+    if (toggleSrc && !toggleSrc.dataset.bound) {
+        toggleSrc.dataset.bound = '1';
+        toggleSrc.addEventListener('click', () => {
+            if (!srcPre) return;
+            const visible = srcPre.style.display !== 'none';
+            srcPre.style.display = visible ? 'none' : 'block';
+            toggleSrc.textContent = visible ? 'View Mermaid' : 'Hide Mermaid';
+        });
+    }
+    if (copyBtn && !copyBtn.dataset.bound) {
+        copyBtn.dataset.bound = '1';
+        copyBtn.addEventListener('click', async () => {
+            if (!_currentMermaidSource) return;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(_currentMermaidSource);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = _currentMermaidSource;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+                const prev = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => { copyBtn.textContent = prev; }, 1400);
+            } catch (e) {
+                console.warn('Clipboard copy failed:', e);
+            }
+        });
+    }
+    if (svgBtn && !svgBtn.dataset.bound) {
+        svgBtn.dataset.bound = '1';
+        svgBtn.addEventListener('click', () => {
+            const svgEl = document.querySelector('#mermaid-diagram-stage svg');
+            if (!svgEl) return;
+            const serializer = new XMLSerializer();
+            const svgStr = serializer.serializeToString(svgEl);
+            const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'interplens-architecture.svg';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    }
+}
+
+async function renderModelTopologyDiagram(top) {
     const container = document.getElementById('topology-graph-container');
-    if (!container || !top.nodes) return;
+    const srcPre = document.getElementById('topology-mermaid-source');
+    if (!container) return;
+
+    _bindMermaidToolbar();
+    _currentMermaidSource = top.mermaid_diagram || '';
+    if (srcPre) srcPre.textContent = _currentMermaidSource;
+
+    if (_currentMermaidSource && typeof window.mermaid !== 'undefined') {
+        try {
+            _ensureMermaidInit();
+            const renderId = `interplens-arch-${Date.now()}`;
+            const { svg } = await window.mermaid.render(renderId, _currentMermaidSource);
+            container.innerHTML = `
+                <div style="display: flex; justify-content: center; width: 100%; overflow: auto; padding: 12px 0;">
+                    <div id="mermaid-diagram-stage" style="display: inline-block; transition: transform 0.15s ease;">
+                        ${svg}
+                    </div>
+                </div>
+            `;
+            _applyMermaidZoom();
+            return;
+        } catch (err) {
+            console.warn('Mermaid render failed, falling back to card layout:', err);
+        }
+    }
+
+    if (!top.nodes) return;
     container.innerHTML = '';
 
     const flowWrapper = document.createElement('div');
@@ -125,7 +274,6 @@ function renderModelTopologyDiagram(top) {
 
         flowWrapper.appendChild(card);
 
-        // Add downward connection arrow except for last node
         if (idx < top.nodes.length - 1) {
             const arrow = document.createElement('div');
             arrow.className = 'topo-arrow';
@@ -141,6 +289,12 @@ function renderModelTopologyDiagram(top) {
     });
 
     container.appendChild(flowWrapper);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _bindMermaidToolbar);
+} else {
+    _bindMermaidToolbar();
 }
 
 window.fetchModelTopologyData = fetchModelTopologyData;

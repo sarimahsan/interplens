@@ -2,8 +2,12 @@
 
 import gc
 import math
-from typing import Dict, Any
+import os
+import platform
+from typing import Dict, Any, List, Tuple
 import torch
+
+_PEAK_CPU_RSS_MB: float = 0.0
 
 
 def get_optimal_device() -> torch.device:
@@ -103,16 +107,50 @@ def get_gpu_grid_status(device: torch.device = None) -> Dict[str, Any]:
             "blocks": blocks,
         }
 
+    # Real CPU/System RAM telemetry via psutil
+    ram_total = 0.0
+    ram_used = 0.0
+    ram_avail = 0.0
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        ram_total = vm.total / (1024 ** 2)
+        ram_avail = vm.available / (1024 ** 2)
+        ram_used = psutil.Process().memory_info().rss / (1024 ** 2)
+    except Exception:
+        pass
+
+    global _PEAK_CPU_RSS_MB
+    _PEAK_CPU_RSS_MB = max(_PEAK_CPU_RSS_MB, ram_used)
+
+    total_blocks = 32
+    if ram_total > 0:
+        alloc_blocks = min(total_blocks, int(round((ram_used / ram_total) * total_blocks)))
+        other_used_mb = max(0.0, (ram_total - ram_avail) - ram_used)
+        cache_blocks = min(total_blocks - alloc_blocks, int(round((other_used_mb / ram_total) * total_blocks)))
+        free_blocks = max(0, total_blocks - alloc_blocks - cache_blocks)
+        util_pct = round((ram_used / ram_total) * 100, 1)
+    else:
+        alloc_blocks, cache_blocks, free_blocks, util_pct = 0, 0, total_blocks, 0.0
+
+    blocks = []
+    for i in range(alloc_blocks):
+        blocks.append({"id": i, "type": "weights", "label": "Process RAM"})
+    for i in range(cache_blocks):
+        blocks.append({"id": alloc_blocks + i, "type": "cache", "label": "System RAM Used"})
+    for i in range(free_blocks):
+        blocks.append({"id": alloc_blocks + cache_blocks + i, "type": "free", "label": "Available RAM"})
+
     return {
         "has_gpu": False,
-        "device_name": "CPU",
-        "total_mb": 0.0,
-        "allocated_mb": 0.0,
-        "reserved_mb": 0.0,
-        "max_allocated_mb": 0.0,
-        "free_mb": 0.0,
-        "utilization_pct": 0.0,
-        "blocks": [{"id": i, "type": "free", "label": "CPU RAM"} for i in range(32)],
+        "device_name": platform.processor() or "CPU",
+        "total_mb": round(ram_total, 1),
+        "allocated_mb": round(ram_used, 1),
+        "reserved_mb": round(max(0.0, ram_total - ram_avail), 1),
+        "max_allocated_mb": round(_PEAK_CPU_RSS_MB, 1),
+        "free_mb": round(ram_avail, 1),
+        "utilization_pct": util_pct,
+        "blocks": blocks,
     }
 
 
@@ -171,8 +209,113 @@ def get_nvml_metrics(dev_idx: int = 0) -> Dict[str, Any]:
     return metrics
 
 
+def _compute_memory_breakdowns(
+    adapter: Any,
+    cache: Any,
+    bytes_per_elem: int = 2,
+) -> Tuple[List[Dict[str, Any]], Dict[str, float], List[Dict[str, Any]], str]:
+    """Computes real per-layer parameter/activation memory, category breakdown, KV growth, and dtype."""
+    layer_sizes: Dict[str, float] = {}
+
+    if adapter is not None:
+        model_inst = getattr(adapter, "_model_instance", getattr(adapter, "model", None))
+        if model_inst is not None and hasattr(model_inst, "named_parameters"):
+            for name, param in model_inst.named_parameters():
+                p_mb = (param.element_size() * param.nelement()) / (1024 ** 2)
+                parts = name.split(".")
+                l_idx = None
+                for p in parts:
+                    if p.isdigit():
+                        l_idx = int(p)
+                        break
+                l_name = f"Layer {l_idx}" if l_idx is not None else "Embed / Head"
+                layer_sizes[l_name] = layer_sizes.get(l_name, 0.0) + p_mb
+
+    if cache and isinstance(cache, dict):
+        for k, v in cache.items():
+            if isinstance(v, torch.Tensor):
+                a_mb = (v.element_size() * v.nelement()) / (1024 ** 2)
+                parts = k.split(".")
+                l_idx = None
+                for p in parts:
+                    if p.isdigit():
+                        l_idx = int(p)
+                        break
+                l_name = f"Layer {l_idx}" if l_idx is not None else "Cache Buffer"
+                layer_sizes[l_name] = layer_sizes.get(l_name, 0.0) + a_mb
+
+    def sort_key(item):
+        name = item[0]
+        if "Layer " in name:
+            try:
+                return (0, int(name.replace("Layer ", "")))
+            except Exception:
+                pass
+        if "Embed" in name:
+            return (-1, 0)
+        return (1, 999)
+
+    layer_memory = [
+        {"layer": l_name, "size_mb": round(sz, 2)}
+        for l_name, sz in sorted(layer_sizes.items(), key=sort_key)
+    ]
+
+    cat_breakdown = {
+        "residual_stream_mb": 0.0,
+        "attention_mb": 0.0,
+        "mlp_mb": 0.0,
+        "kv_cache_mb": 0.0,
+    }
+
+    seq_len = 16
+    if cache and isinstance(cache, dict):
+        for k, v in cache.items():
+            if isinstance(v, torch.Tensor):
+                sz = (v.element_size() * v.nelement()) / (1024 ** 2)
+                k_lower = k.lower()
+                if v.ndim >= 2:
+                    seq_len = max(seq_len, v.shape[1] if v.ndim == 3 else v.shape[0])
+
+                if "attn" in k_lower or "hook_k" in k_lower or "hook_v" in k_lower or "hook_q" in k_lower:
+                    cat_breakdown["attention_mb"] += sz
+                    if "hook_k" in k_lower or "hook_v" in k_lower or "key" in k_lower or "value" in k_lower:
+                        cat_breakdown["kv_cache_mb"] += sz
+                elif "mlp" in k_lower or "post" in k_lower or "ffn" in k_lower:
+                    cat_breakdown["mlp_mb"] += sz
+                else:
+                    cat_breakdown["residual_stream_mb"] += sz
+
+    for k_cat in cat_breakdown:
+        cat_breakdown[k_cat] = round(cat_breakdown[k_cat], 2)
+
+    dtype_str = "float32" if bytes_per_elem == 4 else "float16"
+    if adapter is not None:
+        model_inst = getattr(adapter, "_model_instance", getattr(adapter, "model", None))
+        if model_inst is not None:
+            if hasattr(model_inst, "dtype"):
+                dtype_str = str(model_inst.dtype).replace("torch.", "")
+            else:
+                try:
+                    p0 = next(model_inst.parameters())
+                    dtype_str = str(p0.dtype).replace("torch.", "")
+                    bytes_per_elem = p0.element_size()
+                except Exception:
+                    pass
+
+    info = adapter.get_model_info() if (adapter is not None and hasattr(adapter, "get_model_info")) else {}
+    num_l = info.get("num_layers", 12)
+    h_dim = info.get("hidden_dim", 768)
+
+    kv_growth = []
+    for pos in range(1, max(32, seq_len + 1)):
+        kv_bytes = 2 * num_l * pos * h_dim * bytes_per_elem
+        kv_growth.append({"pos": pos, "kv_mb": round(kv_bytes / (1024 ** 2), 3)})
+
+    return layer_memory, cat_breakdown, kv_growth, dtype_str
+
+
 def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[str, Any]:
-    """Returns in-depth GPU hardware architecture, SM stream specs, 64-block VRAM topology, and per-layer activation memory footprint."""
+    """Returns real GPU or CPU/System RAM hardware specs, memory topology, and per-layer activation footprint."""
     device = get_optimal_device()
     
     if device.type == "cuda" and torch.cuda.is_available():
@@ -218,100 +361,7 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
                 "range_mb": f"{int(range_start)} MB - {int(range_end)} MB",
             })
 
-        # Per-layer parameter and activation memory breakdown
-        layer_sizes = {}
-
-        # 1. Inspect model parameters per layer
-        if adapter is not None:
-            model_inst = getattr(adapter, "_model_instance", getattr(adapter, "model", None))
-            if model_inst is not None and hasattr(model_inst, "named_parameters"):
-                for name, param in model_inst.named_parameters():
-                    p_mb = (param.element_size() * param.nelement()) / (1024 ** 2)
-                    parts = name.split('.')
-                    l_idx = None
-                    for p in parts:
-                        if p.isdigit():
-                            l_idx = int(p)
-                            break
-                    l_name = f"Layer {l_idx}" if l_idx is not None else "Embed / Head"
-                    layer_sizes[l_name] = layer_sizes.get(l_name, 0.0) + p_mb
-
-        # 2. Add activation tensors per layer from cache
-        if cache and isinstance(cache, dict):
-            for k, v in cache.items():
-                if isinstance(v, torch.Tensor):
-                    a_mb = (v.element_size() * v.nelement()) / (1024 ** 2)
-                    parts = k.split('.')
-                    l_idx = None
-                    for p in parts:
-                        if p.isdigit():
-                            l_idx = int(p)
-                            break
-                    l_name = f"Layer {l_idx}" if l_idx is not None else "Cache Buffer"
-                    layer_sizes[l_name] = layer_sizes.get(l_name, 0.0) + a_mb
-
-        def sort_key(item):
-            name = item[0]
-            if "Layer " in name:
-                try:
-                    return (0, int(name.replace("Layer ", "")))
-                except Exception:
-                    pass
-            if "Embed" in name:
-                return (-1, 0)
-            return (1, 999)
-
-        layer_memory = []
-        for l_name, sz in sorted(layer_sizes.items(), key=sort_key):
-            layer_memory.append({"layer": l_name, "size_mb": round(sz, 2)})
-
-        # Category Memory Breakdown (Residual Stream vs Attention vs MLP vs KV Cache)
-        cat_breakdown = {
-            "residual_stream_mb": 0.0,
-            "attention_mb": 0.0,
-            "mlp_mb": 0.0,
-            "kv_cache_mb": 0.0,
-        }
-
-        seq_len = 16
-        if cache and isinstance(cache, dict):
-            for k, v in cache.items():
-                if isinstance(v, torch.Tensor):
-                    sz = (v.element_size() * v.nelement()) / (1024 ** 2)
-                    k_lower = k.lower()
-                    if v.ndim >= 2:
-                        seq_len = max(seq_len, v.shape[1] if v.ndim == 3 else v.shape[0])
-                    
-                    if "attn" in k_lower or "hook_k" in k_lower or "hook_v" in k_lower or "hook_q" in k_lower:
-                        cat_breakdown["attention_mb"] += sz
-                        if "hook_k" in k_lower or "hook_v" in k_lower or "key" in k_lower or "value" in k_lower:
-                            cat_breakdown["kv_cache_mb"] += sz
-                    elif "mlp" in k_lower or "post" in k_lower or "ffn" in k_lower:
-                        cat_breakdown["mlp_mb"] += sz
-                    else:
-                        cat_breakdown["residual_stream_mb"] += sz
-
-        for k_cat in cat_breakdown:
-            cat_breakdown[k_cat] = round(cat_breakdown[k_cat], 2)
-
-        # KV Cache Growth Trajectory ($1..N$ tokens)
-        info = adapter.get_model_info() if (adapter is not None and hasattr(adapter, "get_model_info")) else {}
-        num_l = info.get("num_layers", 12)
-        h_dim = info.get("hidden_dim", 768)
-        
-        kv_growth = []
-        for pos in range(1, max(32, seq_len + 1)):
-            # KV cache = 2 (k+v) * layers * pos * hidden_dim * 2 bytes (fp16)
-            kv_bytes = 2 * num_l * pos * h_dim * 2
-            kv_growth.append({"pos": pos, "kv_mb": round(kv_bytes / (1024 ** 2), 3)})
-
-        # Precision mode detection
-        dtype_str = "fp16"
-        if adapter is not None:
-            model_inst = getattr(adapter, "_model_instance", getattr(adapter, "model", None))
-            if model_inst is not None and hasattr(model_inst, "dtype"):
-                dtype_str = str(model_inst.dtype).replace("torch.", "")
-
+        layer_memory, cat_breakdown, kv_growth, dtype_str = _compute_memory_breakdowns(adapter, cache, bytes_per_elem=2)
         nvml_data = get_nvml_metrics(dev_idx)
 
         return {
@@ -321,7 +371,7 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
             "cuda_version": getattr(torch.version, "cuda", "CUDA Active"),
             "precision_dtype": dtype_str,
             "compute_capability": f"{props.major}.{props.minor}",
-            "multi_processor_count": getattr(props, "multi_processor_count", 40),
+            "multi_processor_count": getattr(props, "multi_processor_count", 0),
             "gpu_temperature_c": nvml_data.get("temperature_c"),
             "fan_speed_pct": nvml_data.get("fan_speed_pct"),
             "num_fans": nvml_data.get("num_fans", 1),
@@ -334,7 +384,7 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
             "reserved_mb": round(reserved_mb, 1),
             "max_allocated_mb": round(max_allocated_mb, 1),
             "free_mb": round(free_mb, 1),
-            "utilization_pct": round((allocated_mb / total_mb) * 100, 1),
+            "utilization_pct": round((allocated_mb / total_mb) * 100, 1) if total_mb > 0 else 0.0,
             "active_tensors_mb": round(active_tensors, 1),
             "alloc_retries": alloc_retries,
             "blocks": blocks,
@@ -343,26 +393,79 @@ def get_detailed_gpu_profiler(adapter: Any = None, cache: Any = None) -> Dict[st
             "kv_growth": kv_growth,
         }
 
+    # Real CPU / System RAM profiler (zero hardcoded 16GB / 512MB placeholders)
+    total_mb = 0.0
+    avail_mb = 0.0
+    process_rss_mb = 0.0
+    cpu_cores = os.cpu_count() or 1
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        total_mb = vm.total / (1024 ** 2)
+        avail_mb = vm.available / (1024 ** 2)
+        process_rss_mb = psutil.Process().memory_info().rss / (1024 ** 2)
+        cpu_cores = psutil.cpu_count(logical=True) or cpu_cores
+    except Exception:
+        pass
+
+    global _PEAK_CPU_RSS_MB
+    _PEAK_CPU_RSS_MB = max(_PEAK_CPU_RSS_MB, process_rss_mb)
+
+    system_used_mb = max(process_rss_mb, total_mb - avail_mb) if total_mb > 0 else process_rss_mb
+    layer_memory, cat_breakdown, kv_growth, dtype_str = _compute_memory_breakdowns(adapter, cache, bytes_per_elem=4)
+
+    cache_total_mb = round(sum(cat_breakdown.values()), 2)
+    block_mb = 256 if total_mb <= 16384 else 512
+    total_blocks = max(16, int(math.ceil(total_mb / block_mb))) if total_mb > 0 else 16
+
+    blocks = []
+    for i in range(total_blocks):
+        range_start = i * block_mb
+        range_end = min(total_mb, (i + 1) * block_mb) if total_mb > 0 else (i + 1) * block_mb
+        if range_start < process_rss_mb:
+            b_type = "weights"
+            b_label = "Process RAM (Model / Python)"
+        elif range_start < system_used_mb:
+            b_type = "cache"
+            b_label = "Other OS / System RAM"
+        else:
+            b_type = "free"
+            b_label = "Available System RAM"
+        blocks.append({
+            "id": i + 1,
+            "type": b_type,
+            "label": b_label,
+            "mb": block_mb,
+            "range_mb": f"{int(range_start)} MB - {int(range_end)} MB",
+        })
+
     return {
         "has_gpu": False,
-        "device_name": "CPU System Memory",
+        "device_name": platform.processor() or "CPU System Memory",
         "torch_version": torch.__version__,
         "cuda_version": "N/A",
-        "precision_dtype": "fp32",
-        "compute_capability": "N/A",
-        "multi_processor_count": 8,
-        "total_memory_mb": 16384.0,
-        "allocated_mb": 512.0,
-        "reserved_mb": 1024.0,
-        "max_allocated_mb": 1024.0,
-        "free_mb": 14848.0,
-        "utilization_pct": 3.1,
-        "active_tensors_mb": 512.0,
+        "precision_dtype": dtype_str,
+        "compute_capability": "CPU",
+        "multi_processor_count": cpu_cores,
+        "gpu_temperature_c": None,
+        "fan_speed_pct": None,
+        "num_fans": 0,
+        "power_draw_w": None,
+        "power_limit_w": None,
+        "gpu_clock_mhz": None,
+        "mem_clock_mhz": None,
+        "total_memory_mb": round(total_mb, 1),
+        "allocated_mb": round(process_rss_mb, 1),
+        "reserved_mb": round(system_used_mb, 1),
+        "max_allocated_mb": round(_PEAK_CPU_RSS_MB, 1),
+        "free_mb": round(avail_mb, 1),
+        "utilization_pct": round((process_rss_mb / total_mb) * 100, 1) if total_mb > 0 else 0.0,
+        "active_tensors_mb": round(cache_total_mb, 1),
         "alloc_retries": 0,
-        "blocks": [{"id": i, "type": "free", "label": "CPU RAM Buffer", "mb": 256.0} for i in range(64)],
-        "layer_memory": [],
-        "cache_breakdown": {"residual_stream_mb": 12.0, "attention_mb": 8.0, "mlp_mb": 15.0, "kv_cache_mb": 4.0},
-        "kv_growth": [{"pos": i, "kv_mb": round(i * 0.15, 2)} for i in range(1, 33)],
+        "blocks": blocks,
+        "layer_memory": layer_memory,
+        "cache_breakdown": cat_breakdown,
+        "kv_growth": kv_growth,
     }
 
 

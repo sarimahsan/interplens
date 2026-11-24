@@ -3,10 +3,14 @@
 .panel {
     background-color: var(--bg-panel);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: 10px;
+    padding: 18px;
     box-shadow: var(--shadow-sm);
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel:hover {
+    border-color: var(--border-highlight);
 }
 
 .panel-header {
@@ -55,22 +59,30 @@
     color: var(--text-muted);
 }
 
-.btn-preset, .btn-metric {
+.btn-preset, .btn-metric, .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     background-color: var(--bg-subtle);
     border: 1px solid var(--border-color);
     color: var(--text-sub);
-    padding: 4px 10px;
-    border-radius: 4px;
+    padding: 5px 10px;
+    border-radius: 5px;
     font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
-.btn-preset:hover, .btn-metric:hover {
+.btn-preset:hover, .btn-metric:hover, .btn-secondary:hover {
     background-color: var(--bg-hover);
     color: var(--text-main);
     border-color: var(--border-highlight);
+}
+
+.btn-secondary:active {
+    transform: translateY(1px);
 }
 
 .btn-metric.active {
@@ -127,19 +139,25 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background-color: var(--primary);
+    background: linear-gradient(135deg, #0ea5e9, #3b82f6);
     color: #ffffff;
-    border: 1px solid var(--primary-hover);
+    border: 1px solid rgba(56, 189, 248, 0.45);
     padding: 8px 16px;
-    border-radius: 6px;
+    border-radius: 7px;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.15s ease, transform 0.1s ease;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+    transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    filter: brightness(1.08);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
 }
 
 .btn-primary:disabled {

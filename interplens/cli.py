@@ -36,7 +36,8 @@ def main():
         
         vram = get_vram_usage(device)
         if vram["total_mb"] > 0:
-            print(f"💾 VRAM Allocated: {vram['allocated_mb']}MB / {vram['total_mb']}MB")
+            mem_label = "VRAM Allocated" if vram.get("is_gpu") else "System RAM (Process)"
+            print(f"💾 {mem_label}: {vram['allocated_mb']}MB / {vram['total_mb']}MB")
             
         tokenizer_override = getattr(args, "tokenizer", None)
         if tokenizer_override:

@@ -63,8 +63,16 @@ def compute_neuron_activations(
     else:
         mlp_acts = None
 
+    is_synthetic = False
+    warning_msg: Optional[str] = None
+
     # Fallback synthetic MLP activation matrix if hook tensor missing or dummy model
     if mlp_acts is None:
+        is_synthetic = True
+        warning_msg = (
+            f"Real MLP activation tensor unavailable for layer {layer}. "
+            "Showing synthetic fallback."
+        )
         d_mlp = model_info.get("hidden_dim", 768) * 4
         # Generate deterministic synthetic neuron activations
         torch.manual_seed(42 + layer * 100 + target_pos)
@@ -127,4 +135,6 @@ def compute_neuron_activations(
         selected_neuron_idx=neuron_idx,
         selected_neuron_activation=target_neuron_val,
         lighting_strip=lighting_strip,
+        is_synthetic=is_synthetic,
+        warning=warning_msg,
     )

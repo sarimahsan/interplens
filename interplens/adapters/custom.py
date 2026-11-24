@@ -18,9 +18,15 @@ logger = logging.getLogger(__name__)
 class PyTorchAutoHooker:
     """Intercepts activations across submodules using native PyTorch forward hooks."""
 
-    def __init__(self, model: nn.Module, target_module_names: Optional[List[str]] = None):
+    def __init__(
+        self,
+        model: nn.Module,
+        target_module_names: Optional[List[str]] = None,
+        offload_to_cpu: bool = True,
+    ):
         self.model = model
         self.target_module_names = set(target_module_names) if target_module_names else None
+        self.offload_to_cpu = offload_to_cpu
         self.captured_activations: Dict[str, torch.Tensor] = {}
         self._hook_handles: List[Any] = []
 
@@ -45,7 +51,10 @@ class PyTorchAutoHooker:
                 def hook(mod, input_tensor, output_tensor):
                     out = output_tensor[0] if isinstance(output_tensor, tuple) else output_tensor
                     if isinstance(out, torch.Tensor):
-                        self.captured_activations[module_name] = out.detach()
+                        t = out.detach()
+                        if self.offload_to_cpu and t.device.type != "cpu":
+                            t = t.to("cpu", non_blocking=True)
+                        self.captured_activations[module_name] = t
                 return hook
 
             handle = module.register_forward_hook(create_hook(name))
@@ -83,11 +92,13 @@ class CustomModelAdapter(BaseModelAdapter):
         discovery = HookDiscovery(model, model_name=model_name)
         self.graph, self.capabilities, self.strategy, self.discovery_confidence = discovery.discover()
 
-        # 2. PyTorchAutoHooker hooks named submodules
-        self.auto_hooker = PyTorchAutoHooker(model)
-
-        # 3. Extract Structural Fingerprints & Dimensions
+        # 2. Extract Structural Fingerprints & Dimensions
         self._extract_fingerprints()
+
+        # 3. Selective hooking: only hook key transformer modules (embed, blocks/layers, attn, mlp)
+        #    when present so large models don't waste memory hooking every sub-layer.
+        target_names = self._resolve_selective_hook_names()
+        self.auto_hooker = PyTorchAutoHooker(model, target_module_names=target_names, offload_to_cpu=True)
 
         # 4. Evaluate Engine Capability Matrix & Build Report
         self.engine_capabilities = evaluate_engine_capabilities(self.capabilities, self.runtime_fingerprint, self.discovery_confidence)
@@ -168,6 +179,54 @@ class CustomModelAdapter(BaseModelAdapter):
             device=str(self.device),
             dtype=p_dtype,
         )
+
+    def _resolve_selective_hook_names(self) -> Optional[List[str]]:
+        """Builds a selective set of module paths (embed, layer blocks, attn, mlp) to avoid hooking every sub-op."""
+        all_names = {name for name, _ in self._model_instance.named_modules() if name}
+        if not all_names:
+            return None
+
+        selected = set()
+        # 1. Include any modules discovered in ModelGraph
+        if hasattr(self.graph, "discovered_modules"):
+            for dm in self.graph.discovered_modules.values():
+                if getattr(dm, "module_path", None) in all_names:
+                    selected.add(dm.module_path)
+
+        # 2. Include strategy-named layer residual / attention / MLP hooks + common HF GPT-2/Llama patterns
+        for l in range(self.num_layers):
+            for candidate in (
+                self.strategy.get_resid_post_hook_name(l),
+                self.strategy.get_attn_pattern_hook_name(l),
+                self.strategy.get_mlp_post_hook_name(l),
+                f"transformer.h.{l}",
+                f"transformer.h.{l}.attn",
+                f"transformer.h.{l}.mlp",
+                f"transformer.h.{l}.mlp.act",
+                f"model.layers.{l}",
+                f"model.layers.{l}.self_attn",
+                f"model.layers.{l}.mlp",
+                f"model.layers.{l}.block_sparse_moe",
+                f"model.decoder.layers.{l}",
+                f"model.decoder.layers.{l}.self_attn",
+                f"gpt_neox.layers.{l}",
+                f"gpt_neox.layers.{l}.attention",
+                f"gpt_neox.layers.{l}.mlp",
+                f"blocks.{l}",
+                f"layers.{l}",
+            ):
+                if candidate in all_names:
+                    selected.add(candidate)
+
+        # 3. Include embedding module if present
+        for name in all_names:
+            n_low = name.lower()
+            if n_low in ("transformer.wte", "model.embed_tokens", "gpt_neox.embed_in", "embed", "embedding", "wte"):
+                selected.add(name)
+
+        # Only enable selective mode if we matched at least one block/layer hook;
+        # otherwise fall back to hooking all modules for custom toy nn.Module architectures.
+        return sorted(selected) if len(selected) >= max(1, self.num_layers // 2) else None
 
     def load(self) -> None:
         pass
@@ -304,8 +363,9 @@ class CustomModelAdapter(BaseModelAdapter):
             if attentions is not None and isinstance(attentions, (tuple, list)):
                 for l_idx, attn_map in enumerate(attentions):
                     if isinstance(attn_map, torch.Tensor):
-                        cache[f"layers.{l_idx}.attn.hook_pattern"] = attn_map
-                        cache[f"blocks.{l_idx}.attn.hook_pattern"] = attn_map
+                        attn_cpu = attn_map.detach().cpu() if attn_map.device.type != "cpu" else attn_map.detach()
+                        cache[f"layers.{l_idx}.attn.hook_pattern"] = attn_cpu
+                        cache[f"blocks.{l_idx}.attn.hook_pattern"] = attn_cpu
 
             return logits, cache
         finally:

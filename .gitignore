@@ -1,8 +1,48 @@
+# Python bytecode & caches
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Packaging & build artifacts
 *.egg-info/
 dist/
 build/
+wheels/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets & environment variables
+.env
+.env.*
+*.pem
+*.key
+secrets/
+
+# Local model weights & large tensor dumps
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+
+# Internal drafts, posts & private roadmaps (keep local only)
+LINKEDIN_POST.txt
+V2_ROADMAP.md
+*_POST.txt
+*NOTES*.md
+drafts/
+
+# Editor & OS files
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
+*.log

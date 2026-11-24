@@ -29,53 +29,71 @@ def compute_attention_metrics(
     layer = max(0, min(layer, num_layers - 1))
     seq_len = len(tokens)
 
-    # 1. Search activation cache for attention pattern hook tensor
-    attn_tensor = None
-    target_hook = adapter.get_attn_pattern_hook_name(layer) if hasattr(adapter, "get_attn_pattern_hook_name") else ""
-
-    if target_hook in cache:
-        attn_tensor = cache[target_hook]
-    else:
-        # Fallback search by pattern key matching
-        for k, v in cache.items():
-            k_lower = k.lower()
-            if (f"blocks.{layer}." in k_lower or f"layers.{layer}." in k_lower or f"block_{layer}" in k_lower) and ("attn" in k_lower or "pattern" in k_lower):
-                attn_tensor = v
-                break
-
-    # Format tensor into shape (H, N, N) where N == seq_len
-    if attn_tensor is not None:
-        t = attn_tensor.detach().cpu().to(torch.float32)
+    # 1. Search activation cache for a valid (H, N, N) attention pattern tensor.
+    #    Prefer explicit hook_pattern keys first so HF `self_attn` hidden-state outputs (1, N, D)
+    #    don't shadow real `out.attentions` tensors stored under `layers.{l}.attn.hook_pattern`.
+    def _extract_attn_grid(tensor: Optional[torch.Tensor]):
+        if tensor is None or not isinstance(tensor, torch.Tensor):
+            return None
+        t = tensor.detach().cpu().to(torch.float32)
         if t.ndim == 4:
             if t.shape[2] == seq_len and t.shape[3] == seq_len:
                 t = t[0]  # (H, N, N)
             elif t.shape[1] == seq_len and t.shape[2] == seq_len:
                 t = t[0].permute(2, 0, 1)  # (N, N, H) -> (H, N, N)
             else:
-                t = None
+                return None
         elif t.ndim == 2:
             if t.shape[0] == seq_len and t.shape[1] == seq_len:
                 t = t.unsqueeze(0)
             else:
-                t = None
+                return None
 
-        if t is not None and t.ndim == 3:
+        if t.ndim == 3:
             s0, s1, s2 = t.shape
             if s1 == seq_len and s2 == seq_len:
-                num_heads = s0
-                attn_grid = t
+                return t
             elif s0 == seq_len and s1 == seq_len and s2 == num_heads:
-                attn_grid = t.permute(2, 0, 1)
-                num_heads = attn_grid.shape[0]
-            else:
-                attn_grid = None
-        else:
-            attn_grid = None
-    else:
-        attn_grid = None
+                return t.permute(2, 0, 1)
+        return None
+
+    target_hook = adapter.get_attn_pattern_hook_name(layer) if hasattr(adapter, "get_attn_pattern_hook_name") else ""
+    candidate_keys = [
+        f"blocks.{layer}.attn.hook_pattern",
+        f"layers.{layer}.attn.hook_pattern",
+        target_hook,
+    ]
+
+    attn_grid = None
+    for key in candidate_keys:
+        if key and key in cache:
+            attn_grid = _extract_attn_grid(cache[key])
+            if attn_grid is not None:
+                break
+
+    if attn_grid is None:
+        # Fallback search by pattern key matching (checking shape validity for each match)
+        for k, v in cache.items():
+            k_lower = k.lower()
+            if (f"blocks.{layer}." in k_lower or f"layers.{layer}." in k_lower or f"h.{layer}." in k_lower or f"block_{layer}" in k_lower) and ("pattern" in k_lower or "attn" in k_lower):
+                attn_grid = _extract_attn_grid(v)
+                if attn_grid is not None:
+                    break
+
+    if attn_grid is not None:
+        num_heads = attn_grid.shape[0]
+
+    is_synthetic = False
+    warning_msg: Optional[str] = None
 
     # Fallback causal lower-triangular attention pattern if hook tensor is missing or dummy model
     if attn_grid is None:
+        is_synthetic = True
+        warning_msg = (
+            f"Real attention weights unavailable for layer {layer} "
+            "(ensure model runs with eager attention and output_attentions=True). "
+            "Showing synthetic causal fallback."
+        )
         grid_data = []
         for h in range(num_heads):
             head_mat = []
@@ -153,4 +171,6 @@ def compute_attention_metrics(
         matrix=target_matrix,
         grid=grid_data,
         arc_links=arc_links,
+        is_synthetic=is_synthetic,
+        warning=warning_msg,
     )

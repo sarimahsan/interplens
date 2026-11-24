@@ -273,6 +273,21 @@ function registerEventListeners() {
         });
     }
 
+    // Dismissible mobile desktop-recommended banner
+    const mobileBanner = document.getElementById('mobile-desktop-banner');
+    const dismissMobileBannerBtn = document.getElementById('dismiss-mobile-banner');
+    if (mobileBanner) {
+        if (sessionStorage.getItem('interplens_mobile_banner_dismissed') === '1') {
+            mobileBanner.classList.add('dismissed');
+        }
+        if (dismissMobileBannerBtn) {
+            dismissMobileBannerBtn.addEventListener('click', () => {
+                mobileBanner.classList.add('dismissed');
+                sessionStorage.setItem('interplens_mobile_banner_dismissed', '1');
+            });
+        }
+    }
+
     // Sidebar Tab Router
     document.querySelectorAll('.engine-menu .menu-btn:not(.disabled)').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -340,6 +355,16 @@ function registerEventListeners() {
                 }
                 if (window.InductionEngine && window.InductionEngine.fetch) {
                     window.InductionEngine.fetch();
+                }
+            } else if (targetEngine === 'circuits') {
+                const view = document.getElementById('view-circuits');
+                if (view) {
+                    view.style.display = 'block';
+                    requestAnimationFrame(() => view.classList.add('active'));
+                }
+                if (window.CircuitsEngine) {
+                    window.CircuitsEngine.bindEvents();
+                    window.CircuitsEngine.fetchDLA();
                 }
             } else {
                 const view = document.getElementById('view-logit-lens');

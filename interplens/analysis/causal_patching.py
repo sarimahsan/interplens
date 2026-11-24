@@ -91,6 +91,7 @@ def run_causal_patching_sweep(
     cells: List[CausalTracingCell] = []
     max_recovery = -999.0
     max_cell = (0, 0)
+    synthetic_cells = 0
 
     for l in range(num_layers):
         row: List[float] = []
@@ -160,6 +161,7 @@ def run_causal_patching_sweep(
                             hook_handle.remove()
 
             if patched_diff is None:
+                synthetic_cells += 1
                 # Fallback calculation if module hook unavailable
                 if clean_res is not None and corrupt_res is not None:
                     c_vec = clean_res[0, p] if clean_res.ndim == 3 else clean_res[p]
@@ -193,6 +195,14 @@ def run_causal_patching_sweep(
 
         heatmap_matrix.append(row)
 
+    is_synthetic = synthetic_cells > 0
+    warning_msg = (
+        f"Causal patching hook unavailable for {synthetic_cells}/{len(cells)} cells; "
+        "used heuristic distance fallback."
+        if is_synthetic
+        else None
+    )
+
     return CausalTracingResponse(
         clean_prompt=clean_prompt,
         corrupt_prompt=corrupt_prompt,
@@ -208,4 +218,6 @@ def run_causal_patching_sweep(
         max_recovery_percentage=max_recovery,
         heatmap_matrix=heatmap_matrix,
         cells=cells,
+        is_synthetic=is_synthetic,
+        warning=warning_msg,
     )

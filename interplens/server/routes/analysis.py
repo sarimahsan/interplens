@@ -3,7 +3,18 @@
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
-from interplens.schema import LogitLensMatrixResponse, SteeringRequest, CausalPatchingRequest
+from interplens.schema import (
+    LogitLensMatrixResponse,
+    SteeringRequest,
+    CausalPatchingRequest,
+    AttributionPatchingRequest,
+    DirectLogitAttributionResponse,
+    AttributionPatchingResponse,
+    ContrastiveSteeringRequest,
+    SteeringVectorInfo,
+    SteeringGenerateRequest,
+    SteeringGenerationResponse,
+)
 from interplens.server.session import global_session_store
 from interplens.server.state import get_active_adapter, get_adapter_model_info
 from interplens.analysis.logit_lens import compute_logit_lens
@@ -14,6 +25,13 @@ from interplens.analysis.attribution import compute_token_attributions
 from interplens.analysis.topology import inspect_model_topology
 from interplens.analysis.causal_patching import run_causal_patching_sweep
 from interplens.analysis.induction_heads import detect_induction_heads
+from interplens.analysis.dla import compute_direct_logit_attribution
+from interplens.analysis.attribution_patching import run_attribution_patching
+from interplens.analysis.steering import (
+    compute_contrastive_steering_vector,
+    generate_steered_comparison,
+    global_steering_store,
+)
 
 router = APIRouter(prefix="/api/analysis", tags=["Analysis"])
 
@@ -206,3 +224,98 @@ def run_induction_detector(
         threshold=threshold,
         top_k=top_k,
     )
+
+
+@router.get("/dla", response_model=DirectLogitAttributionResponse)
+def get_direct_logit_attribution(
+    session_id: str = Query(..., description="Active session ID"),
+    position: Optional[int] = Query(None, description="Optional token position index"),
+    target_token: Optional[str] = Query(None, description="Optional target token string"),
+    foil_token: Optional[str] = Query(None, description="Optional foil/contrast token string"),
+):
+    """Computes Direct Logit Attribution (DLA) across Embedding, Attention, and MLP sublayers."""
+    session = global_session_store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
+
+    adapter = session.adapter or get_active_adapter()
+    try:
+        return compute_direct_logit_attribution(
+            adapter=adapter,
+            cache=session.cache,
+            tokens=session.tokens,
+            session_id=session.session_id,
+            prompt=session.prompt,
+            position=position,
+            target_token=target_token,
+            foil_token=foil_token,
+            logits=getattr(session, "logits", None),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Direct Logit Attribution error: {str(e)}")
+
+
+@router.post("/attribution-patching", response_model=AttributionPatchingResponse)
+def post_attribution_patching(req: AttributionPatchingRequest):
+    """Runs fast gradient-based Attribution Patching (2 forward + 1 backward pass)."""
+    if not req.clean_prompt or not req.corrupt_prompt:
+        raise HTTPException(status_code=400, detail="Both 'clean_prompt' and 'corrupt_prompt' must be provided.")
+
+    adapter = get_active_adapter()
+    try:
+        return run_attribution_patching(
+            adapter=adapter,
+            clean_prompt=req.clean_prompt,
+            corrupt_prompt=req.corrupt_prompt,
+            target_token=req.target_token,
+            foil_token=req.foil_token,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Attribution Patching error: {str(e)}")
+
+
+@router.post("/steering/compute", response_model=SteeringVectorInfo)
+def post_compute_steering_vector(req: ContrastiveSteeringRequest):
+    """Computes a Difference-in-Means contrastive steering vector from positive/negative prompts."""
+    adapter = get_active_adapter()
+    try:
+        return compute_contrastive_steering_vector(
+            adapter=adapter,
+            positive_prompts=req.positive_prompts,
+            negative_prompts=req.negative_prompts,
+            target_layer=req.target_layer,
+            name=req.name,
+            normalize=req.normalize,
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Contrastive steering vector error: {str(e)}")
+
+
+@router.get("/steering/vectors")
+def list_steering_vectors():
+    """Lists all computed steering vectors stored in the active server session."""
+    return {"vectors": global_steering_store.list_metadata()}
+
+
+@router.post("/steering/generate", response_model=SteeringGenerationResponse)
+def post_steering_generate(req: SteeringGenerateRequest):
+    """Runs side-by-side Baseline vs. Steered multi-token generation."""
+    if not req.prompt or not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
+    adapter = get_active_adapter()
+    try:
+        return generate_steered_comparison(
+            adapter=adapter,
+            prompt=req.prompt,
+            vector_id=req.vector_id,
+            target_layer=req.target_layer,
+            multiplier=req.multiplier,
+            max_new_tokens=req.max_new_tokens,
+            temperature=req.temperature,
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Steered generation error: {str(e)}")

@@ -123,6 +123,31 @@ def compute_residual_metrics(
         row = [round(float(cos_matrix_cpu[r, c]), 4) for c in range(L_count)]
         cos_matrix.append(row)
 
+    # 5. Real 2D PCA Layer Trajectory via SVD on centered residual stream vectors
+    pca_trajectory: List[Dict[str, Any]] = []
+    pca_explained_variance: List[float] = [0.0, 0.0]
+    raw_pos_vecs = stacked[:, target_pos, :]  # (L_count, D)
+    if L_count >= 2 and D_dim >= 2:
+        centered = raw_pos_vecs - raw_pos_vecs.mean(dim=0, keepdim=True)
+        try:
+            u, s, _ = torch.linalg.svd(centered, full_matrices=False)
+            coords = u[:, :2] * s[:2]
+            total_var = float(torch.sum(s ** 2).item())
+            if total_var > 1e-12:
+                pca_explained_variance = [
+                    round(float((s[0] ** 2).item() / total_var), 4),
+                    round(float((s[1] ** 2).item() / total_var), 4) if len(s) > 1 else 0.0,
+                ]
+            for l_idx in range(L_count):
+                pca_trajectory.append({
+                    "layer_index": l_idx,
+                    "layer_name": layer_labels[l_idx],
+                    "pc1": round(float(coords[l_idx, 0].item()), 4),
+                    "pc2": round(float(coords[l_idx, 1].item()), 4) if coords.shape[1] > 1 else 0.0,
+                })
+        except Exception:
+            pass
+
     return {
         "session_id": session_id,
         "tokens": tokens,
@@ -139,6 +164,8 @@ def compute_residual_metrics(
         "layer_cosine_transitions": layer_cosine_sim,
         "position_history": pos_vector_history,
         "cosine_matrix": cos_matrix,
+        "pca_trajectory": pca_trajectory,
+        "pca_explained_variance": pca_explained_variance,
     }
 
 

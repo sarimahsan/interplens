@@ -36,11 +36,33 @@ from interplens.adapters.report import ModelReport, generate_model_report
 logger = logging.getLogger(__name__)
 
 
+def _resolve_torch_dtype(dtype: Optional[Any], target_device: str):
+    """Resolves string or torch.dtype to a concrete torch.dtype."""
+    import torch
+    if isinstance(dtype, torch.dtype):
+        return dtype
+    if isinstance(dtype, str):
+        mapping = {
+            "float32": torch.float32,
+            "fp32": torch.float32,
+            "float16": torch.float16,
+            "fp16": torch.float16,
+            "bfloat16": torch.bfloat16,
+            "bf16": torch.bfloat16,
+        }
+        key = dtype.lower().strip()
+        if key in mapping:
+            return mapping[key]
+    return torch.float16 if str(target_device).startswith("cuda") else torch.float32
+
+
 def get_adapter_for_model(
     model_or_name: Any,
     device: str = "auto",
     auto_hook: bool = False,
     tokenizer: Optional[Any] = None,
+    dtype: Optional[Any] = None,
+    hf_token: Optional[str] = None,
 ) -> BaseModelAdapter:
     """Returns appropriate BaseModelAdapter instance for a given string model name or loaded object."""
     if isinstance(model_or_name, BaseModelAdapter):
@@ -61,21 +83,42 @@ def get_adapter_for_model(
 
         # 3. Attempt HuggingFace AutoModel loading
         try:
+            import os
+            import importlib.util
             from transformers import AutoModelForCausalLM, AutoTokenizer
-            import torch
+            from interplens.utils.device import resolve_device
+
+            resolved_dev = str(resolve_device(device))
+            torch_dtype = _resolve_torch_dtype(dtype, resolved_dev)
+            token = hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+            token_kwargs = {"token": token} if token else {}
+
             if isinstance(tokenizer, str):
-                tok = AutoTokenizer.from_pretrained(tokenizer, trust_remote_code=True)
+                tok = AutoTokenizer.from_pretrained(tokenizer, trust_remote_code=True, **token_kwargs)
             elif tokenizer is not None:
                 tok = tokenizer
             else:
-                tok = AutoTokenizer.from_pretrained(model_or_name, trust_remote_code=True)
-            mod = AutoModelForCausalLM.from_pretrained(
-                model_or_name,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                device_map=device if device != "auto" else "auto",
-                attn_implementation="eager",
-                trust_remote_code=True,
-            )
+                tok = AutoTokenizer.from_pretrained(model_or_name, trust_remote_code=True, **token_kwargs)
+
+            has_accelerate = importlib.util.find_spec("accelerate") is not None
+            load_kwargs = {
+                "torch_dtype": torch_dtype,
+                "attn_implementation": "eager",
+                "trust_remote_code": True,
+                **token_kwargs,
+            }
+            if resolved_dev.startswith("cuda") and has_accelerate:
+                load_kwargs["device_map"] = "auto"
+
+            try:
+                mod = AutoModelForCausalLM.from_pretrained(model_or_name, **load_kwargs)
+            except Exception:
+                load_kwargs.pop("attn_implementation", None)
+                mod = AutoModelForCausalLM.from_pretrained(model_or_name, **load_kwargs)
+
+            if "device_map" not in load_kwargs:
+                mod = mod.to(resolved_dev)
+
             return CustomModelAdapter(model=mod, tokenizer=tok, model_name=model_or_name)
         except Exception as err:
             raise ModelLoadError(

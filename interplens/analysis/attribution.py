@@ -30,34 +30,39 @@ def compute_token_attributions(
 
     # Initialize Rollout matrix as NxN identity tensor
     rollout = torch.eye(seq_len, dtype=torch.float32)
+    synthetic_layers = 0
+
+    def _to_layer_attn(tensor: Optional[torch.Tensor]) -> Optional[torch.Tensor]:
+        if tensor is None or not isinstance(tensor, torch.Tensor):
+            return None
+        t = tensor.detach().cpu().to(torch.float32)
+        if t.ndim == 4:
+            t = t[0]
+        if t.ndim == 3 and t.shape[1] == seq_len and t.shape[2] == seq_len:
+            return torch.mean(t, dim=0)
+        return None
 
     for l in range(num_layers):
-        attn_tensor = None
+        layer_attn = None
         hook_name = adapter.get_attn_pattern_hook_name(l) if hasattr(adapter, "get_attn_pattern_hook_name") else ""
-        
-        if hook_name in cache:
-            attn_tensor = cache[hook_name]
-        else:
-            for k, v in cache.items():
-                k_lower = k.lower()
-                if (f"blocks.{l}." in k_lower or f"layers.{l}." in k_lower or f"block_{l}" in k_lower) and ("attn" in k_lower or "pattern" in k_lower):
-                    attn_tensor = v
+
+        for key in (f"blocks.{l}.attn.hook_pattern", f"layers.{l}.attn.hook_pattern", hook_name):
+            if key and key in cache:
+                layer_attn = _to_layer_attn(cache[key])
+                if layer_attn is not None:
                     break
 
-        if attn_tensor is not None:
-            t = attn_tensor.detach().cpu().to(torch.float32)
-            if t.ndim == 4:
-                t = t[0]  # (H, N, N)
-            if t.ndim == 3 and t.shape[1] == seq_len and t.shape[2] == seq_len:
-                # Average attention pattern across heads -> (N, N)
-                layer_attn = torch.mean(t, dim=0)
-            else:
-                layer_attn = None
-        else:
-            layer_attn = None
+        if layer_attn is None:
+            for k, v in cache.items():
+                k_lower = k.lower()
+                if (f"blocks.{l}." in k_lower or f"layers.{l}." in k_lower or f"h.{l}." in k_lower or f"block_{l}" in k_lower) and ("pattern" in k_lower or "attn" in k_lower):
+                    layer_attn = _to_layer_attn(v)
+                    if layer_attn is not None:
+                        break
 
         # Fallback causal decay pattern if attention tensor missing
         if layer_attn is None:
+            synthetic_layers += 1
             layer_attn = torch.zeros((seq_len, seq_len), dtype=torch.float32)
             for i in range(seq_len):
                 for j in range(seq_len):
@@ -95,6 +100,14 @@ def compute_token_attributions(
             )
         )
 
+    is_synthetic = synthetic_layers > 0
+    warning_msg = (
+        f"Attention pattern tensors unavailable for {synthetic_layers}/{num_layers} layers; "
+        "used synthetic causal decay fallback."
+        if is_synthetic
+        else None
+    )
+
     return TokenAttributionResponse(
         session_id=session_id,
         prompt=prompt,
@@ -103,4 +116,6 @@ def compute_token_attributions(
         target_token=target_token,
         method=method,
         attributions=scores,
+        is_synthetic=is_synthetic,
+        warning=warning_msg,
     )

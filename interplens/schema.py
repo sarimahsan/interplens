@@ -124,6 +124,8 @@ class AttentionHeadResponse(BaseModel):
     matrix: List[List[float]]  # NxN matrix for target head
     grid: Optional[List[List[List[float]]]] = None  # H x N x N for all heads in layer
     arc_links: List[AttentionLink]
+    is_synthetic: bool = False
+    warning: Optional[str] = None
 
 
 class NeuronInfo(BaseModel):
@@ -153,6 +155,8 @@ class NeuronAnalysisResponse(BaseModel):
     selected_neuron_idx: int
     selected_neuron_activation: float
     lighting_strip: List[NeuronLightingToken]
+    is_synthetic: bool = False
+    warning: Optional[str] = None
 
 
 class TokenAttributionScore(BaseModel):
@@ -172,6 +176,8 @@ class TokenAttributionResponse(BaseModel):
     target_token: str
     method: str
     attributions: List[TokenAttributionScore]
+    is_synthetic: bool = False
+    warning: Optional[str] = None
 
 
 class CausalPatchingRequest(BaseModel):
@@ -207,6 +213,8 @@ class CausalTracingResponse(BaseModel):
     max_recovery_percentage: float
     heatmap_matrix: List[List[float]]  # num_layers x seq_len recovery matrix
     cells: List[CausalTracingCell]
+    is_synthetic: bool = False
+    warning: Optional[str] = None
 
 
 class InductionHeadScore(BaseModel):
@@ -227,5 +235,130 @@ class InductionDetectorResponse(BaseModel):
     matrix_scores: List[List[float]]  # num_layers x num_heads matrix
     tokens_used: List[str]
     prompt_used: str
+
+
+class DLALayerContribution(BaseModel):
+    """Per-layer Attention and MLP Direct Logit Attribution scores."""
+    layer: int
+    attn_contribution: float
+    mlp_contribution: float
+    total_contribution: float
+
+
+class DLAComponentScore(BaseModel):
+    """Single component (Embedding, Layer Attn, or Layer MLP) DLA score."""
+    component: str
+    layer: int
+    kind: str  # 'embed' | 'attn' | 'mlp'
+    contribution: float
+
+
+class DirectLogitAttributionResponse(BaseModel):
+    """Full payload for Direct Logit Attribution (DLA) analysis."""
+    session_id: str
+    prompt: str
+    tokens: List[str]
+    position: int
+    selected_token: str
+    target_token: str
+    target_token_id: int
+    foil_token: str
+    foil_token_id: int
+    final_logit_diff: float
+    embed_contribution: float
+    layer_contributions: List[DLALayerContribution]
+    top_components: List[DLAComponentScore]
+
+
+class AttributionPatchingRequest(BaseModel):
+    """Payload request for fast gradient-based Attribution Patching (AtP)."""
+    clean_prompt: str
+    corrupt_prompt: str
+    target_token: Optional[str] = None
+    foil_token: Optional[str] = None
+
+
+class AttributionPatchingComponent(BaseModel):
+    """Component-level (Attn/MLP) Attribution Patching score."""
+    component: str
+    layer: int
+    kind: str  # 'attn' | 'mlp'
+    score: float
+    recovery_pct: float
+
+
+class AttributionPatchingResponse(BaseModel):
+    """Full payload for Gradient-Based Attribution Patching (2 fwd + 1 bwd)."""
+    clean_prompt: str
+    corrupt_prompt: str
+    clean_tokens: List[str]
+    corrupt_tokens: List[str]
+    target_token: str
+    foil_token: str
+    baseline_clean_logit_diff: float
+    baseline_corrupt_logit_diff: float
+    num_layers: int
+    seq_len: int
+    max_attribution_layer: int
+    max_attribution_position: int
+    max_attribution_pct: float
+    heatmap_matrix: List[List[float]]  # num_layers x seq_len
+    top_components: List[AttributionPatchingComponent]
+    runtime_ms: float
+
+
+class ContrastiveSteeringRequest(BaseModel):
+    """Payload to compute a Difference-in-Means steering vector from positive/negative prompts."""
+    positive_prompts: List[str]
+    negative_prompts: List[str]
+    target_layer: int = 4
+    name: str = "Custom Steering Vector"
+    normalize: bool = False
+
+
+class SteeringVectorInfo(BaseModel):
+    """Metadata for a computed contrastive steering vector."""
+    vector_id: str
+    name: str
+    target_layer: int
+    hidden_dim: int
+    num_positive: int
+    num_negative: int
+    l2_norm: float
+    pos_neg_cosine: float
+    normalized: bool
+    model_name: str
+
+
+class SteeringGenerateRequest(BaseModel):
+    """Payload for side-by-side Baseline vs Steered multi-token generation."""
+    prompt: str
+    vector_id: str
+    target_layer: Optional[int] = None
+    multiplier: float = 2.0
+    max_new_tokens: int = 20
+    temperature: float = 0.0
+
+
+class GeneratedTokenProb(BaseModel):
+    """Single generated token and its probability."""
+    token: str
+    token_id: int
+    probability: float
+
+
+class SteeringGenerationResponse(BaseModel):
+    """Side-by-side Baseline vs Steered generation output."""
+    prompt: str
+    vector_id: str
+    vector_name: str
+    target_layer: int
+    multiplier: float
+    max_new_tokens: int
+    baseline_completion: str
+    steered_completion: str
+    baseline_tokens: List[GeneratedTokenProb]
+    steered_tokens: List[GeneratedTokenProb]
+    runtime_ms: float
 
 

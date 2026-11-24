@@ -41,6 +41,8 @@ def launch(
     port: int = settings.port,
     host: str = settings.host,
     device: str = "auto",
+    dtype: Optional[Any] = None,
+    hf_token: Optional[str] = None,
     auto_hook: bool = False,
     tokenizer: Optional[Any] = None,
     block: bool = False,
@@ -53,6 +55,8 @@ def launch(
         port: HTTP port for local Web UI server (default: settings.port / 8000).
         host: Host binding IP address (default: settings.host / 127.0.0.1).
         device: Target compute device ('cuda', 'cpu', 'mps', 'auto').
+        dtype: Optional precision dtype ('float32', 'float16', 'bfloat16', or torch.dtype).
+        hf_token: Optional HuggingFace access token for gated models.
         auto_hook: If True, uses PyTorchAutoHooker for novel nn.Module models.
         tokenizer: Optional tokenizer for custom PyTorch models.
         block: If True, blocks current process; if False, runs web server in background thread.
@@ -60,9 +64,22 @@ def launch(
     global _server_thread, _uvicorn_server
     target_device = resolve_device(device)
     if model is not None:
-        adapter = get_adapter_for_model(model, device=str(target_device), auto_hook=auto_hook, tokenizer=tokenizer)
+        adapter = get_adapter_for_model(
+            model,
+            device=str(target_device),
+            auto_hook=auto_hook,
+            tokenizer=tokenizer,
+            dtype=dtype,
+            hf_token=hf_token,
+        )
     else:
-        adapter = get_adapter_for_model(model_name, device=str(target_device), tokenizer=tokenizer)
+        adapter = get_adapter_for_model(
+            model_name,
+            device=str(target_device),
+            tokenizer=tokenizer,
+            dtype=dtype,
+            hf_token=hf_token,
+        )
 
     if hasattr(adapter, "load"):
         try:

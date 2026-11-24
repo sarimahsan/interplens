@@ -21,23 +21,31 @@ async function fetchGpuProfilerData() {
         if (document.getElementById('prof-torch-ver')) document.getElementById('prof-torch-ver').textContent = prof.torch_version || 'N/A';
         if (document.getElementById('prof-precision')) document.getElementById('prof-precision').textContent = prof.precision_dtype || 'fp16';
         if (document.getElementById('prof-compute-cap')) document.getElementById('prof-compute-cap').textContent = prof.compute_capability || 'N/A';
-        if (document.getElementById('prof-sm-count')) document.getElementById('prof-sm-count').textContent = `${prof.multi_processor_count} SMs`;
+        if (document.getElementById('prof-sm-count')) {
+            document.getElementById('prof-sm-count').textContent = prof.has_gpu
+                ? `${prof.multi_processor_count} SMs`
+                : `${prof.multi_processor_count} CPU Cores`;
+        }
 
         if (document.getElementById('prof-gpu-temp')) {
-            document.getElementById('prof-gpu-temp').textContent = prof.gpu_temperature_c !== null && prof.gpu_temperature_c !== undefined ? `${prof.gpu_temperature_c}°C` : (prof.has_gpu ? '42°C' : 'CPU Mode');
+            document.getElementById('prof-gpu-temp').textContent = prof.gpu_temperature_c !== null && prof.gpu_temperature_c !== undefined ? `${prof.gpu_temperature_c}°C` : (prof.has_gpu ? 'N/A' : 'CPU Mode');
         }
         if (document.getElementById('prof-fan-speed')) {
-            const fanCnt = prof.num_fans || 1;
-            const fanSpd = prof.fan_speed_pct !== null && prof.fan_speed_pct !== undefined ? `${prof.fan_speed_pct}%` : 'Auto';
-            document.getElementById('prof-fan-speed').textContent = `${fanCnt} Fan${fanCnt > 1 ? 's' : ''} (${fanSpd})`;
+            if (!prof.has_gpu) {
+                document.getElementById('prof-fan-speed').textContent = 'N/A';
+            } else {
+                const fanCnt = prof.num_fans || 1;
+                const fanSpd = prof.fan_speed_pct !== null && prof.fan_speed_pct !== undefined ? `${prof.fan_speed_pct}%` : 'N/A';
+                document.getElementById('prof-fan-speed').textContent = `${fanCnt} Fan${fanCnt > 1 ? 's' : ''} (${fanSpd})`;
+            }
         }
         if (document.getElementById('prof-power-draw')) {
-            const drawW = prof.power_draw_w !== null && prof.power_draw_w !== undefined ? `${prof.power_draw_w} W` : (prof.has_gpu ? '35 W' : 'System Power');
+            const drawW = prof.power_draw_w !== null && prof.power_draw_w !== undefined ? `${prof.power_draw_w} W` : (prof.has_gpu ? 'N/A' : 'System Power');
             const limitW = prof.power_limit_w ? ` / ${prof.power_limit_w} W` : '';
             document.getElementById('prof-power-draw').textContent = `${drawW}${limitW}`;
         }
         if (document.getElementById('prof-clocks')) {
-            const gpuClk = prof.gpu_clock_mhz ? `${prof.gpu_clock_mhz} MHz` : (prof.has_gpu ? '1350 MHz' : 'CPU');
+            const gpuClk = prof.gpu_clock_mhz ? `${prof.gpu_clock_mhz} MHz` : (prof.has_gpu ? 'N/A' : 'CPU');
             const memClk = prof.mem_clock_mhz ? ` / ${prof.mem_clock_mhz} MHz` : '';
             document.getElementById('prof-clocks').textContent = `${gpuClk}${memClk}`;
         }

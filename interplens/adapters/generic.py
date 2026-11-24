@@ -168,16 +168,41 @@ class GenericAdapter(BaseModelAdapter):
         captured_acts: Dict[str, torch.Tensor] = {}
         handles = []
 
-        # Attach PyTorch forward hooks based on discovered graph modules
+        # Selective hooking + CPU offloading to avoid VRAM bloat on larger models
+        all_names = {name for name, _ in self._model_instance.named_modules() if name}
+        selected_names = set()
+        if hasattr(self.graph, "discovered_modules"):
+            for dm in self.graph.discovered_modules.values():
+                if getattr(dm, "module_path", None) in all_names:
+                    selected_names.add(dm.module_path)
+        for l in range(self.num_layers):
+            for cand in (
+                self.strategy.get_resid_post_hook_name(l),
+                self.strategy.get_attn_pattern_hook_name(l),
+                self.strategy.get_mlp_post_hook_name(l),
+                f"transformer.h.{l}",
+                f"model.layers.{l}",
+                f"layers.{l}",
+                f"blocks.{l}",
+            ):
+                if cand in all_names:
+                    selected_names.add(cand)
+        use_selective = len(selected_names) >= max(1, self.num_layers // 2)
+
         for name, mod in self._model_instance.named_modules():
             if name == "":
+                continue
+            if use_selective and name not in selected_names:
                 continue
 
             def create_hook(mod_name: str):
                 def hook(m, i_tensor, o_tensor):
                     out = o_tensor[0] if isinstance(o_tensor, tuple) else o_tensor
                     if isinstance(out, torch.Tensor):
-                        captured_acts[mod_name] = out.detach()
+                        t = out.detach()
+                        if t.device.type != "cpu":
+                            t = t.to("cpu", non_blocking=True)
+                        captured_acts[mod_name] = t
                 return hook
 
             handle = mod.register_forward_hook(create_hook(name))
@@ -185,17 +210,34 @@ class GenericAdapter(BaseModelAdapter):
 
         try:
             if isinstance(inputs, torch.Tensor):
-                out = self._model_instance(inputs.to(self.device))
+                try:
+                    out = self._model_instance(inputs.to(self.device), output_attentions=True)
+                except Exception:
+                    out = self._model_instance(inputs.to(self.device))
             elif isinstance(inputs, str):
                 if self.tokenizer is not None and hasattr(self.tokenizer, "encode"):
                     input_ids = torch.tensor([self.tokenizer.encode(inputs)], device=self.device)
-                    out = self._model_instance(input_ids)
+                    try:
+                        out = self._model_instance(input_ids, output_attentions=True)
+                    except Exception:
+                        out = self._model_instance(input_ids)
                 else:
                     out = self._model_instance(inputs)
             elif isinstance(inputs, dict):
-                out = self._model_instance(**inputs)
+                try:
+                    out = self._model_instance(**inputs, output_attentions=True)
+                except Exception:
+                    out = self._model_instance(**inputs)
             else:
                 out = self._model_instance(inputs)
+
+            attentions = getattr(out, "attentions", None)
+            if attentions is not None and isinstance(attentions, (tuple, list)):
+                for l_idx, attn_map in enumerate(attentions):
+                    if isinstance(attn_map, torch.Tensor):
+                        attn_cpu = attn_map.detach().cpu() if attn_map.device.type != "cpu" else attn_map.detach()
+                        captured_acts[f"layers.{l_idx}.attn.hook_pattern"] = attn_cpu
+                        captured_acts[f"blocks.{l_idx}.attn.hook_pattern"] = attn_cpu
 
             logits = out.logits if hasattr(out, "logits") else (out[0] if isinstance(out, tuple) else out)
             return logits, captured_acts

@@ -9,21 +9,22 @@
     <meta name="author" content="Syed Sarim Ahsan, Undergrad AI Researcher">
     
     <!-- Favicon matching Header Logo -->
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="apple-touch-icon" href="favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
+    <link rel="apple-touch-icon" href="favicon.svg?v=2">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Chart.js CDN -->
+    <!-- Chart.js & Mermaid.js CDNs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 
     <!-- Modular CSS System -->
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/main.css?v=3">
+    <link rel="stylesheet" href="css/components.css?v=3">
     <link rel="stylesheet" href="css/logit_lens.css">
     <link rel="stylesheet" href="css/gpu_profiler.css">
 </head>
@@ -34,11 +35,11 @@
         <header class="studio-header">
             <div class="nav-left">
                 <div class="brand-logo">
-                    <img src="favicon.svg" width="22" height="22" alt="InterpLens Logo" style="display: block;">
+                    <img src="favicon.svg?v=2" width="26" height="26" alt="InterpLens Logo" style="display: block;">
                 </div>
                 <div class="brand-meta">
                     <span class="brand-name">InterpLens</span>
-                    <span class="brand-tag" title="Developed by Syed Sarim Ahsan, Undergrad AI Researcher">v0.1.0 • Syed Sarim Ahsan</span>
+                    <span class="brand-tag" title="Developed by Syed Sarim Ahsan, Undergrad AI Researcher">v2.0-dev • Syed Sarim Ahsan</span>
                 </div>
             </div>
 
@@ -86,6 +87,19 @@
                 </button>
             </div>
         </header>
+
+        <!-- Mobile-only Dismissible Recommendation Banner -->
+        <div id="mobile-desktop-banner" class="mobile-desktop-banner" role="status" aria-live="polite">
+            <div class="mobile-banner-content">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; color: #38bdf8;">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                <span>For full-screen matrices and circuit graphs, InterpLens is best experienced on a <strong>laptop or PC</strong>.</span>
+            </div>
+            <button type="button" id="dismiss-mobile-banner" class="mobile-banner-close" aria-label="Dismiss banner" title="Dismiss">✕</button>
+        </div>
 
         <!-- Main Studio Workspace -->
         <div class="studio-body">
@@ -165,6 +179,13 @@
                                 <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
                             <span>Induction Detector</span>
+                        </button>
+
+                        <button class="menu-btn" data-engine="circuits" id="tab-btn-circuits" title="Direct Logit Attribution & Fast Gradient Attribution Patching">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                            <span>Fast Circuits (DLA / AtP)</span>
                         </button>
                     </nav>
                 </div>
@@ -636,46 +657,101 @@
                 <!-- Phase 3: Residual Stream Analysis & Steering Explorer View -->
                 <div class="tab-view" id="view-residual-stream" style="display: none;">
                     <div class="studio-main-inner">
-                        <!-- Activation Steering Control Panel -->
+                        <!-- Contrastive Activation Steering (CAA) & Side-by-Side Generation Studio -->
                         <section class="panel control-panel">
-                            <div class="panel-header">
+                            <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
                                 <div class="header-title">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <circle cx="12" cy="12" r="10"></circle>
                                         <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
                                     </svg>
-                                    <h2>Residual Stream Activation Steering Controller</h2>
+                                    <h2>Contrastive Activation Steering (CAA) & Side-by-Side Generation</h2>
+                                    <span class="badge-token" id="caa-vector-badge">No Vector Yet</span>
+                                </div>
+                                <div class="preset-pills" style="flex-wrap: wrap;">
+                                    <span class="preset-label">Presets:</span>
+                                    <button type="button" class="btn-secondary caa-preset-btn" data-preset="sentiment">Positive vs Negative</button>
+                                    <button type="button" class="btn-secondary caa-preset-btn" data-preset="formal">Formal vs Casual</button>
+                                    <button type="button" class="btn-secondary caa-preset-btn" data-preset="science">Science vs Poetry</button>
+                                </div>
+                            </div>
+
+                            <!-- Step 1: Contrastive Vector Builder -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                                <div>
+                                    <label for="caa-pos-prompts" style="font-size: 11px; color: #10b981; font-weight: 600; display: block; margin-bottom: 4px;">Positive Direction Prompts (one per line)</label>
+                                    <textarea id="caa-pos-prompts" class="prompt-textarea" style="height: 76px; font-size: 12px;">I am so happy and grateful for this wonderful day!
+Everything is going amazingly well and I feel joyful.
+What a brilliant, inspiring, and uplifting experience!</textarea>
+                                </div>
+                                <div>
+                                    <label for="caa-neg-prompts" style="font-size: 11px; color: #f43f5e; font-weight: 600; display: block; margin-bottom: 4px;">Negative Direction Prompts (one per line)</label>
+                                    <textarea id="caa-neg-prompts" class="prompt-textarea" style="height: 76px; font-size: 12px;">I am miserable and frustrated by this terrible day.
+Everything is going horribly wrong and I feel awful.
+What a depressing, disappointing, and dreadful experience.</textarea>
                                 </div>
                             </div>
 
                             <div class="control-grid">
-                                <div class="setting-group" style="gap: 16px; flex-wrap: wrap;">
+                                <div class="setting-group" style="gap: 14px; flex-wrap: wrap; align-items: center;">
                                     <div class="setting-item">
-                                        <label for="steer-layer-select">Target Steering Layer:</label>
+                                        <label for="steer-layer-select">Steering Layer:</label>
                                         <select id="steer-layer-select" class="studio-select">
                                             <option value="0">Layer 0</option>
+                                            <option value="2">Layer 2</option>
                                             <option value="4" selected>Layer 4</option>
+                                            <option value="6">Layer 6</option>
                                             <option value="8">Layer 8</option>
+                                            <option value="10">Layer 10</option>
                                             <option value="11">Layer 11</option>
                                         </select>
                                     </div>
 
-                                    <div class="setting-item">
-                                        <label for="steer-multiplier">Multiplier (α):</label>
-                                        <input type="number" id="steer-multiplier" class="studio-select" value="2.5" step="0.5" style="width: 80px;">
+                                    <div class="setting-item" style="display: flex; align-items: center; gap: 6px;">
+                                        <label for="steer-multiplier">Strength (α): <strong id="steer-alpha-val" style="font-family: var(--font-mono); color: var(--primary);">2.0</strong></label>
+                                        <input type="range" id="steer-multiplier" min="-5" max="5" step="0.25" value="2.0" style="width: 110px;">
                                     </div>
 
-                                    <button id="steer-run-btn" class="btn-primary">
-                                        <span>Inject Steering Vector</span>
+                                    <div class="setting-item" style="display: flex; align-items: center; gap: 6px;">
+                                        <label for="caa-max-tokens">Tokens:</label>
+                                        <input type="number" id="caa-max-tokens" class="studio-select" value="20" min="4" max="48" style="width: 64px;">
+                                    </div>
+
+                                    <button type="button" id="caa-compute-btn" class="btn-secondary">
+                                        <span>1. Compute Vector</span>
+                                    </button>
+
+                                    <button type="button" id="steer-run-btn" class="btn-primary">
+                                        <span>2. Generate Baseline vs Steered</span>
                                     </button>
                                 </div>
 
-                                <div class="response-card-content" id="steer-result-card" style="display:none; margin-top: 10px; background: var(--bg-panel); border: 1px solid var(--border-highlight); border-radius: 6px; padding: 12px;">
-                                    <div class="response-primary-prediction">
-                                        <span class="resp-label">Steered Output Prediction:</span>
-                                        <span class="resp-token-badge" id="steer-top-tok">--</span>
-                                        <span class="resp-prob-tag" id="steer-top-prob">--%</span>
-                                        <span class="resp-logit-tag" id="steer-status-tag">Status: Success</span>
+                                <div style="margin-top: 10px;">
+                                    <label for="caa-test-prompt" style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Test Prompt to Steer</label>
+                                    <input type="text" id="caa-test-prompt" class="studio-select" style="width: 100%; padding: 8px 10px;" value="Today I walked outside and thought to myself,">
+                                </div>
+
+                                <div id="caa-status" style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+                                    Compute a Difference-in-Means vector from the prompt pairs above, then compare Baseline vs. Steered generation side-by-side.
+                                </div>
+
+                                <!-- Side-by-Side Comparison Output -->
+                                <div id="steer-result-card" style="display: none; margin-top: 12px;">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">
+                                        <div style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Baseline (α = 0)</span>
+                                                <span class="badge-token" id="caa-runtime-badge">-- ms</span>
+                                            </div>
+                                            <div id="caa-baseline-out" style="font-size: 13px; line-height: 1.55; color: var(--text-sub); white-space: pre-wrap;">--</div>
+                                        </div>
+                                        <div style="background: var(--bg-app); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 12px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8;">Steered (<span id="caa-steered-alpha-lbl">α = +2.0</span>)</span>
+                                                <span class="badge-token" id="caa-steered-layer-lbl">Layer 4</span>
+                                            </div>
+                                            <div id="caa-steered-out" style="font-size: 13px; line-height: 1.55; color: var(--text-main); white-space: pre-wrap;">--</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1202,22 +1278,143 @@
                             </div>
                         </section>
 
-                        <!-- Interactive Topology Diagram Node Flow -->
+                        <!-- Interactive Mermaid Architecture Diagram -->
                         <section class="panel chart-panel">
-                            <div class="panel-header">
+                            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                                 <div class="header-title">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"></path>
                                         <path d="M18 8h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4"></path>
                                         <circle cx="8" cy="12" r="2"></circle>
                                     </svg>
-                                    <h2>Interactive Transformer Execution Pipeline Topology Diagram</h2>
+                                    <h2>Model Architecture Diagram (Mermaid)</h2>
+                                </div>
+                                <div class="preset-pills" style="flex-wrap: wrap;">
+                                    <button type="button" id="btn-mermaid-zoom-out" class="btn-secondary" title="Zoom Out">−</button>
+                                    <button type="button" id="btn-mermaid-zoom-reset" class="btn-secondary" title="Reset Zoom">100%</button>
+                                    <button type="button" id="btn-mermaid-zoom-in" class="btn-secondary" title="Zoom In">+</button>
+                                    <button type="button" id="btn-mermaid-toggle-src" class="btn-secondary">View Mermaid</button>
+                                    <button type="button" id="btn-mermaid-copy" class="btn-secondary">Copy Mermaid</button>
+                                    <button type="button" id="btn-mermaid-svg" class="btn-secondary">Export SVG</button>
                                 </div>
                             </div>
-                            <div id="topology-graph-container" style="min-height: 400px; padding: 20px 10px;">
+                            <div id="topology-graph-container" style="min-height: 460px; padding: 20px 10px; overflow: auto;">
                                 <div style="padding: 40px; text-align: center; color: var(--text-muted);">
                                     Inspecting model architecture topology graph...
                                 </div>
+                            </div>
+                            <pre id="topology-mermaid-source" style="display: none; margin: 0 16px 16px; padding: 14px; background: rgba(15, 23, 42, 0.85); border: 1px solid var(--border-color); border-radius: 8px; font-family: var(--font-mono); font-size: 11px; color: #cbd5e1; overflow-x: auto; line-height: 1.5;"></pre>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Fast Circuits (Direct Logit Attribution & Gradient Attribution Patching) View -->
+                <div class="tab-view" id="view-circuits" style="display: none;">
+                    <div class="profiler-stack" style="display: flex; flex-direction: column; gap: 16px;">
+                        <!-- Direct Logit Attribution (DLA) Panel -->
+                        <section class="panel">
+                            <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                                    </svg>
+                                    <h2>Direct Logit Attribution (DLA)</h2>
+                                    <span class="badge-token" id="dla-target-badge">Target: --</span>
+                                    <span class="badge-token" id="dla-foil-badge">Foil: --</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <input id="dla-target-input" type="text" placeholder="Target token (auto)" class="studio-select" style="width: 140px;">
+                                    <input id="dla-foil-input" type="text" placeholder="Foil token (auto)" class="studio-select" style="width: 140px;">
+                                    <button type="button" id="btn-run-dla" class="btn-primary" style="padding: 6px 12px; font-size: 12px;">Compute DLA</button>
+                                </div>
+                            </div>
+                            <div id="dla-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+                                Run a prompt in Logit Lens, then compute Direct Logit Attribution to see exact Attention vs MLP logit-diff contributions.
+                            </div>
+                            <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px;">
+                                <span>Final Logit Diff: <strong id="dla-final-diff" style="font-family: var(--font-mono); color: #38bdf8;">--</strong></span>
+                                <span>Embedding Contribution: <strong id="dla-embed-val" style="font-family: var(--font-mono); color: #06b6d4;">--</strong></span>
+                            </div>
+                            <div style="height: 260px; margin-bottom: 16px;">
+                                <canvas id="dla-layer-chart"></canvas>
+                            </div>
+                            <div class="table-scroll">
+                                <table class="studio-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Component</th>
+                                            <th>Type</th>
+                                            <th>Logit Diff Contribution</th>
+                                            <th>Magnitude</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dla-top-components-tbody">
+                                        <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Click "Compute DLA" to decompose the active prompt.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <!-- Gradient-Based Attribution Patching (AtP) Panel -->
+                        <section class="panel">
+                            <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
+                                <div class="header-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                    </svg>
+                                    <h2>Gradient Attribution Patching (AtP • 2 Fwd + 1 Bwd)</h2>
+                                    <span class="badge-token" id="atp-runtime-badge">-- ms</span>
+                                </div>
+                                <button type="button" id="btn-run-atp" class="btn-primary" style="padding: 6px 14px; font-size: 12px;">Run Fast AtP (2 Fwd + 1 Bwd)</button>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Clean Prompt</label>
+                                    <input id="atp-clean-input" type="text" class="studio-select" style="width: 100%;" value="When Mary and John went to the store, John gave a drink to">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Corrupt Prompt</label>
+                                    <input id="atp-corrupt-input" type="text" class="studio-select" style="width: 100%;" value="When Mary and John went to the store, Mary gave a drink to">
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Target Token (optional)</label>
+                                        <input id="atp-target-input" type="text" class="studio-select" style="width: 100%;" placeholder="e.g. Mary">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Foil Token (optional)</label>
+                                        <input id="atp-foil-input" type="text" class="studio-select" style="width: 100%;" placeholder="e.g. John">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="atp-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+                                Approximates the full Layer × Position causal patching sweep and Attn/MLP component circuit scores in 1 backward pass.
+                            </div>
+                            <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; flex-wrap: wrap;">
+                                <span>Contrast: <strong id="atp-target-pair" style="font-family: var(--font-mono); color: #38bdf8;">--</strong></span>
+                                <span>Peak Attribution: <strong id="atp-peak-cell" style="font-family: var(--font-mono); color: #10b981;">--</strong></span>
+                            </div>
+                            <div id="atp-heatmap-container" style="margin-bottom: 16px;">
+                                <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 12px;">
+                                    Click "Run Fast AtP" to compute the Layer × Token Position attribution heatmap.
+                                </div>
+                            </div>
+                            <div class="table-scroll">
+                                <table class="studio-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Sublayer Component</th>
+                                            <th>Type</th>
+                                            <th>Raw AtP Score</th>
+                                            <th>Est. Logit Diff Recovery</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="atp-components-tbody">
+                                        <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Top causal Attention & MLP components will appear here.</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </section>
                     </div>
@@ -1258,16 +1455,17 @@
     </div>
 
     <!-- Client Application Scripts -->
-    <script src="js/api.js"></script>
+    <script src="js/api.js?v=3"></script>
     <script src="js/logit_lens.js"></script>
-    <script src="js/gpu_profiler.js"></script>
-    <script src="js/residual_stream.js"></script>
-    <script src="js/architecture.js"></script>
+    <script src="js/gpu_profiler.js?v=2"></script>
+    <script src="js/residual_stream.js?v=2"></script>
+    <script src="js/architecture.js?v=2"></script>
     <script src="js/attention_heads.js"></script>
     <script src="js/neurons.js"></script>
     <script src="js/causal.js"></script>
     <script src="js/induction.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/circuits.js?v=2"></script>
+    <script src="js/main.js?v=3"></script>
 </body>
 
 </html>

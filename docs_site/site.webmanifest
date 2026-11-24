@@ -1,0 +1,22 @@
+{
+  "name": "InterpLens Documentation Portal",
+  "short_name": "InterpLens",
+  "author": "Syed Sarim Ahsan, Undergrad AI Researcher",
+  "developer": {
+    "name": "Syed Sarim Ahsan",
+    "url": "https://github.com/sarimahsan"
+  },
+  "description": "Interactive Mechanistic Interpretability & Circuit Debugger for PyTorch & TransformerLens",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060913",
+  "theme_color": "#38BDF8",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

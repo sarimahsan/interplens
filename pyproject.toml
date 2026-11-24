@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [
     { name = "Syed Sarim Ahsan (Undergrad AI Researcher)" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.9"
 keywords = ["interpretability", "mechanistic-interpretability", "llm", "transformers", "pytorch", "debugger"]
 classifiers = [
@@ -18,7 +18,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -29,8 +28,10 @@ classifiers = [
 ]
 dependencies = [
     "torch>=2.0.0",
+    "transformers>=4.36.0",
     "fastapi>=0.100.0",
-    "uvicorn>=0.20.0",
+    "uvicorn[standard]>=0.20.0",
+    "websockets>=12.0",
     "pydantic>=2.0.0",
     "einops>=0.6.0",
     "jaxtyping>=0.2.0",
