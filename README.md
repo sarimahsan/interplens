@@ -50,9 +50,10 @@ Mechanistic interpretability aims to reverse-engineer neural networks from weigh
 ### 1. 🔍 Logit Lens & Unembedding Projector
 Projects intermediate layer residual stream states $x_l$ directly into vocabulary space via the unembedding matrix $W_U$:
 
-$$\text{logits}_l = W_U \cdot \text{LN}_{\text{final}}(x_l) \quad \in \mathbb{R}^{V}$$
-
-$$p_l(v) = \text{softmax}(\text{logits}_l) = \frac{\exp(\text{logits}_l(v))}{\sum_{v'} \exp(\text{logits}_l(v'))}$$
+```text
+logits_l = W_U · LN_final(x_l)   ∈ ℝ^V
+p_l(v)   = softmax(logits_l)     = exp(logits_l(v)) / Σ_{v'} exp(logits_l(v'))
+```
 
 - **Prediction Entropy Dynamics:** $H(p_l) = -\sum_{v} p_l(v) \log p_l(v)$ tracks the layer where confidence crystallizes.
 - **KL Divergence Drift:** $D_{KL}(p_L \parallel p_l)$ quantifies intermediate layer fidelity to the final output token distribution.
