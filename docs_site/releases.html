@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Release Notes — InterpLens v2.0.0</title>
+
+    <meta name="description" content="Official release notes for InterpLens v2.0.0: Direct Logit Attribution, Gradient Attribution Patching, Contrastive Activation Steering, Mermaid architecture graphs, BFloat16 A100 support, and reliability fixes.">
+    <meta name="author" content="Syed Sarim Ahsan">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://sarimahsan.github.io/interplens/releases.html">
+
+    <meta name="theme-color" content="#0b0d11">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
+    <link rel="apple-touch-icon" href="favicon.svg?v=3">
+    <link rel="stylesheet" href="style.css?v=3">
+    <style>
+        .release-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 20px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 12px 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+        }
+        .release-meta strong {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .release-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 14px 0 24px;
+        }
+        .release-list li {
+            position: relative;
+            padding: 12px 14px 12px 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .release-list li strong {
+            color: var(--text);
+        }
+        .change-pill {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-right: 8px;
+            vertical-align: 1px;
+        }
+        .pill-feat {
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.28);
+        }
+        .pill-fix {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.28);
+        }
+        .pill-perf {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.28);
+        }
+        .pill-ui {
+            color: #a855f7;
+            background: rgba(168, 85, 247, 0.12);
+            border: 1px solid rgba(168, 85, 247, 0.28);
+        }
+        .breadcrumb {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .breadcrumb a {
+            color: var(--text-muted);
+        }
+        .breadcrumb a:hover {
+            color: var(--text);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sticky Header -->
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="index.html" class="brand">
+                <img src="favicon.svg?v=3" width="26" height="26" alt="InterpLens">
+                <span>InterpLens</span>
+                <span class="version-pill">v2.0.0</span>
+            </a>
+
+            <nav class="header-nav" aria-label="Primary">
+                <a href="index.html#quickstart">Quickstart</a>
+                <a href="index.html#engines">Engines</a>
+                <a href="index.html#models">Models</a>
+                <a href="index.html#python-api">Python API</a>
+                <a href="releases.html" style="color: var(--text);">Releases</a>
+            </nav>
+
+            <div class="header-actions">
+                <button type="button" id="theme-toggle" class="btn" aria-label="Toggle color theme">Light</button>
+                <a href="https://github.com/sarimahsan/interplens/releases" target="_blank" rel="noopener" class="btn btn-primary">GitHub Releases</a>
+                <button type="button" id="mobile-menu-toggle" class="btn mobile-menu-toggle" aria-label="Toggle menu">Menu</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="docs-shell">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Release sections">
+            <div class="nav-group">
+                <div class="nav-group-title">v2.0.0 Release Notes</div>
+                <a href="#v2-summary" class="nav-link active">Summary &amp; Benchmarks</a>
+                <a href="#v2-engines" class="nav-link">New Engines</a>
+                <a href="#v2-scale" class="nav-link">Scale &amp; Multi-Model</a>
+                <a href="#v2-fixes" class="nav-link">Bug Fixes &amp; Rigor</a>
+                <a href="#v2-ui-packaging" class="nav-link">UI, Packaging &amp; CI</a>
+            </div>
+            <div class="nav-group">
+                <div class="nav-group-title">Earlier Releases</div>
+                <a href="#v010" class="nav-link">v0.1.0 (Initial)</a>
+            </div>
+            <div class="nav-group">
+                <div class="nav-group-title">Links</div>
+                <a href="index.html" class="nav-link">&larr; Back to Documentation</a>
+                <a href="https://pypi.org/project/interplens/" target="_blank" rel="noopener" class="nav-link">PyPI Package</a>
+            </div>
+        </aside>
+
+        <main class="docs-main">
+            <!-- Summary -->
+            <section id="v2-summary" class="docs-section">
+                <div class="breadcrumb"><a href="index.html">Documentation</a> / Release Notes</div>
+                <div class="eyebrow">RELEASE NOTES &middot; NOVEMBER 25, 2026</div>
+                <h1>InterpLens 2.0.0</h1>
+                <p class="lead">
+                    InterpLens 2.0.0 introduces fast gradient-based circuit discovery, Direct Logit Attribution, Contrastive Activation Steering with multi-token generation, dynamic Mermaid architecture diagrams, and full BFloat16 / multi-architecture hardening validated on A100 80GB GPUs.
+                </p>
+
+                <div class="release-meta">
+                    <span>Version: <strong>2.0.0</strong></span>
+                    <span>Python: <strong>3.10 &ndash; 3.13</strong></span>
+                    <span>PyTorch: <strong>2.0+</strong></span>
+                    <span>Tests: <strong>46 / 46 passing</strong></span>
+                    <span>License: <strong>MIT</strong></span>
+                </div>
+
+                <div class="hero-actions" style="margin-bottom: 24px;">
+                    <div class="install-box">
+                        <span class="prompt-sign">$</span>
+                        <span>pip install --upgrade interplens</span>
+                        <button type="button" class="copy-inline-btn" data-copy="pip install --upgrade interplens">Copy</button>
+                    </div>
+                    <a href="https://pypi.org/project/interplens/2.0.0/" target="_blank" rel="noopener" class="btn">View on PyPI</a>
+                </div>
+
+                <h3>A100 80GB Verification Benchmarks</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Workload</th>
+                                <th>Model / Precision</th>
+                                <th>Observed Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Gradient Attribution Patching (AtP)</strong></td>
+                                <td><code>Qwen/Qwen2.5-7B-Instruct</code> (<code>bfloat16</code>)</td>
+                                <td><strong>504.2 ms</strong> full 28-layer &times; 14-token sweep (Peak: L26 Pos 13, 92.13%)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Direct Logit Attribution (DLA)</strong></td>
+                                <td><code>Qwen/Qwen2.5-7B-Instruct</code> (<code>bfloat16</code>)</td>
+                                <td>Isolated <code>L25 MLP (+1.3704)</code> as primary factual-recall writer</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MoE &amp; BFloat16 Logit Lens</strong></td>
+                                <td><code>allenai/OLMoE-1B-7B-0924-Instruct</code> (<code>bfloat16</code>)</td>
+                                <td>Zero NumPy BFloat16 errors; selective CPU-offloaded hook cache</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Multi-Architecture CI Suite</strong></td>
+                                <td><code>Llama</code>, <code>Qwen2</code>, <code>Mixtral</code>, <code>GPT-2</code></td>
+                                <td>46 automated tests covering DLA, AtP, CAA Steering, Topology, and APIs</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- New Engines -->
+            <section id="v2-engines" class="docs-section">
+                <h2>New Interpretability Engines</h2>
+                <ul class="release-list">
+                    <li>
+                        <span class="change-pill pill-feat">New</span>
+                        <strong>Direct Logit Attribution (DLA):</strong> Decomposes the final logit difference <code>logit(target) - logit(foil)</code> into exact additive contributions from the Embedding layer, Attention sublayers, and MLP/MoE sublayers across all layers, with a grouped Chart.js bar view and ranked component table.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-feat">New</span>
+                        <strong>Gradient-Based Attribution Patching (AtP):</strong> Approximates the full <code>Layer &times; Token Position</code> causal patching matrix and ranks Attention/MLP/MoE sublayers using <strong>2 forward passes + 1 backward pass</strong>, restoring parameter <code>requires_grad</code> flags cleanly after every run.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-feat">New</span>
+                        <strong>Contrastive Activation Steering (CAA) &amp; Side-by-Side Generation:</strong> Computes Difference-in-Means steering vectors directly from Positive vs. Negative prompt pairs at any layer, stores vectors in memory for instant &alpha; sweeps, and generates Baseline vs. Steered multi-token completions side-by-side with built-in presets.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-feat">New</span>
+                        <strong>Interactive Mermaid.js Model Architecture Diagrams:</strong> Replaced the static card flow with dynamic Mermaid flowcharts showing residual skip paths, tensor shapes, parameter budgets, and auto-detected <code>GQA</code> vs <code>MHSA</code>, <code>RMSNorm</code> vs <code>LayerNorm</code>, <code>SwiGLU</code>, <code>MoE</code>, and tied embeddings &mdash; with Zoom, View/Copy Mermaid, and Export SVG.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-feat">New</span>
+                        <strong>2D PCA Residual Stream Trajectories:</strong> Added SVD-based 2D PCA coordinates (<code>pc1</code>, <code>pc2</code>) and explained variance ratios across layers in <code>compute_residual_metrics()</code>.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Scale & Multi-Model -->
+            <section id="v2-scale" class="docs-section">
+                <h2>Architecture, Scale &amp; Multi-Model Support</h2>
+                <ul class="release-list">
+                    <li>
+                        <span class="change-pill pill-perf">Scale</span>
+                        <strong>Selective CPU-Offloaded Hooking:</strong> <code>CustomModelAdapter</code> and <code>GenericAdapter</code> now selectively hook key transformer modules (embeddings, blocks, attention, MLP/MoE) and offload captured activations to CPU RAM rather than hooking every sub-op on GPU.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-perf">Multi-Model</span>
+                        <strong>Broader Architecture Discovery:</strong> Extended sublayer resolution to Mixtral MoE (<code>block_sparse_moe</code>), OPT (<code>model.decoder.layers</code>), Falcon/Bloom (<code>self_attention</code>), and OLMoE alongside Llama 3, Qwen 2.5, Mistral, Gemma 2, Phi, Pythia, and GPT-2.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-perf">Memory</span>
+                        <strong>KV-Cache Safe Backward Passes:</strong> Attribution Patching passes <code>use_cache=False</code> (with automatic fallback for custom <code>nn.Module</code>s) to avoid KV-cache overhead and autograd conflicts on modern HuggingFace models.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-feat">API</span>
+                        <strong>First-Class <code>dtype</code> &amp; <code>hf_token</code> in <code>il.launch()</code>:</strong> Wired precision selection (<code>float32</code>, <code>float16</code>, <code>bfloat16</code>) and HuggingFace tokens directly into <code>il.launch()</code> and <code>get_adapter_for_model()</code> without requiring <code>accelerate</code> on CPU.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Bug Fixes & Scientific Rigor -->
+            <section id="v2-fixes" class="docs-section">
+                <h2>Bug Fixes &amp; Scientific Rigor</h2>
+                <ul class="release-list">
+                    <li>
+                        <span class="change-pill pill-fix">Fix</span>
+                        <strong>BFloat16 NumPy Crash on A100/H100 GPUs:</strong> Fixed <code>TypeError: Got unsupported ScalarType BFloat16</code> in <code>compute_logit_lens()</code> by casting projected logits to <code>float32</code> prior to NumPy conversion, backed by a dedicated BFloat16 regression test.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-fix">Fix</span>
+                        <strong>Eliminated Hardcoded 16 GB VRAM &amp; Fake GPU Telemetry:</strong> Replaced hardcoded <code>16384 MB</code> / <code>512 MB</code> CPU placeholders and fake NVML fallbacks (<code>42&deg;C</code>, <code>35 W</code>, <code>1350 MHz</code>) with real <code>psutil</code> system RAM, process RSS, peak RSS, CPU core counts, and real per-layer parameter/cache footprints.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-fix">Fix</span>
+                        <strong>Real HuggingFace Attention Capture:</strong> Fixed a hook-key precedence bug where <code>self_attn</code> hidden-state outputs <code>(1, N, D)</code> shadowed real <code>out.attentions</code> tensors stored under <code>layers.{l}.attn.hook_pattern</code>.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-fix">Fix</span>
+                        <strong>Explicit Fallback Transparency:</strong> Added <code>is_synthetic</code> and <code>warning</code> metadata fields across Attention Heads, MLP Neurons, Token Attribution, and Causal Patching responses so fallback data is never silent.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-fix">Fix</span>
+                        <strong>CLI RAM Labeling &amp; PyPI README Math:</strong> Fixed CLI startup output to display <code>System RAM (Process)</code> on CPU instead of <code>VRAM Allocated</code>, and replaced broken <code>$$...$$</code> display math blocks in <code>README.md</code> that PyPI's Markdown parser mangled into italics.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- UI, Packaging & CI -->
+            <section id="v2-ui-packaging" class="docs-section">
+                <h2>UI, Packaging &amp; CI</h2>
+                <ul class="release-list">
+                    <li>
+                        <span class="change-pill pill-ui">UI</span>
+                        <strong>Studio Theme, 3D Isometric Logo &amp; Mobile Support:</strong> Refined the web debugger with a high-contrast obsidian theme, custom scrollbars, a transparent 3D isometric SVG favicon, responsive mobile/tablet navigation, and a dismissible mobile desktop-recommendation banner.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-fix">Packaging</span>
+                        <strong>Out-of-the-Box Dependencies:</strong> Added <code>transformers&gt;=4.36.0</code>, <code>uvicorn[standard]</code>, and <code>websockets&gt;=12.0</code> to core dependencies in <code>pyproject.toml</code> and migrated to SPDX <code>license = "MIT"</code> metadata.
+                    </li>
+                    <li>
+                        <span class="change-pill pill-fix">CI</span>
+                        <strong>Ubuntu 26.04 Python Matrix:</strong> Updated GitHub Actions CI to test Python <code>3.10</code>&ndash;<code>3.13</code> on Ubuntu and Windows after EOL Python 3.9 removal.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Previous Release -->
+            <section id="v010" class="docs-section">
+                <h2>InterpLens 0.1.0</h2>
+                <p>Initial public release featuring Zero-Copy GPU Attach, L0&ndash;L4 Capability Matrix, Logit Lens, Residual Stream norms and cosine drift, Attention Head &amp; Induction Head Explorer, MLP Neuron Activations, Causal Patching sweeps, and PDF Model Reports.</p>
+            </section>
+        </main>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span>InterpLens v2.0.0 &middot; Built by <a href="https://github.com/sarimahsan" target="_blank" rel="noopener">Syed Sarim Ahsan</a></span>
+            <span>MIT License &middot; <a href="index.html">Documentation</a> &middot; <a href="https://github.com/sarimahsan/interplens" target="_blank" rel="noopener">GitHub</a></span>
+        </div>
+    </footer>
+
+    <script src="main.js?v=3"></script>
+</body>
+</html>

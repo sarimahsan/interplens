@@ -1,6 +1,50 @@
 // InterpLens Documentation — Minimal Vanilla JS (Tabs, Copy, Theme, Search, Scroll-Spy)
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 0. Smooth Reading Progress Bar & Gentle Scroll Reveal
+    const progressWrap = document.createElement('div');
+    progressWrap.className = 'scroll-progress';
+    const progressBar = document.createElement('div');
+    progressBar.className = 'scroll-progress-bar';
+    progressWrap.appendChild(progressBar);
+    document.body.appendChild(progressWrap);
+
+    let rafPending = false;
+    function updateScrollProgress() {
+        rafPending = false;
+        const doc = document.documentElement;
+        const maxScroll = Math.max(1, doc.scrollHeight - doc.clientHeight);
+        const pct = Math.min(100, Math.max(0, (window.scrollY / maxScroll) * 100));
+        progressBar.style.width = `${pct.toFixed(2)}%`;
+    }
+    window.addEventListener('scroll', () => {
+        if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(updateScrollProgress);
+        }
+    }, { passive: true });
+    updateScrollProgress();
+
+    const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!prefersReduced && 'IntersectionObserver' in window) {
+        const revealSections = Array.from(document.querySelectorAll('.docs-section'));
+        revealSections.forEach((sec, idx) => {
+            if (idx === 0) return; // keep hero immediately visible with zero delay
+            sec.classList.add('reveal-ready');
+        });
+        const revealObserver = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('revealed');
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+        revealSections.forEach((sec, idx) => {
+            if (idx > 0) revealObserver.observe(sec);
+        });
+    }
+
     // 1. Theme Toggle
     const html = document.documentElement;
     const themeBtn = document.getElementById('theme-toggle');
@@ -98,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const indexItems = [
         { title: 'Overview & Benchmarks', href: '#overview', tag: 'Intro' },
         { title: "What's New in v2.0.0", href: '#whats-new', tag: 'Release' },
+        { title: 'Full v2.0.0 Release Notes & Changelog', href: 'releases.html', tag: 'Page' },
         { title: 'Quickstart (CLI, Python, Colab A100/T4)', href: '#quickstart', tag: 'Setup' },
         { title: 'Analysis Engines (Logit Lens, PCA, Attention, Hardware)', href: '#engines', tag: 'Engines' },
         { title: 'Direct Logit Attribution (DLA) & Attribution Patching (AtP)', href: '#fast-circuits', tag: 'v2.0' },
