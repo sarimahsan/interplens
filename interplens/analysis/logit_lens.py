@@ -215,7 +215,8 @@ def compute_logit_lens(
         return logits
 
     logits = _project_unembed(stacked_resid)  # (L_count, P, V)
-    probs = F.softmax(logits.float(), dim=-1)  # Cast to float32 for softmax stability
+    logits_f32 = logits.float()  # Cast to float32 for softmax & NumPy compatibility (NumPy lacks BFloat16)
+    probs = F.softmax(logits_f32, dim=-1)
 
     # Cast to float32 for numerical stability (prevents float16 log2(0) NaN/null underflow)
     probs_f32 = probs.to(torch.float32)
@@ -229,12 +230,12 @@ def compute_logit_lens(
         kl_tensor[1:] = torch.clamp(kl_steps, min=0.0)
 
     # Extract top-K per position and layer
-    top_probs, top_indices = torch.topk(probs, k=top_k, dim=-1)
-    top_logits, _ = torch.topk(logits, k=top_k, dim=-1)
+    top_probs, top_indices = torch.topk(probs_f32, k=top_k, dim=-1)
+    top_logits, _ = torch.topk(logits_f32, k=top_k, dim=-1)
 
-    # Offload tensors to CPU numpy arrays once to eliminate CUDA synchronization overhead inside loops
-    probs_cpu = probs.detach().cpu().numpy()
-    logits_cpu = logits.detach().cpu().numpy()
+    # Offload float32 tensors to CPU numpy arrays once to eliminate CUDA synchronization overhead inside loops
+    probs_cpu = probs_f32.detach().cpu().numpy()
+    logits_cpu = logits_f32.detach().cpu().numpy()
     top_probs_cpu = top_probs.detach().cpu().numpy()
     top_indices_cpu = top_indices.detach().cpu().numpy()
     top_logits_cpu = top_logits.detach().cpu().numpy()

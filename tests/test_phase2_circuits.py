@@ -174,3 +174,22 @@ def test_multi_architecture_hf_dla_atp_and_mermaid():
         assert atp.num_layers == 2
         assert len(atp.heatmap_matrix) == 2
         assert len(atp.top_components) == 4  # 2 layers x (attn + mlp/moe)
+
+
+def test_bfloat16_logit_lens_no_numpy_crash():
+    """Regression test: BFloat16 models (e.g. A100 OLMoE/Qwen/Llama) must not fail on .numpy()."""
+    from interplens.analysis.logit_lens import compute_logit_lens
+
+    torch.manual_seed(0)
+    model = TinyLM().to(torch.bfloat16)
+    adapter = CustomModelAdapter(model=model, tokenizer=SimpleTok(), model_name="tiny-bf16")
+    _, cache = adapter.run_with_cache("the cat sat on mat")
+    res = compute_logit_lens(
+        adapter=adapter,
+        cache=cache,
+        tokens=adapter.tokenize("the cat sat on mat"),
+        session_id="bf16_test",
+        prompt="the cat sat on mat",
+    )
+    assert res.num_layers >= 3
+    assert len(res.positions) == 5
