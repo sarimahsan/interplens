@@ -18,7 +18,7 @@ class Settings(BaseModel):
     """Global configuration settings for InterpLens engine and server."""
     
     app_name: str = "InterpLens Debugger"
-    version: str = "0.1.0"
+    version: str = "2.0.0"
     debug: bool = Field(default_factory=lambda: os.getenv("INTERPLENS_DEBUG", "false").lower() == "true")
     
     # Server settings

@@ -1,305 +1,153 @@
-// InterpLens Documentation Portal • Interactive Logic & Enhanced Command Palette
+// InterpLens Documentation — Minimal Vanilla JS (Tabs, Copy, Theme, Search, Scroll-Spy)
 
 document.addEventListener('DOMContentLoaded', () => {
-    initThemeManager();
-    initCopyButtons();
-    initTabSwitchers();
-    initScrollSpy();
-    initCommandPalette();
-    initMobileDrawer();
-    initMathRendering();
-});
-
-// --- Mathematical Typography Rendering (KaTeX) ---
-function initMathRendering() {
-    function runRender() {
-        if (typeof renderMathInElement === 'function') {
-            renderMathInElement(document.body, {
-                delimiters: [
-                    { left: '$$', right: '$$', display: true },
-                    { left: '$', right: '$', display: false },
-                    { left: '\\(', right: '\\)', display: false },
-                    { left: '\\[', right: '\\]', display: true }
-                ],
-                throwOnError: false
-            });
-        }
-    }
-
-    if (typeof renderMathInElement === 'function') {
-        runRender();
-    } else {
-        window.addEventListener('load', runRender);
-    }
-}
-
-// --- Theme Management ---
-function initThemeManager() {
-    const themeBtn = document.getElementById('theme-toggle-btn');
-    const themeIcon = document.getElementById('theme-icon');
-    const themeText = document.getElementById('theme-text');
+    // 1. Theme Toggle
+    const html = document.documentElement;
+    const themeBtn = document.getElementById('theme-toggle');
     const savedTheme = localStorage.getItem('interplens_docs_theme') || 'dark';
-
-    applyTheme(savedTheme);
+    html.setAttribute('data-theme', savedTheme);
+    if (themeBtn) themeBtn.textContent = savedTheme === 'dark' ? 'Light' : 'Dark';
 
     if (themeBtn) {
         themeBtn.addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme') || 'dark';
-            const next = current === 'dark' ? 'light' : 'dark';
-            applyTheme(next);
+            const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('interplens_docs_theme', next);
+            themeBtn.textContent = next === 'dark' ? 'Light' : 'Dark';
         });
     }
 
-    function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('interplens_docs_theme', theme);
-        if (themeText) themeText.textContent = theme === 'dark' ? 'Dark' : 'Light';
-        if (themeIcon) {
-            themeIcon.innerHTML = theme === 'dark' 
-                ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`
-                : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-        }
+    // 2. Mobile Sidebar Drawer
+    const mobileBtn = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.getElementById('docs-sidebar');
+    if (mobileBtn && sidebar) {
+        mobileBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+        sidebar.querySelectorAll('a').forEach(a => {
+            a.addEventListener('click', () => sidebar.classList.remove('open'));
+        });
     }
-}
 
-// --- Copy Code Blocks ---
-function initCopyButtons() {
-    document.querySelectorAll('.copy-pill-btn').forEach(btn => {
+    // 3. Quickstart Code Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const container = btn.closest('.spread-code-box');
-            const codeBlock = container ? container.querySelector('code') : null;
-            if (codeBlock) {
-                const text = codeBlock.innerText.trim();
-                navigator.clipboard.writeText(text).then(() => {
-                    const originalHTML = btn.innerHTML;
-                    btn.innerHTML = `<span style="color: var(--brand-primary); font-weight: 700;">✓ Copied!</span>`;
-                    setTimeout(() => {
-                        btn.innerHTML = originalHTML;
-                    }, 2000);
-                }).catch(() => {
-                    const textArea = document.createElement('textarea');
-                    textArea.value = text;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    btn.innerText = '✓ Copied!';
-                    setTimeout(() => { btn.innerText = 'Copy'; }, 2000);
-                });
-            }
+            const target = btn.getAttribute('data-tab');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            const panel = document.getElementById(target);
+            if (panel) panel.classList.add('active');
         });
     });
-}
 
-// --- Interactive Code Tabs ---
-function initTabSwitchers() {
-    document.querySelectorAll('.tab-container').forEach(container => {
-        const btns = container.querySelectorAll('.tab-btn');
-        const contents = container.querySelectorAll('.tab-content');
-
-        btns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const targetTab = btn.getAttribute('data-tab');
-
-                btns.forEach(b => b.classList.remove('active'));
-                contents.forEach(c => c.classList.remove('active'));
-
-                btn.classList.add('active');
-                const activeContent = container.querySelector(`.tab-content[data-tab="${targetTab}"]`);
-                if (activeContent) activeContent.classList.add('active');
-            });
-        });
-    });
-}
-
-// --- ScrollSpy Active Link Highlighter (60fps requestAnimationFrame Optimized) ---
-function initScrollSpy() {
-    const sections = Array.from(document.querySelectorAll('section[id], div[id^="engine-"], div[id^="snippet-"]'));
-    const navLinks = Array.from(document.querySelectorAll('.sidebar-nav-link, .right-toc-link'));
-    let ticking = false;
-
-    function updateActiveLink() {
-        let currentSectionId = '';
-        const scrollY = window.scrollY;
-
-        for (let i = 0; i < sections.length; i++) {
-            const section = sections[i];
-            const sectionTop = section.offsetTop - 110;
-            const sectionHeight = section.offsetHeight;
-            if (scrollY >= sectionTop && scrollY < sectionTop + sectionHeight) {
-                currentSectionId = section.getAttribute('id');
+    // 4. Copy Buttons (Inline + Code Blocks)
+    async function copyText(text, btn) {
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
             }
-        }
-
-        if (currentSectionId) {
-            for (let j = 0; j < navLinks.length; j++) {
-                const link = navLinks[j];
-                if (link.getAttribute('href') === `#${currentSectionId}`) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
-                }
-            }
-        }
-        ticking = false;
+            const orig = btn.textContent;
+            btn.textContent = 'Copied';
+            setTimeout(() => { btn.textContent = orig; }, 1400);
+        } catch (_) {}
     }
 
-    window.addEventListener('scroll', () => {
-        if (!ticking) {
-            window.requestAnimationFrame(updateActiveLink);
-            ticking = true;
-        }
-    }, { passive: true });
-}
+    document.querySelectorAll('.copy-inline-btn').forEach(btn => {
+        btn.addEventListener('click', () => copyText(btn.getAttribute('data-copy') || '', btn));
+    });
 
-// --- Command Palette Search (Cmd+K / Ctrl+K) ---
-function initCommandPalette() {
-    const modal = document.getElementById('search-modal');
-    const trigger = document.getElementById('search-trigger-btn');
-    const input = document.getElementById('palette-search-input');
-    const resultsContainer = document.getElementById('palette-results-list');
+    document.querySelectorAll('.code-copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const code = btn.closest('.code-block')?.querySelector('pre code')?.textContent || '';
+            copyText(code.trim(), btn);
+        });
+    });
 
-    if (!modal || !input || !resultsContainer) return;
+    // 5. Scroll-Spy for Sidebar Links
+    const navLinks = Array.from(document.querySelectorAll('.docs-sidebar .nav-link'));
+    const sections = navLinks
+        .map(l => document.querySelector(l.getAttribute('href')))
+        .filter(Boolean);
 
-    const searchableItems = [
-        // Guides & Setup
-        { title: "Installation Options (pip, uv, poetry)", category: "Setup", href: "#section-quickstart" },
-        { title: "Environment Variables Configuration", category: "Config", href: "#section-env-vars" },
-        { title: "Fail-Safe Fallbacks & Robustness Matrix", category: "Fallbacks", href: "#section-fallbacks" },
-        { title: "Capability Matrix (L0 to L4 Degradation)", category: "Architecture", href: "#section-capabilities" },
-        { title: "Major Supported Models & Architectures", category: "Models", href: "#section-supported-models" },
-        { title: "Meta Llama 3 & 3.2 Family", category: "Models", href: "#section-supported-models" },
-        { title: "Alibaba Qwen 2.5 Family", category: "Models", href: "#section-supported-models" },
-        { title: "Mistral & Mixtral MoE Family", category: "Models", href: "#section-supported-models" },
-        { title: "Google Gemma & Gemma 2 Family", category: "Models", href: "#section-supported-models" },
-        { title: "EleutherAI Pythia & GPT-NeoX", category: "Models", href: "#section-supported-models" },
+    if (sections.length && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = `#${entry.target.id}`;
+                    navLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === id));
+                }
+            });
+        }, { rootMargin: '-20% 0px -65% 0px' });
+        sections.forEach(sec => observer.observe(sec));
+    }
 
-        // Recipes & Snippets
-        { title: "Recipe 1: Zero-Copy GPU Memory Attach", category: "Recipe", href: "#snippet-gpu-attach" },
-        { title: "Recipe 2: HuggingFace Pretrained Model Loading", category: "Recipe", href: "#snippet-hf-pretrained" },
-        { title: "Recipe 3: Gated Models with HF Token (Llama 3)", category: "Recipe", href: "#snippet-gated-models" },
-        { title: "Recipe 4: Custom PyTorch Module (AutoHooker)", category: "Recipe", href: "#snippet-bare-pytorch" },
-        { title: "Recipe 5: Google Colab Proxy Launch", category: "Recipe", href: "#snippet-colab" },
-        { title: "Recipe 6: Activation Steering Vector Injection", category: "Recipe", href: "#snippet-steering" },
-        { title: "Recipe 7: Automated Causal ROME Patching Sweeps", category: "Recipe", href: "#snippet-causal-sweep" },
-        { title: "Recipe 8: Induction Head Auto-Detection Sweep", category: "Recipe", href: "#snippet-induction-sweep" },
-        { title: "Recipe 9: Custom Architecture Strategy Plugin", category: "Recipe", href: "#snippet-custom-plugin" },
-        { title: "Recipe 10: PDF Diagnostic Report Export", category: "Recipe", href: "#snippet-pdf-export" },
+    // 6. Cmd+K Quick Search Modal
+    const searchModal = document.getElementById('search-modal');
+    const searchTrigger = document.getElementById('search-trigger');
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
 
-        // Engines
-        { title: "Logit Lens & Entropy Dynamics Engine", category: "Engine", href: "#engine-logit-lens" },
-        { title: "Residual Stream Inspector & Vector Drift", category: "Engine", href: "#engine-residual" },
-        { title: "Attention Head Explorer & Arc Diagrams", category: "Engine", href: "#engine-attention" },
-        { title: "MLP Neuron Explorer & Prompt Text Lighting", category: "Engine", href: "#engine-neurons" },
-        { title: "Causal Interventions & ROME Tracing", category: "Engine", href: "#engine-causal" },
-        { title: "Architecture Topology & Parameter Shares", category: "Engine", href: "#engine-topology" },
-
-        // APIs & Reference
-        { title: "interplens.launch() Signature & Args", category: "Python API", href: "#section-api-python" },
-        { title: "interplens.inspect() Pure-Python API", category: "Python API", href: "#section-api-python" },
-        { title: "interplens.analysis Submodule Methods", category: "Python API", href: "#section-api-python" },
-        { title: "interplens.utils Device & PDF Tools", category: "Python API", href: "#section-api-python" },
-        { title: "FastAPI REST & WebSocket Endpoints", category: "REST API", href: "#section-api-rest" },
-        { title: "CLI Console Script Flags (interplens launch)", category: "CLI", href: "#section-cli-options" },
-        { title: "Structured Exception Hierarchy", category: "Exceptions", href: "#section-exceptions" },
+    const indexItems = [
+        { title: 'Overview & Benchmarks', href: '#overview', tag: 'Intro' },
+        { title: "What's New in v2.0.0", href: '#whats-new', tag: 'Release' },
+        { title: 'Quickstart (CLI, Python, Colab A100/T4)', href: '#quickstart', tag: 'Setup' },
+        { title: 'Analysis Engines (Logit Lens, PCA, Attention, Hardware)', href: '#engines', tag: 'Engines' },
+        { title: 'Direct Logit Attribution (DLA) & Attribution Patching (AtP)', href: '#fast-circuits', tag: 'v2.0' },
+        { title: 'Contrastive Activation Steering (CAA)', href: '#steering', tag: 'v2.0' },
+        { title: 'Supported Models (Qwen, Llama, Mixtral, OLMoE, Gemma, GPT-2)', href: '#models', tag: 'Models' },
+        { title: 'Python API (launch, inspect, stop_server)', href: '#python-api', tag: 'API' },
+        { title: 'Environment Variables & BibTeX Citation', href: '#config', tag: 'Config' },
     ];
 
-    function openModal() {
-        modal.classList.add('open');
-        input.value = '';
-        renderResults(searchableItems);
-        setTimeout(() => input.focus(), 50);
-    }
-
-    function closeModal() {
-        modal.classList.remove('open');
-    }
-
-    function renderResults(items) {
-        if (!items.length) {
-            resultsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No matching topics found.</div>`;
-            return;
-        }
-
-        resultsContainer.innerHTML = items.map((item, idx) => `
-            <a href="${item.href}" class="search-result-item ${idx === 0 ? 'highlighted' : ''}" data-index="${idx}">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                    <span>${item.title}</span>
-                </div>
-                <span class="search-result-category">${item.category}</span>
-            </a>
-        `).join('');
-
-        resultsContainer.querySelectorAll('.search-result-item').forEach(link => {
-            link.addEventListener('click', () => closeModal());
+    function renderSearch(q) {
+        if (!searchResults) return;
+        const term = (q || '').toLowerCase().trim();
+        const matches = term
+            ? indexItems.filter(i => i.title.toLowerCase().includes(term) || i.tag.toLowerCase().includes(term))
+            : indexItems;
+        searchResults.innerHTML = matches.length
+            ? matches.map(m => `<a class="search-item" href="${m.href}"><span>${m.title}</span><span>${m.tag}</span></a>`).join('')
+            : '<div style="padding: 14px; font-size: 13px; color: var(--text-muted);">No matching sections.</div>';
+        searchResults.querySelectorAll('a').forEach(a => {
+            a.addEventListener('click', () => closeSearch());
         });
     }
 
-    if (trigger) {
-        trigger.addEventListener('click', openModal);
+    function openSearch() {
+        if (!searchModal) return;
+        searchModal.classList.add('open');
+        renderSearch('');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+        }
     }
 
-    // Keyboard Navigation
-    window.addEventListener('keydown', (e) => {
+    function closeSearch() {
+        if (searchModal) searchModal.classList.remove('open');
+    }
+
+    if (searchTrigger) searchTrigger.addEventListener('click', openSearch);
+    if (searchInput) searchInput.addEventListener('input', e => renderSearch(e.target.value));
+    if (searchModal) {
+        searchModal.addEventListener('click', e => {
+            if (e.target === searchModal) closeSearch();
+        });
+    }
+    document.addEventListener('keydown', e => {
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
             e.preventDefault();
-            if (modal.classList.contains('open')) {
-                closeModal();
-            } else {
-                openModal();
-            }
-        } else if (e.key === 'Escape' && modal.classList.contains('open')) {
-            closeModal();
+            openSearch();
+        } else if (e.key === 'Escape') {
+            closeSearch();
         }
     });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-
-    input.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        if (!query) {
-            renderResults(searchableItems);
-            return;
-        }
-
-        const filtered = searchableItems.filter(item => 
-            item.title.toLowerCase().includes(query) || 
-            item.category.toLowerCase().includes(query)
-        );
-        renderResults(filtered);
-    });
-}
-
-// --- Mobile Navigation Drawer ---
-function initMobileDrawer() {
-    const drawer = document.getElementById('mobile-drawer');
-    const openBtn = document.getElementById('mobile-menu-btn');
-    const closeBtn = document.getElementById('mobile-drawer-close-btn');
-    const links = document.querySelectorAll('.mobile-nav-link');
-
-    if (!drawer || !openBtn) return;
-
-    function openDrawer() {
-        drawer.classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeDrawer() {
-        drawer.classList.remove('open');
-        document.body.style.overflow = '';
-    }
-
-    openBtn.addEventListener('click', openDrawer);
-    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-
-    drawer.addEventListener('click', (e) => {
-        if (e.target === drawer) closeDrawer();
-    });
-
-    links.forEach(link => {
-        link.addEventListener('click', () => closeDrawer());
-    });
-}
+});

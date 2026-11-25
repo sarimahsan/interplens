@@ -1,1618 +1,514 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InterpLens • Interactive Mechanistic Interpretability & Circuit Debugger</title>
-    
-    <!-- Primary SEO Metadata -->
-    <meta name="description" content="InterpLens is an open-source mechanistic interpretability toolkit and visual circuit debugger for PyTorch & TransformerLens. Zero-copy GPU attach, Logit Lens, attention routing, and ROME causal tracing.">
-    <meta name="keywords" content="interpretability, mechanistic interpretability, transformerlens, pytorch, llm, transformer debugger, logit lens, causal tracing, attention heads, induction heads, activation steering, ai safety">
-    <meta name="author" content="Syed Sarim Ahsan, Undergrad AI Researcher">
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <title>InterpLens v2.0 — Mechanistic Interpretability &amp; Circuit Debugger</title>
+
+    <meta name="description" content="InterpLens is an open-source mechanistic interpretability workbench for PyTorch, HuggingFace Transformers, and TransformerLens. Zero-copy GPU attach, Direct Logit Attribution, Gradient Attribution Patching, Contrastive Activation Steering, and Logit Lens.">
+    <meta name="keywords" content="mechanistic interpretability, pytorch, transformerlens, logit lens, direct logit attribution, attribution patching, activation steering, llm debugger">
+    <meta name="author" content="Syed Sarim Ahsan">
+    <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://interplens.netlify.app/">
 
-    <!-- Theme & App Manifest -->
-    <meta name="theme-color" content="#060913">
-    <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#0b0d11">
     <link rel="manifest" href="site.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
+    <link rel="apple-touch-icon" href="favicon.svg?v=3">
 
-    <!-- Open Graph / Facebook / LinkedIn / Discord -->
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="InterpLens Documentation">
+    <meta property="og:site_name" content="InterpLens">
     <meta property="og:url" content="https://interplens.netlify.app/">
-    <meta property="og:title" content="InterpLens • Mechanistic Interpretability & Visual Debugger for LLMs">
-    <meta property="og:description" content="Explore transformer internals with real-time visual telemetry, zero-copy GPU attachment, Logit Lens, and automated causal circuit sweeps.">
+    <meta property="og:title" content="InterpLens v2.0 — Mechanistic Interpretability &amp; Circuit Debugger">
+    <meta property="og:description" content="Interactive circuit debugger for PyTorch &amp; HuggingFace LLMs: Logit Lens, Direct Logit Attribution, 2-fwd/1-bwd Attribution Patching, Contrastive Steering, and Mermaid model graphs.">
     <meta property="og:image" content="https://interplens.netlify.app/favicon.svg">
 
-    <!-- Twitter / X Card Metadata -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:site" content="@sarimahsan">
-    <meta name="twitter:creator" content="@sarimahsan">
-    <meta name="twitter:title" content="InterpLens • Mechanistic Interpretability & Visual Debugger">
-    <meta name="twitter:description" content="An interactive mechanistic interpretability toolkit and visual circuit debugger for PyTorch & TransformerLens.">
-    <meta name="twitter:image" content="https://interplens.netlify.app/favicon.svg">
-
-    <!-- Favicon Logo -->
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="apple-touch-icon" href="favicon.svg">
-
-    <!-- JSON-LD Structured Data Schema (Google Search Rich Results) -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "InterpLens",
-      "operatingSystem": "Cross-platform (Linux, Windows, macOS)",
-      "applicationCategory": "DeveloperApplication",
-      "applicationSubCategory": "Machine Learning & AI Safety Interpretability Tool",
-      "description": "An interactive mechanistic interpretability toolkit and visual circuit debugger for PyTorch and TransformerLens.",
-      "url": "https://interplens.netlify.app",
-      "downloadUrl": "https://pypi.org/project/interplens/",
-      "author": {
-        "@type": "Person",
-        "name": "Syed Sarim Ahsan",
-        "jobTitle": "Undergrad AI Researcher",
-        "url": "https://github.com/sarimahsan"
-      },
-      "offers": {
-        "@type": "Offer",
-        "price": "0.00",
-        "priceCurrency": "USD"
-      }
-    }
-    </script>
-
-    <!-- KaTeX Mathematical Typography -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
-
-    <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
-
 <body>
-    <!-- Background Ambient Glow -->
-    <div class="bg-ambient-glow"></div>
-
-    <!-- FLOATING GLASS PILL NAVBAR -->
-    <nav class="floating-pill-navbar">
-        <a href="#hero" class="pill-brand">
-            <div class="pill-logo-box">
-                <img src="favicon.svg" width="22" height="22" alt="InterpLens Logo" style="display: block;">
-            </div>
-            <span>InterpLens</span>
-            <span class="pill-version-badge">v0.1.0</span>
-        </a>
-
-        <!-- Search Trigger -->
-        <div class="pill-search-box" id="search-trigger-btn">
-            <div class="pill-search-input-fake">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <span>Search docs, code snippets, fallbacks...</span>
-                </div>
-                <span class="kbd-shortcut">⌘K</span>
-            </div>
-        </div>
-
-        <!-- Quick Nav Items -->
-        <div class="pill-nav-links">
-            <a href="#section-quickstart" class="pill-nav-item">Quickstart</a>
-            <a href="#section-code-snippets" class="pill-nav-item">All Snippets</a>
-            <a href="#section-fallbacks" class="pill-nav-item">Fallbacks</a>
-            <a href="#section-engines" class="pill-nav-item">Engines</a>
-            <a href="#section-api-python" class="pill-nav-item">Python API</a>
-            <a href="#section-api-rest" class="pill-nav-item">REST API</a>
-        </div>
-
-        <!-- Actions -->
-        <div class="pill-actions">
-            <button id="theme-toggle-btn" class="pill-action-btn" title="Toggle Theme">
-                <span id="theme-icon">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                </span>
-                <span id="theme-text">Dark</span>
-            </button>
-
-            <a href="https://github.com/sarimahsan/interplens" target="_blank" class="pill-action-btn btn-primary" title="GitHub Repository">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-                <span>GitHub</span>
+    <!-- Sticky Header -->
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="#overview" class="brand">
+                <img src="favicon.svg?v=3" width="26" height="26" alt="InterpLens">
+                <span>InterpLens</span>
+                <span class="version-pill">v2.0.0</span>
             </a>
 
-            <button id="mobile-menu-btn" class="pill-action-btn mobile-only-btn" title="Open Navigation Menu" aria-label="Toggle mobile menu">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            </button>
-        </div>
-    </nav>
-
-    <!-- MAIN SPREAD LAYOUT -->
-    <div class="spread-layout">
-        <!-- Sticky Sidebar Navigation -->
-        <aside class="spread-sidebar">
-            <div class="sidebar-group">
-                <div class="sidebar-section-title">Getting Started</div>
-                <a href="#hero" class="sidebar-nav-link active">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                    <span>Overview & Architecture</span>
-                </a>
-                <a href="#section-quickstart" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                    <span>Installation Options</span>
-                </a>
-                <a href="#section-env-vars" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-                    <span>Environment Variables</span>
-                </a>
-            </div>
-
-            <div class="sidebar-group">
-                <div class="sidebar-section-title">All Code Recipes</div>
-                <a href="#snippet-gpu-attach" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>1. Zero-Copy GPU Attach</span>
-                </a>
-                <a href="#snippet-hf-pretrained" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>2. HuggingFace Pretrained</span>
-                </a>
-                <a href="#snippet-gated-models" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>3. Gated Models (Llama 3)</span>
-                </a>
-                <a href="#snippet-bare-pytorch" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>4. Custom PyTorch Modules</span>
-                </a>
-                <a href="#snippet-colab" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>5. Google Colab Notebooks</span>
-                </a>
-                <a href="#snippet-steering" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>6. Activation Steering Vector</span>
-                </a>
-                <a href="#snippet-causal-sweep" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>7. Causal ROME Sweeps</span>
-                </a>
-                <a href="#snippet-induction-sweep" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>8. Induction Head Detector</span>
-                </a>
-                <a href="#snippet-custom-plugin" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>9. Custom Architecture Plugin</span>
-                </a>
-                <a href="#snippet-pdf-export" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                    <span>10. Automated PDF Report</span>
-                </a>
-            </div>
-
-            <div class="sidebar-group">
-                <div class="sidebar-section-title">Robustness & Models</div>
-                <a href="#section-fallbacks" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                    <span>Fail-Safe Fallback Matrix</span>
-                </a>
-                <a href="#section-capabilities" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-                    <span>Capability Degradation (L4→L0)</span>
-                </a>
-                <a href="#section-supported-models" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                    <span>Major Supported Models</span>
-                </a>
-            </div>
-
-            <div class="sidebar-group">
-                <div class="sidebar-section-title">Engines Deep-Dive</div>
-                <a href="#engine-logit-lens" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <span>Logit Lens Engine</span>
-                </a>
-                <a href="#engine-residual" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                    <span>Residual Stream & Steering</span>
-                </a>
-                <a href="#engine-attention" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    <span>Attention & Arc Diagrams</span>
-                </a>
-                <a href="#engine-neurons" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                    <span>Neuron Activations & Lighting</span>
-                </a>
-                <a href="#engine-causal" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
-                    <span>Causal ROME Sweeps</span>
-                </a>
-                <a href="#engine-topology" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                    <span>Topology & Parameter Shares</span>
-                </a>
-            </div>
-
-            <div class="sidebar-group">
-                <div class="sidebar-section-title">Reference</div>
-                <a href="#section-api-python" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-                    <span>Complete Python API</span>
-                </a>
-                <a href="#section-api-rest" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-                    <span>REST & WebSocket Specs</span>
-                </a>
-                <a href="#section-cli-options" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                    <span>CLI Flags & Arguments</span>
-                </a>
-                <a href="#section-exceptions" class="sidebar-nav-link">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    <span>Exception Hierarchy</span>
-                </a>
-            </div>
-        </aside>
-
-        <!-- MAIN SPREAD CONTENT -->
-        <main class="spread-content">
-            <!-- HERO CARD -->
-            <section id="hero" class="hero-spread-card">
-                <div class="hero-spread-tag" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                        <span>InterpLens Technical Manual</span>
-                    </div>
-                    <span style="color: var(--border-color);">|</span>
-                    <span style="color: var(--text-secondary); font-weight: 500;">Author: <strong style="color: var(--brand-primary);">Syed Sarim Ahsan</strong>, Undergrad AI Researcher</span>
-                </div>
-                <h1 class="hero-spread-h1">The Visual Debugger for <span>LLM Internals</span></h1>
-                <p class="hero-spread-desc">
-                    InterpLens is a production-grade mechanistic interpretability toolkit and visual workbench for PyTorch and TransformerLens. Inspect intermediate vocabulary projections, trace causal circuits, compute induction head metrics, steer representations, and introspect attention graphs in real time with zero-copy GPU memory attachment.
-                </p>
-                <div class="hero-actions-row">
-                    <a href="#section-code-snippets" class="btn-cta-primary">
-                        <span>Explore Code Recipes (10 Snippets)</span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                    </a>
-                    <a href="#section-fallbacks" class="btn-cta-secondary">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                        <span>Fail-Safe Fallbacks Guide</span>
-                    </a>
-                </div>
-
-                <!-- Stats Grid -->
-                <div class="hero-stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-icon-box">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                        </div>
-                        <div>
-                            <div class="stat-number">0-Copy VRAM</div>
-                            <div class="stat-label">Zero Duplication Attach</div>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-icon-box">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-                        </div>
-                        <div>
-                            <div class="stat-number">6 Engines</div>
-                            <div class="stat-label">Full Mechanistic Toolkit</div>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-icon-box">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
-                        </div>
-                        <div>
-                            <div class="stat-number">ROME Sweeps</div>
-                            <div class="stat-label">Automated Causal Tracing</div>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-icon-box">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                        </div>
-                        <div>
-                            <div class="stat-number">L0 – L4</div>
-                            <div class="stat-label">Graceful Fallback Matrix</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: QUICKSTART -->
-            <section id="section-quickstart" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                        <span>Installation Options</span>
-                    </h2>
-                    <p class="doc-section-subtitle">Install InterpLens directly from PyPI using your preferred package manager.</p>
-                </div>
-
-                <div class="spread-card">
-                    <div class="tab-container">
-                        <div class="tabs-header-row">
-                            <button class="tab-btn active" data-tab="tab-pip">pip</button>
-                            <button class="tab-btn" data-tab="tab-uv">uv</button>
-                            <button class="tab-btn" data-tab="tab-poetry">poetry</button>
-                            <button class="tab-btn" data-tab="tab-optional">Optional Extras</button>
-                        </div>
-
-                        <div class="tab-content active" data-tab="tab-pip">
-                            <div class="spread-code-box">
-                                <div class="spread-code-bar">
-                                    <span class="code-lang-tag">BASH</span>
-                                    <button class="copy-pill-btn">Copy</button>
-                                </div>
-                                <pre><code># Standard installation (PyTorch, FastAPI, UI Debugger)
-pip install interplens
-
-# Full bundle (TransformerLens + Scikit-Learn PCA support)
-pip install interplens[all]</code></pre>
-                            </div>
-                        </div>
-
-                        <div class="tab-content" data-tab="tab-uv">
-                            <div class="spread-code-box">
-                                <div class="spread-code-bar">
-                                    <span class="code-lang-tag">BASH</span>
-                                    <button class="copy-pill-btn">Copy</button>
-                                </div>
-                                <pre><code>uv pip install interplens[all]</code></pre>
-                            </div>
-                        </div>
-
-                        <div class="tab-content" data-tab="tab-poetry">
-                            <div class="spread-code-box">
-                                <div class="spread-code-bar">
-                                    <span class="code-lang-tag">BASH</span>
-                                    <button class="copy-pill-btn">Copy</button>
-                                </div>
-                                <pre><code>poetry add interplens --extras "all"</code></pre>
-                            </div>
-                        </div>
-
-                        <div class="tab-content" data-tab="tab-optional">
-                            <p style="color: var(--text-secondary); margin-bottom: 8px;">Target specific optional dependencies based on your environment:</p>
-                            <ul style="margin-left: 20px; color: var(--text-secondary); line-height: 1.8;">
-                                <li><code>interplens[tl]</code>: Adds <code>transformer-lens&gt;=2.0.0</code> for HookedTransformer support.</li>
-                                <li><code>interplens[analysis]</code>: Adds <code>scikit-learn&gt;=1.2.0</code> for high-dimensional PCA residual trajectory calculations.</li>
-                                <li><code>interplens[all]</code>: Installs all optional engines and dependencies.</li>
-                                <li><code>interplens[dev]</code>: Installs testing dependencies (<code>pytest</code>, <code>pytest-asyncio</code>).</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: ENVIRONMENT VARIABLES -->
-            <section id="section-env-vars" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-                        <span>Configuration & Environment Variables</span>
-                    </h2>
-                    <p class="doc-section-subtitle">Fine-tune server behavior, compute devices, and memory settings via environment variables.</p>
-                </div>
-
-                <div class="spread-card">
-                    <div class="spread-table-wrapper">
-                        <table class="spread-table">
-                            <thead>
-                                <tr>
-                                    <th>Variable</th>
-                                    <th>Default</th>
-                                    <th>Type</th>
-                                    <th>Description & Fallback Behavior</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>INTERPLENS_PORT</code></td>
-                                    <td><code>8000</code></td>
-                                    <td><code>int</code></td>
-                                    <td>HTTP server port. Automatically falls back to <code>8000</code> if invalid integer string is passed.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>INTERPLENS_HOST</code></td>
-                                    <td><code>127.0.0.1</code></td>
-                                    <td><code>str</code></td>
-                                    <td>Host binding IP. Automatically switches to <code>0.0.0.0</code> when Google Colab is detected.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>INTERPLENS_DEVICE</code></td>
-                                    <td><code>auto</code></td>
-                                    <td><code>str</code></td>
-                                    <td>Compute target (<code>cuda</code>, <code>cpu</code>, <code>mps</code>, <code>auto</code>). Falls back to <code>cpu</code> if CUDA is requested but unavailable.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>INTERPLENS_MAX_SESSIONS</code></td>
-                                    <td><code>3</code></td>
-                                    <td><code>int</code></td>
-                                    <td>Maximum number of cached activation sessions in memory before LRU eviction.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>INTERPLENS_FP16</code></td>
-                                    <td><code>true</code></td>
-                                    <td><code>bool</code></td>
-                                    <td>Whether to use half-precision (<code>float16</code>) when loading HuggingFace models on GPU to conserve VRAM.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>INTERPLENS_DEBUG</code></td>
-                                    <td><code>false</code></td>
-                                    <td><code>bool</code></td>
-                                    <td>Enables verbose diagnostic logging across adapters and analysis modules.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: ALL CODE SNIPPETS / RECIPES -->
-            <section id="section-code-snippets" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                        <span>Complete Code Recipes & How-To Guides</span>
-                    </h2>
-                    <p class="doc-section-subtitle">Copy-paste ready code examples covering every supported model type, research scenario, and analysis engine.</p>
-                </div>
-
-                <!-- SNIPPET 1: Zero-Copy GPU Attach -->
-                <div id="snippet-gpu-attach" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">1</div>
-                        <div>
-                            <h3 class="card-title">Recipe 1: Zero-Copy GPU Memory Attachment</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Attach InterpLens to an already-loaded TransformerLens model without reloading</p>
-                        </div>
-                    </div>
-                    <p style="color: var(--text-secondary); margin-bottom: 12px;">
-                        If your model is already loaded in CUDA memory (e.g. inside a research script), pass the instance directly to <code>il.launch()</code>. InterpLens wraps the model in-place with zero memory duplication:
-                    </p>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>import interplens as il
-from transformer_lens import HookedTransformer
-
-# 1. Suppose your model is already loaded in GPU memory:
-model = HookedTransformer.from_pretrained("gpt2-small", device="cuda")
-
-# 2. Attach visual debugger backend (runs in background thread by default)
-adapter = il.launch(model=model, port=8000)
-
-print(f"Debugger active at: http://127.0.0.1:8000")
-print(f"Model: {adapter.model_name} | Layers: {adapter.num_layers} | Hidden Dim: {adapter.hidden_dim}")
-
-# 3. Stop the background server whenever you are finished:
-# il.stop_server()</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 2: HuggingFace Pretrained Load -->
-                <div id="snippet-hf-pretrained" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">2</div>
-                        <div>
-                            <h3 class="card-title">Recipe 2: HuggingFace Pretrained Model Loading</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Load any open-weights causal language model by repo string</p>
-                        </div>
-                    </div>
-                    <p style="color: var(--text-secondary); margin-bottom: 12px;">
-                        Pass any HuggingFace model identifier. InterpLens automatically discovers the architecture, attaches PyTorch hooks, and extracts the unembedding projection matrix:
-                    </p>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>import interplens as il
-
-# Load Qwen 2.5 0.5B on GPU with eager attention hooks
-adapter = il.launch(
-    model_name="Qwen/Qwen2.5-0.5B",
-    device="cuda",
-    port=8000,
-    block=True  # Blocks main thread (ideal for dedicated server scripts)
-)</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 3: Gated Models with HF Token -->
-                <div id="snippet-gated-models" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">3</div>
-                        <div>
-                            <h3 class="card-title">Recipe 3: Gated HuggingFace Models (Llama 3, Mistral)</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Pass HuggingFace access tokens via Python or CLI</p>
-                        </div>
-                    </div>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">BASH / CLI</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code># Pass token via CLI flag
-interplens launch --model meta-llama/Llama-3.2-1B --hf-token "hf_YourAuthTokenHere" --device cuda
-
-# Or pass via environment variable:
-export HF_TOKEN="hf_YourAuthTokenHere"
-interplens launch --model meta-llama/Llama-3.2-1B --device cuda</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 4: Custom PyTorch Modules -->
-                <div id="snippet-bare-pytorch" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">4</div>
-                        <div>
-                            <h3 class="card-title">Recipe 4: Custom PyTorch `nn.Module` with `PyTorchAutoHooker`</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Hook into proprietary or research transformer architectures</p>
-                        </div>
-                    </div>
-                    <p style="color: var(--text-secondary); margin-bottom: 12px;">
-                        When passing a novel `nn.Module` without TransformerLens, set `auto_hook=True` to let `PyTorchAutoHooker` discover internal residual streams and attention layers:
-                    </p>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>import torch
-import torch.nn as nn
-import interplens as il
-from transformers import AutoTokenizer
-
-# Your custom PyTorch transformer class
-class CustomTransformer(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.embed = nn.Embedding(50257, 256)
-        self.layers = nn.ModuleList([
-            nn.TransformerEncoderLayer(d_model=256, nhead=4, batch_first=True)
-            for _ in range(4)
-        ])
-        self.ln_f = nn.LayerNorm(256)
-        self.lm_head = nn.Linear(256, 50257, bias=False)
-
-    def forward(self, input_ids, **kwargs):
-        x = self.embed(input_ids)
-        for layer in self.layers:
-            x = layer(x)
-        x = self.ln_f(x)
-        return self.lm_head(x)
-
-# Instantiate custom model and tokenizer
-my_model = CustomTransformer().eval()
-tokenizer = AutoTokenizer.from_pretrained("gpt2")
-
-# Launch visual debugger with automated hook discovery
-adapter = il.launch(model=my_model, tokenizer=tokenizer, auto_hook=True, port=8000)</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 5: Google Colab -->
-                <div id="snippet-colab" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">5</div>
-                        <div>
-                            <h3 class="card-title">Recipe 5: Google Colab Notebook Launch</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Automated port forwarding and kernel proxying inside Colab</p>
-                        </div>
-                    </div>
-                    <p style="color: var(--text-secondary); margin-bottom: 12px;">
-                        InterpLens automatically detects the Colab environment, sets host binding to <code>0.0.0.0</code>, and calls <code>google.colab.output.serve_kernel_port()</code>:
-                    </p>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">COLAB CELL</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code># Inside a Google Colab notebook cell:
-!pip install interplens[all]
-
-import interplens as il
-from transformer_lens import HookedTransformer
-
-model = HookedTransformer.from_pretrained("gpt2-small", device="cuda")
-il.launch(model=model, port=8000)
-
-# InterpLens automatically prints the secure Colab proxy iframe link</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 6: Activation Steering -->
-                <div id="snippet-steering" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">6</div>
-                        <div>
-                            <h3 class="card-title">Recipe 6: Programmatic Activation Steering</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Inject direction vectors to shift internal model representations</p>
-                        </div>
-                    </div>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>import interplens as il
-from interplens.adapters import get_adapter_for_model
-from interplens.analysis import apply_activation_steering
-
-adapter = get_adapter_for_model("gpt2", device="cuda")
-adapter.load()
-
-# Inject steering vector at layer 6 with multiplier 2.5
-steered_result = apply_activation_steering(
-    adapter=adapter,
-    prompt="Love and compassion are",
-    target_layer=6,
-    multiplier=2.5,
-    steering_vector=None  # Computes synthetic steering if None, or pass List[float]
-)
-
-print("Original Top-1 Prediction:", steered_result.original_prediction)
-print("Steered Top-1 Prediction:", steered_result.steered_prediction)
-print("Shift Cosine Distance:", steered_result.cosine_distance)</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 7: Causal ROME Sweeps -->
-                <div id="snippet-causal-sweep" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">7</div>
-                        <div>
-                            <h3 class="card-title">Recipe 7: Automated Causal Patching & ROME Sweeps</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Discover causal circuits by swapping activations between clean & corrupt prompts</p>
-                        </div>
-                    </div>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>import interplens as il
-from interplens.adapters import get_adapter_for_model
-from interplens.analysis import run_causal_patching_sweep
-
-adapter = get_adapter_for_model("gpt2", device="cuda")
-adapter.load()
-
-# Run full ROME causal tracing sweep across all layers and token positions
-sweep_results = run_causal_patching_sweep(
-    adapter=adapter,
-    clean_prompt="The Eiffel Tower is located in the city of",
-    corrupt_prompt="The Colosseum is located in the city of",
-    target_token_str=" Paris"
-)
-
-print(f"Max Causal Recovery: {sweep_results.max_recovery_percentage:.1f}%")
-print(f"Locus of Factual Association: Layer L{sweep_results.max_recovery_layer}, Position {sweep_results.max_recovery_position}")
-print(f"Target Clean Token: {sweep_results.target_token}")</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 8: Induction Head Detector -->
-                <div id="snippet-induction-sweep" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">8</div>
-                        <div>
-                            <h3 class="card-title">Recipe 8: Induction Head Auto-Detection Sweep</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Scan all attention heads for in-context sequence copy-matching circuits</p>
-                        </div>
-                    </div>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>import interplens as il
-from interplens.adapters import get_adapter_for_model
-from interplens.analysis import detect_induction_heads
-
-adapter = get_adapter_for_model("gpt2", device="cuda")
-adapter.load()
-
-# Automatically generate random repeated token sequence [A][B]...[A] and scan all heads
-report = detect_induction_heads(adapter=adapter, seq_len=50)
-
-print(f"Total Heads Scanned: {report.total_heads_scanned}")
-print(f"Flagged Induction Heads: {report.flagged_count}")
-for head in report.top_induction_heads[:3]:
-    print(f" → Layer {head.layer}, Head {head.head} (Induction Score: {head.score:.3f})")</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 9: Custom Plugin Registration -->
-                <div id="snippet-custom-plugin" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">9</div>
-                        <div>
-                            <h3 class="card-title">Recipe 9: Custom Architecture Strategy Plugin</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Register custom hook mapping rules for proprietary research architectures</p>
-                        </div>
-                    </div>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>from interplens.adapters import (
-    BaseArchitectureStrategy,
-    ArchitectureFamily,
-    register_architecture_strategy,
-    get_adapter_for_model
-)
-
-class MyCustomMoEStrategy(BaseArchitectureStrategy):
-    family = ArchitectureFamily.CUSTOM
-    
-    def matches(self, model_or_name) -> bool:
-        # Match models with 'my-custom-moe' in name or class
-        return "custom-moe" in str(getattr(model_or_name, "__name__", model_or_name)).lower()
-
-    def get_layer_count(self, model) -> int:
-        return len(model.custom_blocks)
-
-    def get_hidden_dim(self, model) -> int:
-        return model.config.d_model
-
-    def get_head_count(self, model) -> int:
-        return model.config.n_heads
-
-    def get_residual_hook_names(self, model):
-        return [f"custom_blocks.{i}.post_residual" for i in range(len(model.custom_blocks))]
-
-# Register strategy into global registry
-register_architecture_strategy(MyCustomMoEStrategy())
-
-# InterpLens will now automatically use this strategy for any custom-moe model
-adapter = get_adapter_for_model("my-custom-moe-7b")</code></pre>
-                    </div>
-                </div>
-
-                <!-- SNIPPET 10: PDF Diagnostic Export -->
-                <div id="snippet-pdf-export" class="spread-card">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">10</div>
-                        <div>
-                            <h3 class="card-title">Recipe 10: Export Automated PDF Diagnostic Report</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Generate publication-grade PDF report cards using ReportLab</p>
-                        </div>
-                    </div>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>import interplens as il
-from interplens.adapters import get_adapter_for_model, generate_model_report
-from interplens.utils import generate_model_report_pdf
-
-adapter = get_adapter_for_model("gpt2", device="cpu")
-adapter.load()
-
-# 1. Generate structured model capability report
-report = generate_model_report(adapter)
-
-# 2. Export publication-ready PDF document
-pdf_bytes = generate_model_report_pdf(report, output_path="interplens_report_gpt2.pdf")
-print("Report PDF generated successfully!")</code></pre>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: ROBUSTNESS & FALLBACKS -->
-            <section id="section-fallbacks" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                        <span>Robustness & Fail-Safe Fallbacks Matrix</span>
-                    </h2>
-                    <p class="doc-section-subtitle">How InterpLens prevents crashes across non-standard architectures, invalid inputs, and memory constraints.</p>
-                </div>
-
-                <div class="spread-card">
-                    <div class="spread-table-wrapper">
-                        <table class="spread-table">
-                            <thead>
-                                <tr>
-                                    <th>Subsystem</th>
-                                    <th>Potential Failure Condition</th>
-                                    <th>InterpLens Fallback Mechanism</th>
-                                    <th>Resulting Behavior</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>Model Loading</strong></td>
-                                    <td>FlashAttention / SDPA unsupported on CPU / device</td>
-                                    <td>3-Stage Fallback: (1) <code>eager</code> attention → (2) default attention → (3) patched config</td>
-                                    <td>Model loads safely without C-extension errors</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Dependency Loading</strong></td>
-                                    <td><code>transformer-lens</code> not installed in environment</td>
-                                    <td>Fast <code>find_spec</code> check in <code>get_adapter_for_model</code> falls back to HuggingFace <code>AutoModel</code></td>
-                                    <td>Loads without requiring heavy optional dependencies</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Tokenizer Missing</strong></td>
-                                    <td>Bare PyTorch model without a tokenizer object</td>
-                                    <td>Converts prompt strings to ASCII integer token tensors or float vectors</td>
-                                    <td>Forward pass executes and activations are captured</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Vocabulary Unembed</strong></td>
-                                    <td>Model lacks linear unembedding matrix $W_U$</td>
-                                    <td>Raises <code>UnembeddingNotFoundError</code> and disables Logit Lens while keeping Residual/Attention active</td>
-                                    <td>Graceful capability degradation (L3 instead of L2)</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Attention Division</strong></td>
-                                    <td>Zero token distance in synthetic attention calculations</td>
-                                    <td>Guarded by <code>max(1, i - j)</code> in diagonal decay functions</td>
-                                    <td>Prevents <code>ZeroDivisionError</code></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Causal Target Decoding</strong></td>
-                                    <td>Target token decode failure or out-of-vocab token</td>
-                                    <td>3-Tier Decode: (1) <code>adapter.decode()</code> → (2) <code>tokenizer.decode()</code> → (3) fallback string</td>
-                                    <td>Causal sweep completes with exact token label</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Cross-Device Patching</strong></td>
-                                    <td>Vector norm difference between CPU and CUDA tensors</td>
-                                    <td>Explicit <code>.detach().cpu()</code> before <code>torch.norm</code> calculation</td>
-                                    <td>Prevents PyTorch device mismatch exceptions</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Session Concurrency</strong></td>
-                                    <td>Model forward pass raises runtime CUDA out-of-memory</td>
-                                    <td>Forward pass executes before LRU cache eviction</td>
-                                    <td>Existing valid cached sessions are preserved</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Config Parsing</strong></td>
-                                    <td>Invalid environment variable string in <code>INTERPLENS_PORT</code></td>
-                                    <td>Safe <code>_get_env_int</code> helper catches <code>(ValueError, TypeError)</code> and returns default <code>8000</code></td>
-                                    <td>Server starts reliably without import-time crash</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Colab Execution</strong></td>
-                                    <td>Default <code>127.0.0.1</code> localhost binding unreachable in Colab</td>
-                                    <td>Detects <code>google.colab</code> and switches host to <code>0.0.0.0</code> + calls kernel port proxy</td>
-                                    <td>Seamless remote web UI access in cloud notebook</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: CAPABILITY MATRIX -->
-            <section id="section-capabilities" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-                        <span>Adaptive Capability Matrix (L0 – L4)</span>
-                    </h2>
-                    <p class="doc-section-subtitle">How InterpLens dynamically enables and adapts engines according to model features.</p>
-                </div>
-
-                <div class="spread-card">
-                    <div class="spread-table-wrapper">
-                        <table class="spread-table">
-                            <thead>
-                                <tr>
-                                    <th>Level</th>
-                                    <th>Classification</th>
-                                    <th>Capabilities Present</th>
-                                    <th>Available Debugger Engines</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong style="color: var(--accent-rose);">Level 0</strong></td>
-                                    <td>Black-Box Model</td>
-                                    <td>Forward output logits only</td>
-                                    <td>Final token probabilities, top-K vocabulary predictions</td>
-                                </tr>
-                                <tr>
-                                    <td><strong style="color: var(--accent-amber);">Level 1</strong></td>
-                                    <td>Residual Only</td>
-                                    <td>Intermediate layer hidden states ($x_l$)</td>
-                                    <td>Residual Stream Inspector, L2 vector norms, Cosine similarity drift</td>
-                                </tr>
-                                <tr>
-                                    <td><strong style="color: var(--brand-secondary);">Level 2</strong></td>
-                                    <td>Unembed Ready</td>
-                                    <td>Residual states + Unembedding matrix ($W_U$)</td>
-                                    <td>Logit Lens Engine, Entropy dynamics, KL divergence, Top-K trajectories</td>
-                                </tr>
-                                <tr>
-                                    <td><strong style="color: var(--brand-primary);">Level 3</strong></td>
-                                    <td>Component Hooked</td>
-                                    <td>Residual + Attention weights + MLP activations</td>
-                                    <td>Attention Head Explorer, Arc Diagrams, Neuron Activation Explorer, Token Attribution</td>
-                                </tr>
-                                <tr>
-                                    <td><strong style="color: var(--accent-emerald);">Level 4</strong></td>
-                                    <td>Full Interventional</td>
-                                    <td>Hooks + Causal activation patching + Vector steering</td>
-                                    <td>ROME Causal Patching Sweeps, Continuous Activation Steering, Induction Head Detector</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: MAJOR SUPPORTED MODELS -->
-            <section id="section-supported-models" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                        <span>Major Supported Models & Architectures</span>
-                    </h2>
-                    <p class="doc-section-subtitle">Out-of-the-box support for open-weights transformer models across PyTorch and TransformerLens.</p>
-                </div>
-
-                <div class="spread-card">
-                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                        InterpLens features native auto-discovery and hook strategies for all major decoder-only transformer architectures. Launch any model below by repo string or pass a pre-loaded instance:
-                    </p>
-
-                    <div class="spread-table-wrapper">
-                        <table class="spread-table">
-                            <thead>
-                                <tr>
-                                    <th>Model Family</th>
-                                    <th>Popular Checkpoints & Variants</th>
-                                    <th>Default Level</th>
-                                    <th>Eager Hook Strategy</th>
-                                    <th>CLI Launch Command</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                            <strong>Meta Llama 3 / 3.2</strong>
-                                        </div>
-                                    </td>
-                                    <td><code>Llama-3.2-1B</code>, <code>Llama-3.2-3B</code>, <code>Llama-3-8B</code>, <code>Llama-3-70B</code>, <code>Llama-2-7B</code></td>
-                                    <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
-                                    <td><code>LlamaStrategy</code> (<code>model.layers[i]</code>)</td>
-                                    <td><code>interplens launch --model meta-llama/Llama-3.2-1B --hf-token "hf_..."</code></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                                            <strong>Alibaba Qwen 2.5</strong>
-                                        </div>
-                                    </td>
-                                    <td><code>Qwen2.5-0.5B</code>, <code>1.5B</code>, <code>3B</code>, <code>7B</code>, <code>14B</code>, <code>32B</code>, <code>Qwen2.5-Coder-7B</code></td>
-                                    <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
-                                    <td><code>QwenStrategy</code> (<code>model.layers[i]</code>)</td>
-                                    <td><code>interplens launch --model Qwen/Qwen2.5-0.5B --device cuda</code></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EC4899" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
-                                            <strong>Mistral & Mixtral MoE</strong>
-                                        </div>
-                                    </td>
-                                    <td><code>Mistral-7B-v0.1</code>, <code>Mistral-7B-v0.3</code>, <code>Mistral-7B-Instruct</code>, <code>Mixtral-8x7B</code></td>
-                                    <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
-                                    <td><code>MistralStrategy</code> (<code>model.layers[i]</code>)</td>
-                                    <td><code>interplens launch --model mistralai/Mistral-7B-v0.1</code></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2"><polygon points="6 2 18 2 22 8 12 22 2 8 6 2"></polygon></svg>
-                                            <strong>Google Gemma & Gemma 2</strong>
-                                        </div>
-                                    </td>
-                                    <td><code>gemma-2b</code>, <code>gemma-7b</code>, <code>gemma-2-2b</code>, <code>gemma-2-9b</code>, <code>gemma-2-27b</code></td>
-                                    <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
-                                    <td><code>GemmaStrategy</code> (<code>model.model.layers[i]</code>)</td>
-                                    <td><code>interplens launch --model google/gemma-2b</code></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                                            <strong>OpenAI GPT-2 Family</strong>
-                                        </div>
-                                    </td>
-                                    <td><code>gpt2</code> (124M), <code>gpt2-medium</code> (355M), <code>gpt2-large</code> (774M), <code>gpt2-xl</code> (1.5B)</td>
-                                    <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
-                                    <td><code>GPT2Strategy</code> / <code>HookedTransformer</code></td>
-                                    <td><code>interplens launch --model gpt2 --device cuda</code></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
-                                            <strong>EleutherAI Pythia & NeoX</strong>
-                                        </div>
-                                    </td>
-                                    <td><code>pythia-70m</code>, <code>160m</code>, <code>410m</code>, <code>1b</code>, <code>1.4b</code>, <code>2.8b</code>, <code>6.9b</code>, <code>12b</code></td>
-                                    <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
-                                    <td><code>PythiaStrategy</code> (<code>gpt_neox.layers[i]</code>)</td>
-                                    <td><code>interplens launch --model EleutherAI/pythia-70m</code></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
-                                            <strong>SmolLM & TinyLlama</strong>
-                                        </div>
-                                    </td>
-                                    <td><code>SmolLM-135M</code>, <code>SmolLM-360M</code>, <code>SmolLM-1.7B</code>, <code>TinyLlama-1.1B</code></td>
-                                    <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
-                                    <td><code>LlamaStrategy</code> (<code>model.layers[i]</code>)</td>
-                                    <td><code>interplens launch --model HuggingFaceTB/SmolLM-135M</code></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-                                            <strong>DeepSeek LLM & Coder</strong>
-                                        </div>
-                                    </td>
-                                    <td><code>deepseek-llm-7b-base</code>, <code>deepseek-coder-1.3b</code>, <code>deepseek-coder-6.7b</code></td>
-                                    <td><strong style="color: var(--accent-emerald);">L4</strong> Full</td>
-                                    <td><code>LlamaStrategy</code> / <code>GenericAdapter</code></td>
-                                    <td><code>interplens launch --model deepseek-ai/deepseek-llm-7b-base</code></td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-                                            <strong>Custom PyTorch Models</strong>
-                                        </div>
-                                    </td>
-                                    <td>Any custom <code>nn.Module</code>, research transformer, or proprietary architecture</td>
-                                    <td><strong style="color: var(--brand-primary);">L3–L4</strong></td>
-                                    <td><code>PyTorchAutoHooker</code> (<code>auto_hook=True</code>)</td>
-                                    <td><code>il.launch(model=my_custom_model, auto_hook=True)</code></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: ENGINES DETAILED BREAKDOWN -->
-            <section id="section-engines" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-                        <span>Core Interpretability Engines Deep-Dive</span>
-                    </h2>
-                    <p class="doc-section-subtitle">Mathematical formulations, telemetry diagnostics, and visual analytics for transformer networks.</p>
-                </div>
-
-                <!-- 1. Logit Lens -->
-                <div id="engine-logit-lens" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        </div>
-                        <div>
-                            <h3 class="card-title">1. Logit Lens Engine & Entropy Dynamics</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Intermediate Vocabulary Projections & Phase Transition Tracking</p>
-                        </div>
-                    </div>
-                    <p style="color: var(--text-secondary); margin-bottom: 12px;">
-                        The residual stream serves as a shared memory highway. The Logit Lens projects intermediate vectors $x_l$ into vocabulary space by applying the unembedding matrix $W_U$:
-                    </p>
-                    <div class="math-formula-box">
-                        $$\text{logits}_l = W_U \cdot \text{LN}_{\text{final}}(x_l) \quad \in \mathbb{R}^{V}$$
-                        $$p_l(v) = \text{softmax}(\text{logits}_l) = \frac{\exp(\text{logits}_l(v))}{\sum_{v'} \exp(\text{logits}_l(v'))}$$
-                        $$H(p_l) = -\sum_{v} p_l(v) \log p_l(v) \quad \text{[Prediction Uncertainty / Entropy]}$$
-                        $$D_{KL}(p_L \parallel p_l) = \sum_{v} p_L(v) \log\left(\frac{p_L(v)}{p_l(v)}\right) \quad \text{[KL Divergence to Output]}$$
-                    </div>
-                </div>
-
-                <!-- 2. Residual Stream & Steering -->
-                <div id="engine-residual" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge" style="background: rgba(129, 140, 248, 0.12); border-color: rgba(129, 140, 248, 0.3); color: var(--brand-secondary);">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                        </div>
-                        <div>
-                            <h3 class="card-title">2. Residual Stream Inspector & Activation Steering</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Energy Growth, Inter-Layer Drift & Continuous Representation Steering</p>
-                        </div>
-                    </div>
-                    <div class="math-formula-box">
-                        $$\|x_l\|_2 = \sqrt{\sum_{i=1}^{d_{\text{model}}} x_{l,i}^2} \quad \text{[L2 Vector Energy Norm]}$$
-                        $$\text{CosSim}(x_i, x_j) = \frac{x_i \cdot x_j}{\|x_i\|_2 \|x_j\|_2} \quad \text{[Inter-Layer Alignment Matrix]}$$
-                        $$x_l^{\text{steered}} = x_l + \alpha \cdot \vec{v}_{\text{steering}} \quad \text{[Continuous Activation Injection]}$$
-                    </div>
-                </div>
-
-                <!-- 3. Attention & Induction -->
-                <div id="engine-attention" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: var(--accent-emerald);">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                        </div>
-                        <div>
-                            <h3 class="card-title">3. Attention Head Explorer & Induction Detector</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">QKV Routing Patterns, Arc Link Visualizer & Induction Head Scans</p>
-                        </div>
-                    </div>
-                    <div class="math-formula-box">
-                        $$A_{l,h} = \text{softmax}\left(\frac{Q_{l,h} K_{l,h}^T}{\sqrt{d_k}}\right) \quad \in \mathbb{R}^{N \times N}$$
-                        $$\text{Score}_{\text{induction}}(l, h) = \frac{1}{M} \sum_{i} A_{l,h}(p_i, p_i - \Delta + 1)$$
-                    </div>
-                </div>
-
-                <!-- 4. Neurons & Attribution -->
-                <div id="engine-neurons" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge" style="background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); color: var(--accent-amber);">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                        </div>
-                        <div>
-                            <h3 class="card-title">4. MLP Neuron Explorer & Token Attribution</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Key-Value Factual Neurons, Text Lighting Strips & Attention Rollout</p>
-                        </div>
-                    </div>
-                    <div class="math-formula-box">
-                        $$m_l = \text{GELU}(x_l W_{\text{in}} + b_{\text{in}}) \quad \in \mathbb{R}^{d_{\text{mlp}}}$$
-                        $$R = \prod_{l=1}^{L} \left(0.5 A_l + 0.5 I\right) \quad \text{[Attention Rollout Flow Matrix]}$$
-                    </div>
-                </div>
-
-                <!-- 5. Causal Patching -->
-                <div id="engine-causal" class="spread-card" style="margin-bottom: 24px;">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge" style="background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.3); color: var(--accent-rose);">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
-                        </div>
-                        <div>
-                            <h3 class="card-title">5. Automated Causal Patching & ROME Sweeps</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Clean vs Corrupt Activation Swaps & Loci of Factual Associations</p>
-                        </div>
-                    </div>
-                    <div class="math-formula-box">
-                        $$\text{LogitDiff} = \text{logit}(y_{\text{clean}}) - \text{logit}(y_{\text{corrupt}})$$
-                        $$\text{Recovery \%} = \frac{\text{LogitDiff}_{\text{patched}} - \text{LogitDiff}_{\text{corrupt}}}{\text{LogitDiff}_{\text{clean}} - \text{LogitDiff}_{\text{corrupt}}} \times 100\%$$
-                    </div>
-                </div>
-
-                <!-- 6. Topology -->
-                <div id="engine-topology" class="spread-card">
-                    <div class="card-icon-header">
-                        <div class="card-icon-badge" style="background: rgba(6, 182, 212, 0.12); border-color: rgba(6, 182, 212, 0.3); color: var(--accent-cyan);">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                        </div>
-                        <div>
-                            <h3 class="card-title">6. Architecture Topology & Parameter Shares</h3>
-                            <p style="font-size: 0.85rem; color: var(--text-muted);">Parameter Distribution across Attention, MLP, Embeddings & LM Head</p>
-                        </div>
-                    </div>
-                    <p style="color: var(--text-secondary);">
-                        Introspects model parameter tensors to calculate exact parameter budgets across MLP Expansion, Self-Attention QKVO, Embeddings ($W_E$), Language Model Head ($W_U$), and Normalization layers.
-                    </p>
-                </div>
-            </section>
-
-            <!-- SECTION: PYTHON API REFERENCE -->
-            <section id="section-api-python" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-                        <span>Complete Python API Reference</span>
-                    </h2>
-                    <p class="doc-section-subtitle">Full signature and documentation for all public functions, classes, and submodules in <code>interplens</code>.</p>
-                </div>
-
-                <!-- Top level functions -->
-                <div class="spread-card" style="margin-bottom: 20px;">
-                    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--brand-primary); margin-bottom: 8px;">Top-Level Functions (<code>import interplens as il</code>)</h3>
-                    <div class="spread-code-box">
-                        <pre><code># 1. Launch visual debugger server
-il.launch(
-    model: Optional[Any] = None,          # Pre-loaded HookedTransformer or nn.Module
-    model_name: str = "gpt2",             # HuggingFace repo ID or local checkpoint
-    port: int = 8000,                     # Server port (default: 8000)
-    host: str = "127.0.0.1",              # Host binding (auto 0.0.0.0 in Colab)
-    device: str = "auto",                 # Target device (cuda, cpu, mps, auto)
-    auto_hook: bool = False,              # Use PyTorchAutoHooker for novel nn.Modules
-    tokenizer: Optional[Any] = None,      # Custom tokenizer object or HF string
-    block: bool = False                   # Run blocking or in background daemon thread
-) -> BaseModelAdapter
-
-# 2. Stop running background debugger server
-il.stop_server() -> None
-
-# 3. Pure-Python forward pass inspection
-il.inspect(
-    prompt: str,
-    model: Optional[Any] = None,
-    model_name: str = "gpt2",
-    device: str = "auto",
-    corrupted_prompt: Optional[str] = None
-) -> ActivationSession</code></pre>
-                    </div>
-                </div>
-
-                <!-- Analysis functions -->
-                <div class="spread-card" style="margin-bottom: 20px;">
-                    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--brand-primary); margin-bottom: 8px;">Analysis Engine Functions (<code>interplens.analysis</code>)</h3>
-                    <div class="spread-code-box">
-                        <pre><code>from interplens.analysis import (
-    compute_logit_lens,             # (adapter, cache, tokens, session_id, position, top_k=5) -> LogitLensResponse
-    compute_residual_metrics,       # (adapter, cache, tokens, session_id, position) -> ResidualStreamResponse
-    apply_activation_steering,      # (adapter, prompt, target_layer=0, multiplier=1.0, steering_vector=None) -> SteeredResponse
-    compute_attention_metrics,      # (adapter, cache, tokens, session_id, layer=0, head=0) -> AttentionHeadResponse
-    compute_neuron_activations,     # (adapter, cache, tokens, session_id, layer=0, position=0, top_k=10) -> NeuronAnalysisResponse
-    compute_token_attributions,     # (adapter, cache, tokens, session_id, target_position=-1) -> TokenAttributionResponse
-    run_causal_patching_sweep,      # (adapter, clean_prompt, corrupt_prompt, target_token_str=None) -> CausalTracingResponse
-    detect_induction_heads,         # (adapter, seq_len=50) -> InductionDetectorResponse
-    inspect_model_topology          # (adapter) -> ModelTopologyResponse
-)</code></pre>
-                    </div>
-                </div>
-
-                <!-- Utilities functions -->
-                <div class="spread-card">
-                    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--brand-primary); margin-bottom: 8px;">Device Utilities (<code>interplens.utils</code>)</h3>
-                    <div class="spread-code-box">
-                        <pre><code>from interplens.utils import (
-    get_optimal_device,             # () -> torch.device (cuda > mps > cpu)
-    resolve_device,                 # (device_str: str) -> torch.device
-    get_vram_usage,                 # (device) -> {"allocated_mb": int, "reserved_mb": int, "total_mb": int}
-    free_gpu_memory,                # (device) -> None (invokes torch.cuda.empty_cache & gc.collect)
-    get_gpu_grid_status,            # () -> Dict[int, GPUStatus]
-    get_detailed_gpu_profiler,      # (adapter, cache) -> Dict[str, Any]
-    generate_model_report_pdf       # (report: ModelReport, output_path: str = None) -> bytes
-)</code></pre>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: REST & WEBSOCKET API REFERENCE -->
-            <section id="section-api-rest" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-                        <span>FastAPI REST & WebSocket Endpoints</span>
-                    </h2>
-                    <p class="doc-section-subtitle">HTTP API specification for programmatic integrations, dashboards, and automated analysis jobs.</p>
-                </div>
-
-                <div class="spread-card">
-                    <div class="spread-table-wrapper">
-                        <table class="spread-table">
-                            <thead>
-                                <tr>
-                                    <th>Method</th>
-                                    <th>Endpoint</th>
-                                    <th>Parameters / Body</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/health</code></td>
-                                    <td>None</td>
-                                    <td>Health check returning active model name, device, and cached sessions.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-post">POST</span></td>
-                                    <td><code>/api/run</code></td>
-                                    <td><code>{"prompt": str, "corrupted_prompt": Optional[str]}</code></td>
-                                    <td>Executes forward pass, stores activations in LRU session store, and returns session ID & token list.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/analysis/logit-lens</code></td>
-                                    <td><code>session_id</code>, <code>position</code> (int), <code>top_k</code> (int)</td>
-                                    <td>Returns layer-by-layer predicted tokens, probabilities, entropy, and KL divergence.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/analysis/residual-stream</code></td>
-                                    <td><code>session_id</code>, <code>position</code> (int)</td>
-                                    <td>Returns L2 vector norms curve and $L \times L$ Cosine similarity matrix.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/analysis/attention</code></td>
-                                    <td><code>session_id</code>, <code>layer</code> (int), <code>head</code> (int)</td>
-                                    <td>Returns single-head $N \times N$ attention matrix, multi-head layer grid, and arc link connection lists.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/analysis/neurons</code></td>
-                                    <td><code>session_id</code>, <code>layer</code> (int), <code>position</code> (int)</td>
-                                    <td>Returns top-10 firing MLP neurons and prompt text lighting activation strips.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/analysis/attribution</code></td>
-                                    <td><code>session_id</code>, <code>target_position</code> (int)</td>
-                                    <td>Returns input prompt token attribution scores computed via Attention Rollout.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-post">POST</span></td>
-                                    <td><code>/api/analysis/causal-patching</code></td>
-                                    <td><code>{"clean_prompt": str, "corrupt_prompt": str, "target_token": str}</code></td>
-                                    <td>Executes ROME causal tracing sweep and returns $N_{\text{layers}} \times N_{\text{pos}}$ recovery heatmap.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-post">POST</span></td>
-                                    <td><code>/api/analysis/steer</code></td>
-                                    <td><code>{"prompt": str, "target_layer": int, "multiplier": float}</code></td>
-                                    <td>Injects activation steering vector and returns original vs steered logits and predictions.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/model/report</code></td>
-                                    <td>None</td>
-                                    <td>Returns comprehensive model discovery report and evaluated capability levels.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/model/topology</code></td>
-                                    <td>None</td>
-                                    <td>Inspects model parameter tensors and returns percentage breakdown by architectural component.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/api/report/pdf</code></td>
-                                    <td><code>session_id</code></td>
-                                    <td>Generates and downloads publication-ready PDF diagnostic report.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="method-badge method-ws">WS</span></td>
-                                    <td><code>/api/ws/telemetry</code></td>
-                                    <td>WebSocket Connection</td>
-                                    <td>Real-time streaming telemetry push (VRAM allocated/reserved, session count, device status).</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: CLI OPTIONS -->
-            <section id="section-cli-options" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                        <span>Command Line Interface (CLI) Flags</span>
-                    </h2>
-                    <p class="doc-section-subtitle">Full list of arguments for the <code>interplens launch</code> CLI console script.</p>
-                </div>
-
-                <div class="spread-card">
-                    <div class="spread-table-wrapper">
-                        <table class="spread-table">
-                            <thead>
-                                <tr>
-                                    <th>CLI Flag</th>
-                                    <th>Default</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--model &lt;name&gt;</code></td>
-                                    <td><code>gpt2</code></td>
-                                    <td>Model repo identifier or local checkpoint path (e.g. <code>gpt2</code>, <code>Qwen/Qwen2.5-3B</code>, <code>meta-llama/Llama-3.2-1B</code>).</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--device &lt;target&gt;</code></td>
-                                    <td><code>auto</code></td>
-                                    <td>Target compute device: <code>cuda</code>, <code>cpu</code>, <code>mps</code>, or <code>auto</code> (selects best available).</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--port &lt;number&gt;</code></td>
-                                    <td><code>8000</code></td>
-                                    <td>HTTP server port for web debugger.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--host &lt;address&gt;</code></td>
-                                    <td><code>127.0.0.1</code></td>
-                                    <td>Network host address binding.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--hf-token &lt;token&gt;</code></td>
-                                    <td><code>None</code></td>
-                                    <td>HuggingFace user access token for gated models (aliases: <code>--token</code>).</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--tokenizer &lt;id&gt;</code></td>
-                                    <td><code>None</code></td>
-                                    <td>Custom HuggingFace tokenizer repository ID or path override.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SECTION: EXCEPTIONS REFERENCE -->
-            <section id="section-exceptions" class="doc-section">
-                <div class="doc-section-header">
-                    <h2 class="doc-section-h2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                        <span>Exception Hierarchy Reference</span>
-                    </h2>
-                    <p class="doc-section-subtitle">Structured exceptions defined under <code>interplens.exceptions</code> for robust error handling.</p>
-                </div>
-
-                <div class="spread-card">
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON EXCEPTION TREE</span>
-                        </div>
-                        <pre><code>InterpLensError (Base exception for all InterpLens errors)
-├── ModelLoadError            # Raised when model weights or tokenizer fails to load
-├── AdapterNotFoundError       # Raised when no suitable adapter strategy can be resolved
-├── CapabilityError           # Raised when model lacks required interpretability capability
-│   └── UnembeddingNotFoundError  # Raised when unembedding matrix W_U is absent or inaccessible
-└── ServerExecutionError      # Raised when the debugger web server encounters a runtime fault</code></pre>
-                    </div>
-
-                    <p style="color: var(--text-secondary); margin-top: 14px;">Example of structured error handling in production code:</p>
-                    <div class="spread-code-box">
-                        <div class="spread-code-bar">
-                            <span class="code-lang-tag">PYTHON</span>
-                            <button class="copy-pill-btn">Copy</button>
-                        </div>
-                        <pre><code>import interplens as il
-from interplens.exceptions import ModelLoadError, UnembeddingNotFoundError
-
-try:
-    adapter = il.launch(model_name="nonexistent-model-id")
-except ModelLoadError as e:
-    print(f"Caught model load failure: {e}")
-except UnembeddingNotFoundError as e:
-    print(f"Model lacks W_U unembedding: {e}")</code></pre>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Footer -->
-            <footer style="margin-top: 60px; padding: 40px 0 20px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-muted); font-size: 0.88rem;">
-                <p>© 2026 <strong>InterpLens</strong> • Developed by <strong style="color: var(--text-primary);">Syed Sarim Ahsan</strong>, <em>Undergrad AI Researcher</em>.</p>
-                <p style="margin-top: 6px; font-size: 0.8rem; color: var(--text-dim);">An Interactive Mechanistic Interpretability Toolkit for PyTorch & TransformerLens • MIT Licensed.</p>
-            </footer>
-        </main>
-
-        <!-- RIGHT STICKY SIDEBAR: ON THIS PAGE & QUICK ACTIONS -->
-        <aside class="spread-right-sidebar">
-            <div class="right-sidebar-title">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
-                <span>On This Page</span>
-            </div>
-            <nav class="right-toc-list">
-                <a href="#section-quickstart" class="right-toc-link">1. Quickstart & Pip</a>
-                <a href="#section-env-vars" class="right-toc-link">2. Environment Config</a>
-                <a href="#section-code-snippets" class="right-toc-link">3. 10 Code Recipes</a>
-                <a href="#section-fallbacks" class="right-toc-link">4. Fail-Safe Matrix</a>
-                <a href="#section-capabilities" class="right-toc-link">5. Capability Levels</a>
-                <a href="#section-supported-models" class="right-toc-link">6. Supported Models</a>
-                <a href="#section-engines" class="right-toc-link">7. Core Engines</a>
-                <a href="#section-api-python" class="right-toc-link">8. Python API</a>
-                <a href="#section-api-rest" class="right-toc-link">9. REST Endpoints</a>
-                <a href="#section-cli-options" class="right-toc-link">10. CLI Flags</a>
-                <a href="#section-exceptions" class="right-toc-link">11. Exception Tree</a>
+            <nav class="header-nav" aria-label="Primary">
+                <a href="#quickstart">Quickstart</a>
+                <a href="#engines">Engines</a>
+                <a href="#models">Models</a>
+                <a href="#python-api">Python API</a>
             </nav>
 
-            <div class="right-sidebar-divider"></div>
-
-            <div class="right-card-mini">
-                <div class="mini-card-title">
-                    <span>Package Info</span>
-                    <span style="font-size: 0.65rem; color: var(--accent-emerald);">● Ready</span>
-                </div>
-                <div class="mini-card-desc">Python 3.9 – 3.13 • Zero-Copy GPU • Fast-Failover</div>
-                <a href="https://github.com/sarimahsan/interplens" target="_blank" class="mini-card-link">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                    <span>View Repository</span>
-                </a>
+            <div class="header-actions">
+                <button type="button" id="search-trigger" class="btn search-btn" aria-label="Search documentation">
+                    <span>Search docs...</span>
+                    <span class="kbd">⌘K</span>
+                </button>
+                <button type="button" id="theme-toggle" class="btn" aria-label="Toggle color theme">Light</button>
+                <a href="https://github.com/sarimahsan/interplens" target="_blank" rel="noopener" class="btn btn-primary">GitHub</a>
+                <button type="button" id="mobile-menu-toggle" class="btn mobile-menu-toggle" aria-label="Toggle menu">Menu</button>
             </div>
+        </div>
+    </header>
 
-            <div class="right-card-mini" style="margin-top: auto;">
-                <div class="mini-card-title">
-                    <span>Syed Sarim Ahsan</span>
-                </div>
-                <div class="mini-card-desc">Undergrad AI Researcher • Open-Source AI Safety</div>
+    <!-- Main Documentation Shell -->
+    <div class="docs-shell">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+            <div class="nav-group">
+                <div class="nav-group-title">Introduction</div>
+                <a href="#overview" class="nav-link active">Overview</a>
+                <a href="#whats-new" class="nav-link">What's New in v2.0</a>
+                <a href="#quickstart" class="nav-link">Quickstart &amp; Colab</a>
+            </div>
+            <div class="nav-group">
+                <div class="nav-group-title">Analysis Engines</div>
+                <a href="#engines" class="nav-link">All Engines</a>
+                <a href="#fast-circuits" class="nav-link">Fast Circuits (DLA / AtP)</a>
+                <a href="#steering" class="nav-link">Contrastive Steering</a>
+            </div>
+            <div class="nav-group">
+                <div class="nav-group-title">Reference</div>
+                <a href="#models" class="nav-link">Supported Models</a>
+                <a href="#python-api" class="nav-link">Python API</a>
+                <a href="#config" class="nav-link">Configuration &amp; Citation</a>
             </div>
         </aside>
-    </div>
 
-    <!-- COMMAND PALETTE SEARCH MODAL (CMD+K) -->
-    <div class="search-modal-backdrop" id="search-modal">
-        <div class="search-modal-box">
-            <div class="search-modal-header">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="palette-search-input" class="search-modal-input" placeholder="Search documentation, recipes, fallbacks, APIs..." autofocus>
-                <span class="kbd-shortcut">ESC</span>
-            </div>
-            <div class="search-modal-results" id="palette-results-list">
-                <!-- Dynamically populated via main.js -->
-            </div>
-            <div class="search-modal-footer">
-                <div>Navigation: <span class="kbd-shortcut">↑</span> <span class="kbd-shortcut">↓</span> to select, <span class="kbd-shortcut">↵</span> to open</div>
-                <div>InterpLens Docs</div>
-            </div>
-        </div>
-    </div>
+        <main class="docs-main">
+            <!-- Overview / Hero -->
+            <section id="overview" class="docs-section">
+                <div class="eyebrow">interplens 2.0.0 &middot; MIT License</div>
+                <h1>Interactive mechanistic interpretability for PyTorch &amp; HuggingFace LLMs.</h1>
+                <p class="lead">
+                    Attach directly to a model already in GPU VRAM with zero weight duplication. Inspect Logit Lens trajectories, run 2-forward / 1-backward Attribution Patching, decompose logits with DLA, and test Contrastive Activation Steering from a single local web studio.
+                </p>
 
-    <!-- MOBILE NAVIGATION DRAWER -->
-    <div class="mobile-drawer-backdrop" id="mobile-drawer">
-        <div class="mobile-drawer-box">
-            <div class="mobile-drawer-header">
-                <div class="pill-brand">
-                    <div class="pill-logo-box">
-                        <img src="favicon.svg" width="20" height="20" alt="Logo">
+                <div class="hero-actions">
+                    <div class="install-box">
+                        <span class="prompt-sign">$</span>
+                        <span id="pip-cmd">pip install interplens</span>
+                        <button type="button" class="copy-inline-btn" data-copy="pip install interplens">Copy</button>
                     </div>
-                    <span>InterpLens Docs</span>
+                    <a href="#quickstart" class="btn btn-primary">Get Started</a>
+                    <a href="https://pypi.org/project/interplens/" target="_blank" rel="noopener" class="btn">PyPI</a>
                 </div>
-                <button class="mobile-drawer-close" id="mobile-drawer-close-btn" aria-label="Close menu">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-            </div>
-            <div class="mobile-drawer-content">
-                <div class="sidebar-section-title">Getting Started</div>
-                <a href="#section-quickstart" class="mobile-nav-link">Quickstart & Installation</a>
-                <a href="#section-env-vars" class="mobile-nav-link">Environment Variables</a>
 
-                <div class="sidebar-section-title" style="margin-top: 14px;">All 10 Code Recipes</div>
-                <a href="#snippet-gpu-attach" class="mobile-nav-link">1. Zero-Copy GPU Attach</a>
-                <a href="#snippet-hf-pretrained" class="mobile-nav-link">2. HuggingFace Pretrained</a>
-                <a href="#snippet-gated-models" class="mobile-nav-link">3. Gated Models (Llama 3)</a>
-                <a href="#snippet-custom-pytorch" class="mobile-nav-link">4. Custom PyTorch Modules</a>
-                <a href="#snippet-colab-notebook" class="mobile-nav-link">5. Google Colab Notebooks</a>
-                <a href="#snippet-steering" class="mobile-nav-link">6. Activation Steering</a>
-                <a href="#snippet-causal-sweep" class="mobile-nav-link">7. Causal ROME Sweeps</a>
-                <a href="#snippet-induction-sweep" class="mobile-nav-link">8. Induction Head Detector</a>
-                <a href="#snippet-custom-plugin" class="mobile-nav-link">9. Custom Plugin Strategy</a>
-                <a href="#snippet-pdf-export" class="mobile-nav-link">10. Automated PDF Report</a>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">504 ms</div>
+                        <div class="metric-label">7B AtP sweep (A100 80GB)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">0 MB</div>
+                        <div class="metric-label">Duplicate model weights</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">BF16 / FP16</div>
+                        <div class="metric-label">Native A100, T4 &amp; CPU</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">46 / 46</div>
+                        <div class="metric-label">Multi-arch tests passing</div>
+                    </div>
+                </div>
+            </section>
 
-                <div class="sidebar-section-title" style="margin-top: 14px;">Robustness & Models</div>
-                <a href="#section-fallbacks" class="mobile-nav-link">Fail-Safe Fallback Matrix</a>
-                <a href="#section-capabilities" class="mobile-nav-link">Capability Matrix (L0-L4)</a>
-                <a href="#section-supported-models" class="mobile-nav-link">Major Supported Models</a>
+            <!-- What's New in v2.0 -->
+            <section id="whats-new" class="docs-section">
+                <h2>What's New in v2.0.0</h2>
+                <p>
+                    Version 2.0 turns InterpLens from a single-model GPT-2 prototype into a multi-architecture circuit workbench tested on real 7B, 14B, and MoE models.
+                </p>
+                <div class="callout">
+                    <strong>Highlights:</strong> Direct Logit Attribution (DLA), fast gradient-based Attribution Patching (2 fwd + 1 bwd), Contrastive Activation Steering with side-by-side multi-token generation, interactive Mermaid.js architecture diagrams, selective CPU-offloaded hooking, BFloat16 safety, and real CPU/GPU hardware profiling with explicit fallback transparency.
+                </div>
+            </section>
 
-                <div class="sidebar-section-title" style="margin-top: 14px;">Engines & APIs</div>
-                <a href="#section-engines" class="mobile-nav-link">Core Interpretability Engines</a>
-                <a href="#section-api-python" class="mobile-nav-link">Python API Reference</a>
-                <a href="#section-api-rest" class="mobile-nav-link">REST & WebSocket API</a>
-                <a href="#section-cli-options" class="mobile-nav-link">CLI Flags Reference</a>
-                <a href="#section-exceptions" class="mobile-nav-link">Exception Hierarchy</a>
-            </div>
+            <!-- Quickstart -->
+            <section id="quickstart" class="docs-section">
+                <h2>Quickstart</h2>
+                <p>Run InterpLens locally on a laptop CPU/GPU or attach to 7B–32B checkpoints on Google Colab (T4 / A100).</p>
+
+                <div class="tabs" role="tablist">
+                    <button type="button" class="tab-btn active" data-tab="tab-cli">CLI</button>
+                    <button type="button" class="tab-btn" data-tab="tab-python">Zero-Copy Python</button>
+                    <button type="button" class="tab-btn" data-tab="tab-colab">Google Colab (A100 / T4)</button>
+                    <button type="button" class="tab-btn" data-tab="tab-custom">Custom nn.Module</button>
+                </div>
+
+                <div id="tab-cli" class="tab-panel active">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>bash</span>
+                            <button type="button" class="code-copy-btn">Copy</button>
+                        </div>
+                        <pre><code>pip install interplens
+interplens launch --model gpt2 --device auto --port 8000
+# Open http://127.0.0.1:8000</code></pre>
+                    </div>
+                </div>
+
+                <div id="tab-python" class="tab-panel">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>python</span>
+                            <button type="button" class="code-copy-btn">Copy</button>
+                        </div>
+                        <pre><code>import interplens as il
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-3B-Instruct", device_map="auto")
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B-Instruct")
+
+# Attach directly to the in-memory model with zero VRAM duplication
+il.launch(model=model, tokenizer=tokenizer, port=8000)</code></pre>
+                    </div>
+                </div>
+
+                <div id="tab-colab" class="tab-panel">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>python (Google Colab)</span>
+                            <button type="button" class="code-copy-btn">Copy</button>
+                        </div>
+                        <pre><code>!pip install -q interplens accelerate nvidia-ml-py
+
+import interplens as il
+from google.colab import output
+
+adapter = il.launch(
+    model_name="Qwen/Qwen2.5-7B-Instruct",  # or "allenai/OLMoE-1B-7B-0924-Instruct"
+    device="cuda",
+    dtype="bfloat16",  # use "float16" on T4 GPUs
+    port=8000,
+    block=False,
+)
+output.serve_kernel_port_as_window(8000)</code></pre>
+                    </div>
+                </div>
+
+                <div id="tab-custom" class="tab-panel">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>python</span>
+                            <button type="button" class="code-copy-btn">Copy</button>
+                        </div>
+                        <pre><code>import torch.nn as nn
+import interplens as il
+
+class ResearchTransformer(nn.Module):
+    def __init__(self, vocab=1000, d_model=128, n_layers=4):
+        super().__init__()
+        self.embed = nn.Embedding(vocab, d_model)
+        self.layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(d_model=d_model, nhead=4, batch_first=True)
+            for _ in range(n_layers)
+        ])
+        self.lm_head = nn.Linear(d_model, vocab, bias=False)
+
+    def forward(self, x):
+        h = self.embed(x)
+        for layer in self.layers:
+            h = layer(h)
+        return self.lm_head(h)
+
+il.launch(model=ResearchTransformer(), auto_hook=True, port=8000)</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Engines -->
+            <section id="engines" class="docs-section">
+                <h2>Analysis Engines</h2>
+                <p>Every engine degrades gracefully according to model capabilities (L0–L4) and surfaces explicit warnings whenever a model does not expose a given internal tensor.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-card-head">
+                            <h3>Direct Logit Attribution (DLA)</h3>
+                            <span class="tag tag-new">v2.0</span>
+                        </div>
+                        <p>Projects Embedding, Attention, and MLP/MoE outputs onto the unembedding direction <code>W_U[:, target] - W_U[:, foil]</code> to measure exact per-layer logit contributions.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-head">
+                            <h3>Gradient Attribution Patching</h3>
+                            <span class="tag tag-new">v2.0</span>
+                        </div>
+                        <p>Approximates the full <code>Layer × Position</code> causal patching matrix and sublayer circuit rankings in 2 forward passes and 1 backward pass.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-head">
+                            <h3>Contrastive Activation Steering</h3>
+                            <span class="tag tag-new">v2.0</span>
+                        </div>
+                        <p>Computes Difference-in-Means vectors from positive/negative prompt pairs and runs side-by-side Baseline vs. Steered multi-token generation.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-head">
+                            <h3>Mermaid Architecture Graph</h3>
+                            <span class="tag tag-new">v2.0</span>
+                        </div>
+                        <p>Auto-detects GQA vs MHSA, RMSNorm vs LayerNorm, SwiGLU, MoE routers, and tied embeddings with residual skip paths, zoom, and SVG export.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-head">
+                            <h3>Logit Lens &amp; Entropy Drift</h3>
+                            <span class="tag">Core</span>
+                        </div>
+                        <p>Projects intermediate residual states through <code>LN_final</code> and <code>W_U</code> to track token rank trajectories, Shannon entropy, and layer-to-layer KL divergence.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-head">
+                            <h3>Residual Stream &amp; 2D PCA</h3>
+                            <span class="tag">Core</span>
+                        </div>
+                        <p>Tracks L2 norm growth, layer-by-layer cosine similarity matrices, and SVD-based 2D PCA residual trajectories across depth.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-head">
+                            <h3>Attention &amp; Induction Heads</h3>
+                            <span class="tag">Core</span>
+                        </div>
+                        <p>Inspects N×N attention heatmaps, query-key arc diagrams, and runs automated prefix-matching sweeps to detect induction heads.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-head">
+                            <h3>Hardware &amp; Memory Profiler</h3>
+                            <span class="tag">Core</span>
+                        </div>
+                        <p>Live WebSocket telemetry for CUDA VRAM (or system RAM on CPU laptops), NVML temperature/power/clocks, and per-layer parameter footprints.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Fast Circuits Programmatic Example -->
+            <section id="fast-circuits" class="docs-section">
+                <h2>Fast Circuits (DLA &amp; AtP)</h2>
+                <p>Run both Direct Logit Attribution and Gradient Attribution Patching programmatically or from the <strong>Fast Circuits</strong> tab in the studio.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>python</span>
+                        <button type="button" class="code-copy-btn">Copy</button>
+                    </div>
+                    <pre><code>from interplens.analysis.dla import compute_direct_logit_attribution
+from interplens.analysis.attribution_patching import run_attribution_patching
+
+# 1. Direct Logit Attribution
+logits, cache = adapter.run_with_cache("The Eiffel Tower is located in the city of")
+dla = compute_direct_logit_attribution(
+    adapter=adapter,
+    cache=cache,
+    tokens=adapter.tokenize("The Eiffel Tower is located in the city of"),
+    session_id="paris_check",
+    target_token=" Paris",
+    foil_token=" London",
+    logits=logits,
+)
+print(dla.top_components[:3])
+
+# 2. Gradient Attribution Patching (2 forward + 1 backward pass)
+atp = run_attribution_patching(
+    adapter=adapter,
+    clean_prompt="When Mary and John went to the store, John gave a drink to",
+    corrupt_prompt="When Mary and John went to the store, Mary gave a drink to",
+)
+print(f"{atp.runtime_ms} ms | Peak: L{atp.max_attribution_layer} Pos {atp.max_attribution_position}")</code></pre>
+                </div>
+            </section>
+
+            <!-- Contrastive Steering -->
+            <section id="steering" class="docs-section">
+                <h2>Contrastive Activation Steering (CAA)</h2>
+                <p>Extract a Difference-in-Means direction from positive and negative prompt sets, then compare baseline and steered multi-token completions side-by-side.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>python</span>
+                        <button type="button" class="code-copy-btn">Copy</button>
+                    </div>
+                    <pre><code>from interplens.analysis.steering import (
+    compute_contrastive_steering_vector,
+    generate_steered_comparison,
+)
+
+vec = compute_contrastive_steering_vector(
+    adapter=adapter,
+    positive_prompts=["I am so happy and grateful today!", "Everything is going wonderfully!"],
+    negative_prompts=["I am miserable and frustrated today.", "Everything is going horribly wrong."],
+    target_layer=adapter.num_layers // 2,
+)
+
+result = generate_steered_comparison(
+    adapter=adapter,
+    prompt="Today I walked outside and thought to myself,",
+    vector_id=vec.vector_id,
+    multiplier=2.5,
+    max_new_tokens=24,
+)
+print("Baseline:", result.baseline_completion)
+print("Steered :", result.steered_completion)</code></pre>
+                </div>
+            </section>
+
+            <!-- Supported Models -->
+            <section id="models" class="docs-section">
+                <h2>Supported Models</h2>
+                <p>InterpLens discovers transformer topologies automatically across HuggingFace <code>AutoModelForCausalLM</code>, <code>TransformerLens</code>, and custom PyTorch modules.</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Family</th>
+                                <th>Example Checkpoints</th>
+                                <th>Hook Layout</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Qwen 2.5</strong></td>
+                                <td><code>Qwen2.5-0.5B</code>, <code>3B</code>, <code>7B</code>, <code>14B</code>, <code>32B</code></td>
+                                <td><code>model.layers.{l}</code> (GQA + SwiGLU)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Meta Llama 3 / 3.2</strong></td>
+                                <td><code>Llama-3.2-1B</code>, <code>3B</code>, <code>Llama-3.1-8B</code></td>
+                                <td><code>model.layers.{l}</code> (GQA + RMSNorm)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mistral &amp; Mixtral MoE</strong></td>
+                                <td><code>Mistral-7B-v0.3</code>, <code>Mixtral-8x7B</code></td>
+                                <td><code>model.layers.{l}</code> / <code>block_sparse_moe</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>OLMoE</strong></td>
+                                <td><code>OLMoE-1B-7B-0924-Instruct</code></td>
+                                <td><code>model.layers.{l}</code> (MoE + BFloat16)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Google Gemma 2</strong></td>
+                                <td><code>gemma-2-2b-it</code>, <code>gemma-2-9b-it</code></td>
+                                <td><code>model.layers.{l}</code> (GQA + GeGLU)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>GPT-2 &amp; Pythia</strong></td>
+                                <td><code>gpt2</code>, <code>gpt2-xl</code>, <code>pythia-160m..12b</code></td>
+                                <td><code>transformer.h.{l}</code> / <code>blocks.{l}</code> / <code>gpt_neox.layers.{l}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Python API -->
+            <section id="python-api" class="docs-section">
+                <h2>Python API</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Function</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>il.launch(model=None, model_name="gpt2", port=8000, device="auto", dtype=None, hf_token=None, block=False)</code></td>
+                                <td>Attaches to an in-memory model or loads a HuggingFace/TransformerLens checkpoint and starts the visual debugger server.</td>
+                            </tr>
+                            <tr>
+                                <td><code>il.inspect(prompt, model=None, model_name="gpt2", device="auto")</code></td>
+                                <td>Runs a forward pass under <code>@torch.inference_mode()</code> and returns an <code>ActivationSession</code> with cached CPU-offloaded tensors.</td>
+                            </tr>
+                            <tr>
+                                <td><code>il.stop_server()</code></td>
+                                <td>Stops the background Uvicorn server cleanly (useful when switching models in notebooks).</td>
+                            </tr>
+                            <tr>
+                                <td><code>il.free_gpu_memory()</code></td>
+                                <td>Runs garbage collection and clears CUDA memory cache.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Configuration & Citation -->
+            <section id="config" class="docs-section">
+                <h2>Configuration &amp; Citation</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Environment Variable</th>
+                                <th>Default</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>INTERPLENS_PORT</code></td>
+                                <td><code>8000</code></td>
+                                <td>HTTP &amp; WebSocket server port.</td>
+                            </tr>
+                            <tr>
+                                <td><code>INTERPLENS_HOST</code></td>
+                                <td><code>127.0.0.1</code></td>
+                                <td>Bind address (<code>0.0.0.0</code> for remote VMs / Colab).</td>
+                            </tr>
+                            <tr>
+                                <td><code>INTERPLENS_DEVICE</code></td>
+                                <td><code>auto</code></td>
+                                <td>Compute device (<code>cuda</code>, <code>mps</code>, <code>cpu</code>).</td>
+                            </tr>
+                            <tr>
+                                <td><code>INTERPLENS_MAX_SESSIONS</code></td>
+                                <td><code>3</code></td>
+                                <td>Max cached activation sessions in memory.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Citation</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>bibtex</span>
+                        <button type="button" class="code-copy-btn">Copy</button>
+                    </div>
+                    <pre><code>@software{ahsan2026interplens,
+  author  = {Syed Sarim Ahsan},
+  title   = {InterpLens: An Interactive Mechanistic Interpretability Toolkit and Visual Debugger for LLMs},
+  year    = {2026},
+  url     = {https://github.com/sarimahsan/interplens},
+  version = {2.0.0}
+}</code></pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Search Modal -->
+    <div id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-label="Search documentation">
+        <div class="search-dialog">
+            <input type="text" id="search-input" class="search-input" placeholder="Jump to section (e.g. dla, steering, colab, rest)..." autocomplete="off">
+            <div id="search-results" class="search-results"></div>
         </div>
     </div>
 
-    <!-- Main JavaScript -->
-    <script src="main.js"></script>
-</body>
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span>InterpLens v2.0.0 &middot; Built by <a href="https://github.com/sarimahsan" target="_blank" rel="noopener">Syed Sarim Ahsan</a></span>
+            <span>MIT License &middot; <a href="https://github.com/sarimahsan/interplens" target="_blank" rel="noopener">Source on GitHub</a></span>
+        </div>
+    </footer>
 
+    <script src="main.js?v=2"></script>
+</body>
 </html>

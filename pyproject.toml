@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "interplens"
-version = "0.1.0"
+version = "2.0.0"
 description = "An interactive mechanistic interpretability toolkit and visual debugger for LLM internals."
 readme = "README.md"
 authors = [

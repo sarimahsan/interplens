@@ -4,10 +4,10 @@
 
 **Interactive Mechanistic Interpretability & Circuit Debugger for PyTorch & TransformerLens**
 
-[![PyPI Version](https://img.shields.io/badge/pypi-v0.1.0-38BDF8?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/interplens/)
+[![PyPI Version](https://img.shields.io/badge/pypi-v2.0.0-38BDF8?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/interplens/)
 [![Python 3.9 - 3.13](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-818CF8?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/interplens/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![Tests](https://img.shields.io/badge/tests-36%2F36%20passed-10B981?style=flat-square&logo=checkmarx&logoColor=white)](https://github.com/sarimahsan/interplens)
+[![Tests](https://img.shields.io/badge/tests-46%2F46%20passed-10B981?style=flat-square&logo=checkmarx&logoColor=white)](https://github.com/sarimahsan/interplens)
 [![Type Checked](https://img.shields.io/badge/mypy-PEP%20561-38BDF8?style=flat-square)](https://github.com/sarimahsan/interplens)
 [![License: MIT](https://img.shields.io/badge/license-MIT-A855F7?style=flat-square)](LICENSE)
 
@@ -72,9 +72,18 @@ Tracks the geometry and drift of hidden state vectors as information propagates 
 - **Top-K Firing Neurons:** Identifies and ranks the highest-activating MLP neurons for any given prompt position.
 - **Token Activation Strips:** Highlights exact prompt tokens that trigger specific polysemantic or monosemantic neurons.
 
-### 5. 🎯 Causal Patching & ROME Sweeps
-- **Automated Causal Tracing:** Swaps activations between clean and corrupted prompts across layers and token positions to pinpoint exact causal circuits.
-- **Activation Steering Vectors:** Injects scaled direction vectors ($x_l \leftarrow x_l + \alpha \cdot v$) during the forward pass to steer model behavior in real time.
+### 5. 🎯 Fast Circuits: Direct Logit Attribution (DLA) & Attribution Patching (AtP)
+- **Direct Logit Attribution (DLA):** Decomposes `logit(target) - logit(foil)` into exact additive contributions from Embedding, Attention, and MLP/MoE sublayers across all layers.
+- **Gradient-Based Attribution Patching (AtP):** Maps the full `Layer × Token Position` causal heatmap and ranks Attention/MLP/MoE sublayers in **2 forward passes + 1 backward pass** (~500 ms on a 7B model on A100).
+- **Exact Causal Patching Sweeps:** Swaps activations between clean and corrupted prompts across layers and token positions to verify exact logit-difference recovery.
+
+### 6. 🧭 Contrastive Activation Steering (CAA) & Side-by-Side Generation
+- **Difference-in-Means Vector Builder:** Computes steering directions directly from Positive vs. Negative prompt pairs at any transformer layer.
+- **Side-by-Side Multi-Token Generation:** Compares Baseline ($\alpha = 0$) vs. Steered ($x_l \leftarrow x_l + \alpha \cdot v$) completions live across GPT-2, Llama, Qwen, Mistral, Gemma, and MoE models.
+
+### 7. 📐 Interactive Mermaid Model Architecture & Hardware Profiler
+- **Dynamic Mermaid.js Diagrams:** Auto-detects `GQA` vs `MHSA`, `RMSNorm` vs `LayerNorm`, `SwiGLU`, `MoE`, and tied weights with residual skip connections, zoom controls, Copy Mermaid, and Export SVG.
+- **Real GPU / System RAM Telemetry:** Live NVML GPU temperature/power/clocks, per-layer parameter/cache footprints, and accurate CPU/RAM profiling on laptops.
 
 ---
 
@@ -269,7 +278,7 @@ If you use InterpLens in your academic research, interpretability experiments, o
   title = {InterpLens: An Interactive Mechanistic Interpretability Toolkit and Visual Debugger for LLMs},
   year = {2026},
   url = {https://github.com/sarimahsan/interplens},
-  version = {0.1.0}
+  version = {2.0.0}
 }
 ```
 
